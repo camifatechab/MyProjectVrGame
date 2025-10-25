@@ -1,11 +1,14 @@
 using UnityEngine;
 using UnityEngine.XR;
+using UnityEngine.XR.Interaction.Toolkit;
 using InputDevice = UnityEngine.XR.InputDevice;
 
 /// <summary>
 /// FULLY AUTOMATIC VR Jetpack Controller
 /// No setup required - just attach and fly!
 /// Hold BOTH grip buttons with arms down to fly upward!
+/// Automatically disables left joystick movement during flight AND when in air!
+/// NOW WITH CRYSTAL COLLECTION SUPPORT!
 /// </summary>
 public class AutoJetpackController : MonoBehaviour
 {
@@ -21,6 +24,14 @@ public class AutoJetpackController : MonoBehaviour
     [Tooltip("How quickly you slow down on the ground")]
     [SerializeField] private float groundDrag = 4f;
     
+    [Header("Movement Integration")]
+    [Tooltip("Reference to the ground movement controller - will be found automatically if not assigned")]
+    [SerializeField] private MonoBehaviour moveProvider;
+    
+    [Header("Collection Settings")]
+    [Tooltip("Radius for crystal collection trigger")]
+    [SerializeField] private float collectionRadius = 0.5f;
+    
     [Header("Physics")]
     private float gravity = 9.81f;
     
@@ -35,6 +46,12 @@ public class AutoJetpackController : MonoBehaviour
     private InputDevice leftDevice;
     private InputDevice rightDevice;
     
+    // Collection trigger
+    private GameObject collectionTrigger;
+    
+    // Track previous grounded state
+    private bool wasGrounded = true;
+    
     void Start()
     {
         // Get or add CharacterController
@@ -47,13 +64,59 @@ public class AutoJetpackController : MonoBehaviour
             characterController.center = new Vector3(0, 0.9f, 0);
         }
         
+        // Create collection trigger
+        SetupCollectionTrigger();
+        
         // Auto-find controllers
         AutoFindControllers();
         
         // Initialize XR devices
         InitializeXRDevices();
         
+        // Auto-find movement provider if not assigned
+        if (moveProvider == null)
+        {
+            // Try to find by common names used in XR Interaction Toolkit
+            GameObject moveObject = GameObject.Find("Move");
+            if (moveObject != null)
+            {
+                // Try to get the movement component (works with any version)
+                moveProvider = moveObject.GetComponent<MonoBehaviour>();
+                
+                if (moveProvider != null && moveProvider.GetType().Name.Contains("Move"))
+                {
+                    Debug.Log($"<color=cyan>✓ Found Movement Provider: {moveProvider.GetType().Name} on {moveObject.name}</color>");
+                }
+            }
+            
+            if (moveProvider == null)
+            {
+                Debug.LogWarning("No Movement Provider found. Ground movement won't be disabled during flight. Make sure you have a GameObject named 'Move' with a movement component.");
+            }
+        }
+        
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
+    }
+    
+    void SetupCollectionTrigger()
+    {
+        // Create a child GameObject for collection detection
+        collectionTrigger = new GameObject("CollectionTrigger");
+        collectionTrigger.transform.SetParent(transform);
+        collectionTrigger.transform.localPosition = Vector3.zero;
+        
+        // Add sphere collider for collection
+        SphereCollider trigger = collectionTrigger.AddComponent<SphereCollider>();
+        trigger.isTrigger = true;
+        trigger.radius = collectionRadius;
+        
+        // Add the collection component
+        collectionTrigger.AddComponent<PlayerCollectionTrigger>();
+        
+        // Set the MainCamera tag so crystals can detect it
+        collectionTrigger.tag = "MainCamera";
+        
+        Debug.Log($"<color=green>✓ Collection trigger created with radius: {collectionRadius}m</color>");
     }
     
     void AutoFindControllers()
@@ -112,6 +175,7 @@ public class AutoJetpackController : MonoBehaviour
         
         CheckJetpackActivation();
         ApplyMovement();
+        UpdateGroundMovementState();
     }
     
     void CheckJetpackActivation()
@@ -138,6 +202,38 @@ public class AutoJetpackController : MonoBehaviour
         {
             isFlying = shouldFly;
             Debug.Log($"<color=cyan>★★★ Jetpack {(isFlying ? "ACTIVATED" : "DEACTIVATED")} ★★★</color>");
+        }
+    }
+    
+    void UpdateGroundMovementState()
+    {
+        if (moveProvider == null) return;
+        
+        // CRITICAL FIX: Only enable ground movement when ACTUALLY GROUNDED
+        // Disable it when flying OR in the air (falling/gliding)
+        bool shouldEnableGroundMovement = characterController.isGrounded && !isFlying;
+        
+        // Only update if state changed (avoid spam)
+        if (moveProvider.enabled != shouldEnableGroundMovement)
+        {
+            moveProvider.enabled = shouldEnableGroundMovement;
+            
+            string reason = "";
+            if (isFlying)
+                reason = "FLYING";
+            else if (!characterController.isGrounded)
+                reason = "IN AIR";
+            else
+                reason = "GROUNDED";
+            
+            Debug.Log($"<color=yellow>Ground Movement {(shouldEnableGroundMovement ? "ENABLED" : "DISABLED")} - {reason}</color>");
+        }
+        
+        // Track grounded state changes
+        if (characterController.isGrounded != wasGrounded)
+        {
+            wasGrounded = characterController.isGrounded;
+            Debug.Log($"<color=orange>Ground State: {(wasGrounded ? "LANDED" : "AIRBORNE")}</color>");
         }
     }
     
@@ -182,7 +278,7 @@ public class AutoJetpackController : MonoBehaviour
         return leftAngle < armDownAngleThreshold && rightAngle < armDownAngleThreshold;
     }
 
-Vector3 GetThrustDirection()
+    Vector3 GetThrustDirection()
     {
         if (leftControllerTransform == null || rightControllerTransform == null)
             return Vector3.up; // Default to up if controllers not found
@@ -202,7 +298,7 @@ Vector3 GetThrustDirection()
     }
 
     
-void ApplyMovement()
+    void ApplyMovement()
     {
         if (isFlying)
         {
@@ -249,4 +345,15 @@ void ApplyMovement()
         // Move the character in 3D!
         characterController.Move(velocity * Time.deltaTime);
     }
+}
+
+/// <summary>
+/// Simple component to make the collection trigger work with CrystalCollectible
+/// This just needs to exist on the trigger object
+/// </summary>
+public class PlayerCollectionTrigger : MonoBehaviour
+{
+    // This component doesn't need any code!
+    // It just exists so the trigger can detect crystals
+    // The actual collection is handled by CrystalCollectible.OnTriggerEnter()
 }
