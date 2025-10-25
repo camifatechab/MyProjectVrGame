@@ -830,7 +830,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.02592006
+  m_Radius: 0.1
   m_Center: {x: -0.005565864, y: 0.02346953, z: 0.013663773}
 --- !u!1001 &630281197
 PrefabInstance:
@@ -949,7 +949,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.02592006
+  m_Radius: 0.1
   m_Center: {x: -0.005565387, y: 0.02346941, z: 0.013663803}
 --- !u!1001 &836334048
 PrefabInstance:
@@ -1202,6 +1202,8 @@ MonoBehaviour:
   armDownAngleThreshold: 120
   airDrag: 2
   groundDrag: 4
+  moveProvider: {fileID: 0}
+  collectionRadius: 0.5
 --- !u!1 &1066930984 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 1000012006197310, guid: 1945b2bd51abb51439bf144c0d3b07cd, type: 3}
@@ -1247,7 +1249,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.02592006
+  m_Radius: 0.1
   m_Center: {x: -0.005565642, y: 0.023469456, z: 0.013663687}
 --- !u!1001 &1254211426
 PrefabInstance:
@@ -1595,7 +1597,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.02592006
+  m_Radius: 0.1
   m_Center: {x: -0.005565627, y: 0.023469485, z: 0.013663568}
 --- !u!1 &1474330843 stripped
 GameObject:
@@ -1772,7 +1774,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.02592006
+  m_Radius: 0.1
   m_Center: {x: -0.0055653867, y: 0.02346941, z: 0.013663803}
 --- !u!1001 &1538019863
 PrefabInstance:
