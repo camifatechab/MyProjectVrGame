@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8d9177f379762534b87f51dbdd912f77
+timeCreated: 1488795795
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Mehses/Creatures/fish_moveB.controller
+  uploadId: 170976

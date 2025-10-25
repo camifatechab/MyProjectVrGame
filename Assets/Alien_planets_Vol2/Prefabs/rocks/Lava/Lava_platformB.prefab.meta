@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 661255d0ae28560488ce0b37ff2db742
+timeCreated: 1489053350
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/rocks/Lava/Lava_platformB.prefab
+  uploadId: 170976

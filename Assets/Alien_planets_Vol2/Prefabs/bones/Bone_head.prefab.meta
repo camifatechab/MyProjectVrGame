@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 4a2e2af1b16ff554ba7c51ac760b4ae5
+timeCreated: 1487150350
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/bones/Bone_head.prefab
+  uploadId: 170976

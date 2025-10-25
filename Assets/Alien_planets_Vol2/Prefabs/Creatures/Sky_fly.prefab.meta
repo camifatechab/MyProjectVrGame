@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 1e08b0b952addb2498b7a6fc4c7e86a7
+timeCreated: 1489051674
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Creatures/Sky_fly.prefab
+  uploadId: 170976

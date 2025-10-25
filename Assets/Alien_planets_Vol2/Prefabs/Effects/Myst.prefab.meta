@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 2d0b118bb00c92b4db672fa5722c29e7
+timeCreated: 1488425922
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Effects/Myst.prefab
+  uploadId: 170976

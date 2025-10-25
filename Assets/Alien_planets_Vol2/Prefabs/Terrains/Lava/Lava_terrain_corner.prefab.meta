@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 22e3dd05f0d0e264faca87baea4ade8b
+timeCreated: 1486976151
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Terrains/Lava/Lava_terrain_corner.prefab
+  uploadId: 170976

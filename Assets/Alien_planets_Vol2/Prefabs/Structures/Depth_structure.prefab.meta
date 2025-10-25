@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b2aaa9c4495303a4eadd672f6a51d851
+timeCreated: 1488955453
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Structures/Depth_structure.prefab
+  uploadId: 170976

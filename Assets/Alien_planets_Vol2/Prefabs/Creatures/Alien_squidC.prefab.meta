@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 85628308ac7679540b7dfb36f931c80d
+timeCreated: 1488965071
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Creatures/Alien_squidC.prefab
+  uploadId: 170976

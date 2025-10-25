@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 65f88f4347c0ec241bea84b0bf7440f2
+timeCreated: 1488765126
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Textures/Materials/Depth_sky.mat
+  uploadId: 170976

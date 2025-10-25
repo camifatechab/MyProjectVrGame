@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 765a562cf635c8f48ac6112a729338cd
+timeCreated: 1488962572
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/clouds/Sky_cloudB.prefab
+  uploadId: 170976

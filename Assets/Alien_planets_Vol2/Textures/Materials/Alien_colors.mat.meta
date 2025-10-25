@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6917216db35afff44afd83e22a01db9b
+timeCreated: 1486714660
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Textures/Materials/Alien_colors.mat
+  uploadId: 170976

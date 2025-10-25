@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a35456e28cf5de44c9321797353463e4
+timeCreated: 1488794648
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Effects/bubbles.prefab
+  uploadId: 170976

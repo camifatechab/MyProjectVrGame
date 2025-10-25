@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6687a44c0ae278e40bc3e681043f431e
+timeCreated: 1486976157
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Terrains/Lava/Lava_terrain_border.prefab
+  uploadId: 170976

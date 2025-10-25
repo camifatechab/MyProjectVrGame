@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 1ec9982f081cc2a458e7b154cffa066d
+timeCreated: 1488794987
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/rocks/Depth/Depth_small_rocks.prefab
+  uploadId: 170976

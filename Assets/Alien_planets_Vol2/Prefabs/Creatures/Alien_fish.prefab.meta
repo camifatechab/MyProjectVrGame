@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 2196947e5b1621648a41aee3296592c6
+timeCreated: 1488423838
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Creatures/Alien_fish.prefab
+  uploadId: 170976

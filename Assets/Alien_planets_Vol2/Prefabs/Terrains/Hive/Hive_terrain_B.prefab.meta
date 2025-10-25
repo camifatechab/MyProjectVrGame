@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 2f897d3eb4a027a42b2758113d993ee1
+timeCreated: 1487818132
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Terrains/Hive/Hive_terrain_B.prefab
+  uploadId: 170976

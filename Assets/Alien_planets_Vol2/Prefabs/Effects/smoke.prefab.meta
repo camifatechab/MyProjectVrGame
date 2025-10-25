@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: dcffc41742fe5f6489d9109829acf768
+timeCreated: 1487129864
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Effects/smoke.prefab
+  uploadId: 170976

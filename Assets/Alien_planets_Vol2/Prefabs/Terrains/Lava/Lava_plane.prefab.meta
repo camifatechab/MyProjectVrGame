@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 7d22bde3ec8ba534a98660bd7b41c823
+timeCreated: 1489052982
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Terrains/Lava/Lava_plane.prefab
+  uploadId: 170976

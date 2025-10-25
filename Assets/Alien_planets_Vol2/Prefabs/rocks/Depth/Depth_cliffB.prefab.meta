@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: cd63dc2b7e6064b4195c1e4cdd67c96e
+timeCreated: 1488764272
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/rocks/Depth/Depth_cliffB.prefab
+  uploadId: 170976

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d16d477f3d0afa04f9f9adb04e1ba278
+timeCreated: 1488961534
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Structures/Sky_fence.prefab
+  uploadId: 170976

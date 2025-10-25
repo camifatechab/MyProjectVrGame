@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 45841a3cdcb5e374585f6671008111be
+timeCreated: 1487216347
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/rocks/Sky/Sky_rock.prefab
+  uploadId: 170976

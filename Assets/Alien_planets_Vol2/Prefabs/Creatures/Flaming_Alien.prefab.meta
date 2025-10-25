@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: fc30a6b0b9d496a4b819767c0c78666c
+timeCreated: 1488941227
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Creatures/Flaming_Alien.prefab
+  uploadId: 170976

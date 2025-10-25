@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: bb66b8534c5327f4a8944ba0f91fccd5
+timeCreated: 1487582945
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Structures/SKY_platform.prefab
+  uploadId: 170976

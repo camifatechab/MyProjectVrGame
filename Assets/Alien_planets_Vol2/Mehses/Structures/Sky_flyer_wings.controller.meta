@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 259c1e18b439604479ad7f78844d1a78
+timeCreated: 1487578201
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Mehses/Structures/Sky_flyer_wings.controller
+  uploadId: 170976

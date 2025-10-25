@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 57f4890246428ba42948ce11ab2e4eec
+timeCreated: 1487040163
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Structures/Lava_machine.prefab
+  uploadId: 170976

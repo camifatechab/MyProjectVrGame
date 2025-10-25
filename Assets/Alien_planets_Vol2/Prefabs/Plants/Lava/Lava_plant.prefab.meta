@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 3c07d6dbb0fa6d74e9b4d26df570ee27
+timeCreated: 1486980069
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Plants/Lava/Lava_plant.prefab
+  uploadId: 170976

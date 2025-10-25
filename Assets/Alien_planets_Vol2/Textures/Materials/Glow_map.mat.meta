@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a467b64287c57b846acedca1fe1a7933
+timeCreated: 1486714660
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Textures/Materials/Glow_map.mat
+  uploadId: 170976

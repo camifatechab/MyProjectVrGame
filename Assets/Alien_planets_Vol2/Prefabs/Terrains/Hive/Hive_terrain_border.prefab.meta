@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 2832dd0007c900740947d726c9115567
+timeCreated: 1487818151
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 85080
+  packageName: Alien Planets Vol.2
+  packageVersion: 1.0
+  assetPath: Assets/Alien_planets_Vol2/Prefabs/Terrains/Hive/Hive_terrain_border.prefab
+  uploadId: 170976
