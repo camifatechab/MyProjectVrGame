@@ -4,7 +4,6 @@ using UnityEditor;
 public class FixWaterTriggerSetup
 {
     [MenuItem("Tools/Fix Water Trigger")]
-[MenuItem("Tools/Fix Water Trigger")]
     public static void FixWaterTrigger()
     {
         GameObject waterTrigger = GameObject.Find("WaterTrigger");
