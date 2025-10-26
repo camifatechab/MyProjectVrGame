@@ -1,13 +1,13 @@
 {
   "dependencies": {
     "com.coplaydev.unity-mcp": {
-      "version": "https://github.com/CoplayDev/unity-mcp.git?path=/UnityMcpBridge",
+      "version": "https://github.com/CoplayDev/unity-mcp.git?path=/MCPForUnity",
       "depth": 0,
       "source": "git",
       "dependencies": {
         "com.unity.nuget.newtonsoft-json": "3.0.2"
       },
-      "hash": "b57a3b8500e5ac8818f534100f78ea87b3c6f767"
+      "hash": "8f227ff5be77e3b0e4ec9cf8851a884565c78a1c"
     },
     "com.unity.burst": {
       "version": "1.8.19",
