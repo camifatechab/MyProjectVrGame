@@ -37,7 +37,15 @@ public class AutoJetpackController : MonoBehaviour
     // Fuel system state
     private bool isOutOfFuel = false;
     private bool hasShownLowFuelWarning = false;
+    private bool isRecharging = false;
     
+    
+    [Header("Fuel Recharge System")]
+    [Tooltip("Fuel recharged per second while grounded")]
+    [SerializeField] private float fuelRechargeRate = 25f;
+    
+    [Tooltip("Enable fuel recharge when grounded")]
+    [SerializeField] private bool enableRecharge = true;
 [Header("Air Resistance / Momentum")]
     [Tooltip("How quickly you slow down when not thrusting (lower = glide longer)")]
     [SerializeField] private float airDrag = 2f;
@@ -198,6 +206,7 @@ void Update()
         
         CheckJetpackActivation();
         UpdateFuelSystem();
+        UpdateFuelRecharge();
         ApplyMovement();
         UpdateGroundMovementState();
     }
@@ -289,6 +298,56 @@ void CheckJetpackActivation()
             if (!isFlying && currentFuel > (maxFuel * lowFuelThreshold / 100f))
             {
                 hasShownLowFuelWarning = false;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Recharges fuel gradually when grounded and not flying
+    /// </summary>
+void UpdateFuelRecharge()
+    {
+        // Check if conditions for recharging are met
+        bool shouldRecharge = characterController.isGrounded && !isFlying && enableRecharge && currentFuel < maxFuel;
+        
+        if (shouldRecharge)
+        {
+            // Start recharging message (only once when starting)
+            if (!isRecharging)
+            {
+                isRecharging = true;
+                Debug.Log("<color=cyan>⚡ FUEL RECHARGING...</color>");
+            }
+            
+            // Recharge fuel
+            float rechargeAmount = fuelRechargeRate * Time.deltaTime;
+            currentFuel = Mathf.Min(currentFuel + rechargeAmount, maxFuel);
+            
+            // Clear out of fuel flag if recharged above 0
+            if (currentFuel > 0 && isOutOfFuel)
+            {
+                isOutOfFuel = false;
+                Debug.Log("<color=green>✓ FUEL RESTORED - Ready to fly!</color>");
+            }
+            
+            // Reset low fuel warning when recharged above threshold
+            if (hasShownLowFuelWarning && (currentFuel / maxFuel * 100f) > lowFuelThreshold)
+            {
+                hasShownLowFuelWarning = false;
+            }
+            
+            // Recharge complete message
+            if (currentFuel >= maxFuel && isRecharging)
+            {
+                Debug.Log("<color=green>✓ FUEL TANK FULL!</color>");
+            }
+        }
+        else
+        {
+            // Stop recharging
+            if (isRecharging)
+            {
+                isRecharging = false;
             }
         }
     }
