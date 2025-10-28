@@ -7,7 +7,7 @@ public class FixSeamsMenuItem
     public static void FixSeams()
     {
         // Find or create the SeamFixer
-        FixLandWaterSeams fixer = Object.FindObjectOfType<FixLandWaterSeams>();
+        FixLandWaterSeams fixer = Object.FindFirstObjectByType<FixLandWaterSeams>();
         
         if (fixer == null)
         {

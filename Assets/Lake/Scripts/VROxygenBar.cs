@@ -40,7 +40,7 @@ namespace Lake
             
             if (oxygenSystem == null)
             {
-                oxygenSystem = FindObjectOfType<OxygenSystem>();
+                oxygenSystem = FindFirstObjectByType<OxygenSystem>();;
             }
             
             // Configure image

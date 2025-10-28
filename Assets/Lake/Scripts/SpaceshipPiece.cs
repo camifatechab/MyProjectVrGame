@@ -166,7 +166,7 @@ namespace Lake
             Debug.Log($"Collected spaceship piece: {pieceName} (ID: {pieceID})");
             
             // Notify collection manager if exists
-            SpaceshipCollectionManager manager = FindObjectOfType<SpaceshipCollectionManager>();
+            SpaceshipCollectionManager manager = FindFirstObjectByType<SpaceshipCollectionManager>();
             if (manager != null)
             {
                 manager.RegisterCollection(this);

@@ -36,7 +36,7 @@ namespace Lake
             // Auto-detect total pieces in scene if set to 0
             if (totalPieces == 0)
             {
-                SpaceshipPiece[] pieces = FindObjectsOfType<SpaceshipPiece>();
+                SpaceshipPiece[] pieces =FindObjectsByType<SpaceshipPiece>(FindObjectsSortMode.None);
                 totalPieces = pieces.Length;
                 
                 if (showDebugLog)

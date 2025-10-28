@@ -17,7 +17,28 @@ public class AutoJetpackController : MonoBehaviour
     [SerializeField] private float maxUpwardVelocity = 10f;
     [SerializeField] private float armDownAngleThreshold = 90f;
     
-    [Header("Air Resistance / Momentum")]
+    
+    [Header("Fuel System")]
+    [Tooltip("Maximum fuel capacity")]
+    [SerializeField] private float maxFuel = 100f;
+    
+    [Tooltip("Current fuel amount")]
+    [SerializeField] private float currentFuel = 100f;
+    
+    [Tooltip("Fuel consumed per second while flying")]
+    [SerializeField] private float fuelConsumptionRate = 10f;
+    
+    [Tooltip("Fuel percentage when low fuel warning starts")]
+    [SerializeField] private float lowFuelThreshold = 25f;
+    
+    [Tooltip("Bonus fuel efficiency when gliding (multiplier)")]
+    [SerializeField] private float glidingEfficiency = 0.5f;
+    
+    // Fuel system state
+    private bool isOutOfFuel = false;
+    private bool hasShownLowFuelWarning = false;
+    
+[Header("Air Resistance / Momentum")]
     [Tooltip("How quickly you slow down when not thrusting (lower = glide longer)")]
     [SerializeField] private float airDrag = 2f;
     
@@ -52,7 +73,7 @@ public class AutoJetpackController : MonoBehaviour
     // Track previous grounded state
     private bool wasGrounded = true;
     
-    void Start()
+void Start()
     {
         // Get or add CharacterController
         characterController = GetComponent<CharacterController>();
@@ -63,6 +84,9 @@ public class AutoJetpackController : MonoBehaviour
             characterController.radius = 0.3f;
             characterController.center = new Vector3(0, 0.9f, 0);
         }
+        
+        // Initialize fuel
+        currentFuel = maxFuel;
         
         // Create collection trigger
         SetupCollectionTrigger();
@@ -76,11 +100,9 @@ public class AutoJetpackController : MonoBehaviour
         // Auto-find movement provider if not assigned
         if (moveProvider == null)
         {
-            // Try to find by common names used in XR Interaction Toolkit
             GameObject moveObject = GameObject.Find("Move");
             if (moveObject != null)
             {
-                // Try to get the movement component (works with any version)
                 moveProvider = moveObject.GetComponent<MonoBehaviour>();
                 
                 if (moveProvider != null && moveProvider.GetType().Name.Contains("Move"))
@@ -91,11 +113,12 @@ public class AutoJetpackController : MonoBehaviour
             
             if (moveProvider == null)
             {
-                Debug.LogWarning("No Movement Provider found. Ground movement won't be disabled during flight. Make sure you have a GameObject named 'Move' with a movement component.");
+                Debug.LogWarning("No Movement Provider found. Ground movement won't be disabled during flight.");
             }
         }
         
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
+        Debug.Log($"<color=green>✓ Fuel System Initialized: {currentFuel}/{maxFuel}</color>");
     }
     
     void SetupCollectionTrigger()
@@ -165,7 +188,7 @@ public class AutoJetpackController : MonoBehaviour
         }
     }
     
-    void Update()
+void Update()
     {
         // Re-initialize devices if they become invalid
         if (!leftDevice.isValid || !rightDevice.isValid)
@@ -174,11 +197,12 @@ public class AutoJetpackController : MonoBehaviour
         }
         
         CheckJetpackActivation();
+        UpdateFuelSystem();
         ApplyMovement();
         UpdateGroundMovementState();
     }
     
-    void CheckJetpackActivation()
+void CheckJetpackActivation()
     {
         // Try multiple button types to maximize compatibility
         bool leftGripPressed = IsGripPressed(leftDevice);
@@ -192,18 +216,106 @@ public class AutoJetpackController : MonoBehaviour
         // Debug output every second
         if (Time.frameCount % 60 == 0)
         {
-            Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}");
+            Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}, Fuel: {GetFuelPercentage():F1}%");
         }
         
-        // Activate jetpack
-        bool shouldFly = bothGripsPressed && armsDown;
+        // Can't fly if out of fuel!
+        bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel;
         
         if (shouldFly != isFlying)
         {
             isFlying = shouldFly;
-            Debug.Log($"<color=cyan>★★★ Jetpack {(isFlying ? "ACTIVATED" : "DEACTIVATED")} ★★★</color>");
+            
+            if (isFlying)
+            {
+                Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
+            }
+            else
+            {
+                string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
+                Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
+            }
+        }
+        
+        // Auto-deactivate if fuel runs out mid-flight
+        if (isFlying && isOutOfFuel)
+        {
+            isFlying = false;
+            Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
         }
     }
+
+
+    void UpdateFuelSystem()
+    {
+        if (isFlying)
+        {
+            // Calculate fuel consumption
+            float consumption = fuelConsumptionRate * Time.deltaTime;
+            
+            // Bonus efficiency when mostly gliding (not thrusting straight up)
+            Vector3 thrustDirection = GetThrustDirection();
+            float upwardness = Vector3.Dot(thrustDirection, Vector3.up);
+            if (upwardness < 0.7f) // Not thrusting directly upward
+            {
+                consumption *= glidingEfficiency;
+            }
+            
+            // Consume fuel
+            currentFuel -= consumption;
+            
+            // Check if out of fuel
+            if (currentFuel <= 0)
+            {
+                currentFuel = 0;
+                if (!isOutOfFuel)
+                {
+                    isOutOfFuel = true;
+                    Debug.Log("<color=red>⚠ OUT OF FUEL! ⚠</color>");
+                }
+            }
+            
+            // Low fuel warning
+            float fuelPercentage = (currentFuel / maxFuel) * 100f;
+            if (fuelPercentage <= lowFuelThreshold && !hasShownLowFuelWarning)
+            {
+                hasShownLowFuelWarning = true;
+                Debug.Log($"<color=orange>⚠ LOW FUEL WARNING: {fuelPercentage:F1}% remaining! ⚠</color>");
+            }
+        }
+        else
+        {
+            // Reset warning when not flying and fuel is above threshold
+            if (!isFlying && currentFuel > (maxFuel * lowFuelThreshold / 100f))
+            {
+                hasShownLowFuelWarning = false;
+            }
+        }
+    }
+    
+    public void RefillFuel(float amount)
+    {
+        currentFuel = Mathf.Min(currentFuel + amount, maxFuel);
+        isOutOfFuel = false;
+        Debug.Log($"<color=cyan>✓ Fuel Refilled! Current: {currentFuel:F1}/{maxFuel}</color>");
+    }
+    
+    public void RefillFuelFull()
+    {
+        currentFuel = maxFuel;
+        isOutOfFuel = false;
+        hasShownLowFuelWarning = false;
+        Debug.Log("<color=green>✓ FUEL TANK FULL!</color>");
+    }
+    
+    // Public getters for UI
+    public float GetCurrentFuel() => currentFuel;
+    public float GetMaxFuel() => maxFuel;
+    public float GetFuelPercentage() => (currentFuel / maxFuel) * 100f;
+    public bool IsLowOnFuel() => GetFuelPercentage() <= lowFuelThreshold;
+    public bool IsOutOfFuel() => isOutOfFuel;
+    public bool IsFlying() => isFlying;
+
     
     void UpdateGroundMovementState()
     {

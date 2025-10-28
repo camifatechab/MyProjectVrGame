@@ -59,7 +59,7 @@ namespace Lake
             // Try to find OxygenSystem if not assigned
             if (oxygenSystem == null)
             {
-                oxygenSystem = FindObjectOfType<OxygenSystem>();
+                oxygenSystem = FindFirstObjectByType<OxygenSystem>();
                 if (oxygenSystem == null)
                 {
                     Debug.LogError("OxygenUI: No OxygenSystem found in scene!");

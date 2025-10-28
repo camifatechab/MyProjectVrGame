@@ -12,7 +12,7 @@ public class VRCrystalUI : MonoBehaviour
     void Start()
     {
         // Find the Crystal Manager
-        crystalManager = FindObjectOfType<CrystalManager>();
+        crystalManager = FindFirstObjectByType<CrystalManager>();
         
         // Get and configure the Canvas for VR
         canvas = GetComponent<Canvas>();
@@ -29,8 +29,14 @@ public class VRCrystalUI : MonoBehaviour
         UpdateUI();
     }
 
-    void CreateUIElements()
+void CreateUIElements()
     {
+        // Only create UI elements if they're not assigned in Inspector
+        if (crystalsText != null && remainingText != null)
+        {
+            return; // UI elements already assigned, skip creation
+        }
+
         // Create Panel
         GameObject panel = new GameObject("Panel");
         panel.transform.SetParent(transform, false);

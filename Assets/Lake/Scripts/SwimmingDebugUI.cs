@@ -77,12 +77,12 @@ public class SwimmingDebugUI : MonoBehaviour
         // Try to auto-find components
         if (keyboardSwimming == null)
         {
-            keyboardSwimming = FindObjectOfType<SimpleSwimmingMovement>();
+            keyboardSwimming = FindFirstObjectByType<SimpleSwimmingMovement>();
         }
         
         if (vrSwimming == null)
         {
-            vrSwimming = FindObjectOfType<SwimmingLocomotion>();
+            vrSwimming = FindFirstObjectByType<SwimmingLocomotion>();
         }
     }
 }
