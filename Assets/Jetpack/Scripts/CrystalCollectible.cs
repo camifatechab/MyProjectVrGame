@@ -22,7 +22,7 @@ public class CrystalCollectible : MonoBehaviour
     public float rotationSpeed = 30f;
     
     private bool isCollected = false;
-    private AudioSource audioSource;
+    // AudioSource no longer needed - using PlayClipAtPoint instead
 
     void Start()
     {
@@ -36,15 +36,7 @@ public class CrystalCollectible : MonoBehaviour
             Debug.LogWarning("CrystalManager not found in scene! Please add one.");
         }
         
-        // Setup audio source if sound is provided
-        if (collectionSound != null)
-        {
-            audioSource = gameObject.AddComponent<AudioSource>();
-            audioSource.clip = collectionSound;
-            audioSource.volume = soundVolume;
-            audioSource.playOnAwake = false;
-            audioSource.spatialBlend = 1f; // 3D sound
-        }
+        // Note: No need to setup AudioSource - we use PlayClipAtPoint which handles it automatically!
     }
 
     void Update()
@@ -85,10 +77,17 @@ void Collect()
             col.enabled = false;
         }
         
-        // STEP 3: Play sound (after gem is hidden)
-        if (audioSource != null && collectionSound != null)
+        // STEP 3: Play sound (after gem is hidden) - Use PlayClipAtPoint for reliability!
+        if (collectionSound != null)
         {
-            audioSource.Play();
+            // PlayClipAtPoint creates a temporary AudioSource that auto-destroys after playing
+            // This ensures sound plays completely even if GameObject is destroyed
+            AudioSource.PlayClipAtPoint(collectionSound, transform.position, soundVolume);
+            Debug.Log($"<color=cyan>♪ Crystal collection sound playing at {transform.position}</color>");
+        }
+        else
+        {
+            Debug.LogWarning("<color=yellow>No collection sound assigned to crystal!</color>");
         }
         
         // STEP 4: Notify manager (updates UI immediately)
@@ -97,8 +96,7 @@ void Collect()
             CrystalManager.Instance.OnCrystalCollected(this);
         }
         
-        // STEP 5: Destroy after sound finishes (cleanup)
-        float destroyDelay = (collectionSound != null) ? collectionSound.length : 0f;
-        Destroy(gameObject, destroyDelay);
+        // STEP 5: Destroy immediately (sound plays independently via PlayClipAtPoint)
+        Destroy(gameObject, 0.1f); // Small delay to ensure all callbacks complete
     }
 }
