@@ -648,6 +648,19 @@ Material:
     - _SpecColor: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
+--- !u!134 &394726538
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ' (Instance) (Instance)'
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!43 &398026528
 Mesh:
   m_ObjectHideFlags: 0
@@ -6743,19 +6756,6 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1066930986}
   m_SourcePrefab: {fileID: 100100000, guid: 1945b2bd51abb51439bf144c0d3b07cd, type: 3}
---- !u!134 &1255734623
-PhysicsMaterial:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_Name: ' (Instance)'
-  serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
-  m_FrictionCombine: 0
-  m_BounceCombine: 0
 --- !u!134 &1282764165
 PhysicsMaterial:
   m_ObjectHideFlags: 0
@@ -7307,7 +7307,7 @@ PrefabInstance:
     - target: {fileID: 6232745470614056090, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_Material
       value: 
-      objectReference: {fileID: 1255734623}
+      objectReference: {fileID: 394726538}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:
@@ -7321,6 +7321,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 912543142}
+    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1538019865}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474330848}
@@ -7336,6 +7339,25 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
   m_PrefabInstance: {fileID: 1538019863}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1538019865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912543128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c4bb2a82d0ea3bc4091835d5920367a4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  trailDuration: 15
+  trailStartWidth: 2
+  trailEndWidth: 2
+  smokeColor: {r: 0.9716981, g: 0.9489929, b: 0.9487807, a: 0.6}
+  cornerVertices: 15
+  minVertexDistance: 0.05
+  jetpackController: {fileID: 0}
 --- !u!134 &1555645924
 PhysicsMaterial:
   m_ObjectHideFlags: 0
