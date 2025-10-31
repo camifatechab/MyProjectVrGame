@@ -6644,6 +6644,10 @@ MonoBehaviour:
   airDrag: 2
   groundDrag: 4
   moveProvider: {fileID: 0}
+  jetpackAudioSource: {fileID: 0}
+  flyingSound: {fileID: 8300000, guid: 8fb18a68279f6ff4b88af484aaa6a534, type: 3}
+  flyingSoundVolume: 0.7
+  fadeOutDuration: 0.5
   collectionRadius: 0.5
 --- !u!1 &1066930984 stripped
 GameObject:
@@ -7355,7 +7359,7 @@ MonoBehaviour:
   trailStartWidth: 2
   trailEndWidth: 2
   smokeColor: {r: 0.9716981, g: 0.9489929, b: 0.9487807, a: 0.6}
-  cornerVertices: 15
+  cornerVertices: 100
   minVertexDistance: 0.05
   jetpackController: {fileID: 0}
 --- !u!134 &1555645924

@@ -57,7 +57,26 @@ public class AutoJetpackController : MonoBehaviour
     [Tooltip("Reference to the ground movement controller - will be found automatically if not assigned")]
     [SerializeField] private MonoBehaviour moveProvider;
     
-    [Header("Collection Settings")]
+    
+    [Header("Audio Settings")]
+    [Tooltip("Audio source for jetpack sound effects")]
+    [SerializeField] private AudioSource jetpackAudioSource;
+    
+    [Tooltip("Sound to play while flying")]
+    [SerializeField] private AudioClip flyingSound;
+    
+    [Tooltip("Volume of the flying sound (0-1)")]
+    [SerializeField] private float flyingSoundVolume = 0.7f;
+    
+    [Tooltip("Time in seconds for sound to fade out when stopping")]
+    [SerializeField] private float fadeOutDuration = 0.5f;
+    
+    // Audio state tracking
+    private bool isFadingOut = false;
+    private float fadeTimer = 0f;
+    
+    
+[Header("Collection Settings")]
     [Tooltip("Radius for crystal collection trigger")]
     [SerializeField] private float collectionRadius = 0.5f;
     
@@ -93,7 +112,11 @@ void Start()
             characterController.center = new Vector3(0, 0.9f, 0);
         }
         
-        // Initialize fuel
+        
+        // Setup audio source
+        SetupAudioSource();
+        
+// Initialize fuel
         currentFuel = maxFuel;
         
         // Create collection trigger
@@ -126,6 +149,16 @@ void Start()
         }
         
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
+        
+        // Audio setup confirmation
+        if (jetpackAudioSource != null && flyingSound != null)
+        {
+            Debug.Log("<color=green>✓ Jetpack Audio System Ready!</color>");
+        }
+        else if (flyingSound == null)
+        {
+            Debug.LogWarning("⚠ No flying sound assigned! Please assign an AudioClip in the Inspector.");
+        }
         Debug.Log($"<color=green>✓ Fuel System Initialized: {currentFuel}/{maxFuel}</color>");
     }
     
@@ -149,6 +182,61 @@ void Start()
         
         Debug.Log($"<color=green>✓ Collection trigger created with radius: {collectionRadius}m</color>");
     }
+
+
+    void SetupAudioSource()
+    {
+        // Get or create audio source
+        jetpackAudioSource = GetComponent<AudioSource>();
+        if (jetpackAudioSource == null)
+        {
+            jetpackAudioSource = gameObject.AddComponent<AudioSource>();
+            Debug.Log("<color=cyan>✓ Created AudioSource component</color>");
+        }
+        
+        // Configure audio source for jetpack
+        jetpackAudioSource.loop = true;
+        jetpackAudioSource.playOnAwake = false;
+        jetpackAudioSource.volume = flyingSoundVolume;
+        jetpackAudioSource.clip = flyingSound;
+        
+        // Spatial audio settings for VR immersion
+        jetpackAudioSource.spatialBlend = 0f; // 0 = 2D (follows player)
+    }
+
+
+    void UpdateAudioFade()
+    {
+        if (isFadingOut && jetpackAudioSource != null)
+        {
+            fadeTimer += Time.deltaTime;
+            float fadeProgress = fadeTimer / fadeOutDuration;
+            
+            // Smoothly reduce volume
+            jetpackAudioSource.volume = Mathf.Lerp(flyingSoundVolume, 0f, fadeProgress);
+            
+            // Stop completely when fade is done
+            if (fadeProgress >= 1f)
+            {
+                jetpackAudioSource.Stop();
+                jetpackAudioSource.volume = flyingSoundVolume; // Reset for next time
+                isFadingOut = false;
+                Debug.Log("<color=green>🔇 Flying sound faded out</color>");
+            }
+        }
+    }
+    
+    void StartAudioFadeOut()
+    {
+        if (jetpackAudioSource != null && jetpackAudioSource.isPlaying)
+        {
+            isFadingOut = true;
+            fadeTimer = 0f;
+            Debug.Log("<color=yellow>🔊 Starting audio fade out...</color>");
+        }
+    }
+
+
     
     void AutoFindControllers()
     {
@@ -207,6 +295,8 @@ void Update()
         CheckJetpackActivation();
         UpdateFuelSystem();
         UpdateFuelRecharge();
+        UpdateAudioFade();
+
         ApplyMovement();
         UpdateGroundMovementState();
     }
@@ -238,11 +328,31 @@ void CheckJetpackActivation()
             if (isFlying)
             {
                 Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
+                
+                // Start flying sound
+                if (jetpackAudioSource != null && flyingSound != null)
+                {
+                    // Cancel any ongoing fade out
+                    if (isFadingOut)
+                    {
+                        isFadingOut = false;
+                        jetpackAudioSource.volume = flyingSoundVolume;
+                    }
+                    
+                    if (!jetpackAudioSource.isPlaying)
+                    {
+                        jetpackAudioSource.Play();
+                        Debug.Log("<color=green>🔊 Flying sound started</color>");
+                    }
+                }
             }
             else
             {
                 string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
                 Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
+                
+                // Fade out flying sound smoothly
+                StartAudioFadeOut();
             }
         }
         
@@ -251,6 +361,9 @@ void CheckJetpackActivation()
         {
             isFlying = false;
             Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
+            
+            // Fade out sound when out of fuel
+            StartAudioFadeOut();
         }
     }
 
