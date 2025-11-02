@@ -1,98 +1,99 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class CrystalCounterUI : MonoBehaviour
 {
     [Header("UI References")]
-    [SerializeField] private GameObject crystalPanel;
-    [SerializeField] private Text crystalsText;
-    [SerializeField] private Text remainingText;
+    [SerializeField] private TextMeshProUGUI counterText;
+    [SerializeField] private Image crystalIcon;
     
-    [Header("Settings")]
-    [SerializeField] private int totalCrystals = 5;
+    [Header("Animation Settings")]
+    [SerializeField] private bool animateOnCollection = true;
+    [SerializeField] private float popScale = 1.2f;
+    [SerializeField] private float popDuration = 0.2f;
     
-    private int collectedCrystals = 0;
-
+    private Vector3 originalScale;
+    private bool isAnimating = false;
+    
     void Start()
     {
-        // Initial update
-        UpdateUI();
-    }
-
-    public void CollectCrystal()
-    {
-        collectedCrystals++;
-        UpdateUI();
-        
-        // Check if all crystals collected
-        if (collectedCrystals >= totalCrystals)
+        if (counterText != null)
         {
-            OnAllCrystalsCollected();
-        }
-    }
-
-    private void UpdateUI()
-    {
-        if (crystalsText != null)
-        {
-            crystalsText.text = $"Crystals: {collectedCrystals}/{totalCrystals}";
+            originalScale = counterText.transform.localScale;
         }
         
-        if (remainingText != null)
+        // Subscribe to collection events
+        if (CrystalCollectionSystem.Instance != null)
         {
-            int remaining = totalCrystals - collectedCrystals;
-            remainingText.text = $"Remaining: {remaining}";
+            CrystalCollectionSystem.Instance.OnCrystalCollected.AddListener(UpdateCounter);
             
-            // Optional: Change color when getting close to completion
-            if (remaining <= 2)
+            // Initialize display
+            int collected = CrystalCollectionSystem.Instance.GetCrystalsCollected();
+            int total = CrystalCollectionSystem.Instance.GetTotalCrystals();
+            UpdateCounter(collected, total);
+        }
+        else
+        {
+            Debug.LogWarning("CrystalCollectionSystem.Instance is null!");
+        }
+    }
+    
+    private void UpdateCounter(int collected, int total)
+    {
+        if (counterText != null)
+        {
+            counterText.text = $"{collected}/{total}";
+            
+            if (animateOnCollection && collected > 0)
             {
-                remainingText.color = Color.yellow;
-            }
-            if (remaining == 0)
-            {
-                remainingText.color = Color.green;
+                AnimatePop();
             }
         }
     }
-
-    private void OnAllCrystalsCollected()
+    
+    private void AnimatePop()
     {
-        Debug.Log("All crystals collected!");
-        
-        if (crystalsText != null)
+        if (!isAnimating && counterText != null)
         {
-            crystalsText.color = Color.green;
-            crystalsText.text = $"COMPLETE! {collectedCrystals}/{totalCrystals}";
+            StartCoroutine(PopAnimation());
         }
     }
-
-    // Public method to reset the counter
-    public void ResetCounter()
+    
+    private System.Collections.IEnumerator PopAnimation()
     {
-        collectedCrystals = 0;
+        isAnimating = true;
         
-        if (crystalsText != null)
+        // Scale up
+        float elapsed = 0f;
+        while (elapsed < popDuration / 2)
         {
-            crystalsText.color = Color.white;
+            elapsed += Time.deltaTime;
+            float t = elapsed / (popDuration / 2);
+            counterText.transform.localScale = Vector3.Lerp(originalScale, originalScale * popScale, t);
+            yield return null;
         }
         
-        if (remainingText != null)
+        // Scale down
+        elapsed = 0f;
+        while (elapsed < popDuration / 2)
         {
-            remainingText.color = Color.white;
+            elapsed += Time.deltaTime;
+            float t = elapsed / (popDuration / 2);
+            counterText.transform.localScale = Vector3.Lerp(originalScale * popScale, originalScale, t);
+            yield return null;
         }
         
-        UpdateUI();
+        counterText.transform.localScale = originalScale;
+        isAnimating = false;
     }
-
-    // Public getter for collected count
-    public int GetCollectedCount()
+    
+    void OnDestroy()
     {
-        return collectedCrystals;
-    }
-
-    // Public getter for total count
-    public int GetTotalCount()
-    {
-        return totalCrystals;
+        // Unsubscribe from events
+        if (CrystalCollectionSystem.Instance != null)
+        {
+            CrystalCollectionSystem.Instance.OnCrystalCollected.RemoveListener(UpdateCounter);
+        }
     }
 }
