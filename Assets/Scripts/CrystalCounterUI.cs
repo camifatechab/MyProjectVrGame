@@ -39,11 +39,12 @@ public class CrystalCounterUI : MonoBehaviour
         }
     }
     
-    private void UpdateCounter(int collected, int total)
+private void UpdateCounter(int collected, int total)
     {
         if (counterText != null)
         {
-            counterText.text = $"{collected}/{total}";
+            int remaining = total - collected;
+            counterText.text = $"Crystals: {collected}/{total}\nRemaining: {remaining}";
             
             if (animateOnCollection && collected > 0)
             {
