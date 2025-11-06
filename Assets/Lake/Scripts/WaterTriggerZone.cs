@@ -40,14 +40,7 @@ private void OnTriggerEnter(Collider other)
         if (swimLoco != null)
         {
             
-        
-        // Enable oxygen system
-        Lake.OxygenSystem oxygenSystem = other.GetComponent<Lake.OxygenSystem>();
-        if (oxygenSystem != null)
-        {
-            oxygenSystem.SetUnderwater(true);
-        }
-swimLoco.EnableSwimming(true);
+            swimLoco.EnableSwimming(true);
         }
         
         // Optionally disable regular continuous movement when swimming
@@ -71,16 +64,7 @@ private void OnTriggerExit(Collider other)
         SwimmingLocomotion swimLoco = other.GetComponent<SwimmingLocomotion>();
         if (swimLoco != null)
         {
-            
         
-        // Disable oxygen system
-        Lake.OxygenSystem oxygenSystem = other.GetComponent<Lake.OxygenSystem>();
-        if (oxygenSystem != null)
-        {
-            oxygenSystem.SetUnderwater(false);
-            // Optionally refill oxygen when exiting water
-            oxygenSystem.RefillOxygenFull();
-        }
 swimLoco.EnableSwimming(false);
         }
         
