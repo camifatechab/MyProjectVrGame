@@ -24,6 +24,10 @@ public class AnimateWaterShader : MonoBehaviour
     [Range(0f, 0.1f)]
     public float distortionAmount = 0.02f;
     
+    [Header("Water Color")]
+    [Tooltip("Water color (your dark navy blue from the scene)")]
+    public Color waterColor = new Color(0.08f, 0.18f, 0.35f, 1f); // Dark navy blue to match fog // Dark navy blue to match fog
+    
     [Header("Material Properties")]
     [Tooltip("Water smoothness (reflectivity)")]
     [Range(0f, 1f)]
@@ -32,6 +36,17 @@ public class AnimateWaterShader : MonoBehaviour
     [Tooltip("Water transparency")]
     [Range(0f, 1f)]
     public float alpha = 0.6f;
+    
+    [Header("Surface Quality")]
+    [Tooltip("Makes water non-metallic (should be 0 for realistic water)")]
+    [Range(0f, 1f)]
+    public float metallic = 0f;
+    
+    [Tooltip("Enable specular highlights (makes water sparkle)")]
+    public bool specularHighlights = true;
+    
+    [Tooltip("Enable environment reflections (sky/surroundings reflect on water)")]
+    public bool environmentReflections = true;
     
     private Material waterMaterial;
     private Vector2 normalOffset = Vector2.zero;
@@ -87,13 +102,20 @@ public class AnimateWaterShader : MonoBehaviour
         if (waterMaterial == null)
             return;
             
-        // Update smoothness
+        // Update smoothness for reflections
         waterMaterial.SetFloat("_Smoothness", smoothness);
         
-        // Update alpha (transparency)
-        Color currentColor = waterMaterial.GetColor("_BaseColor");
-        currentColor.a = alpha;
-        waterMaterial.SetColor("_BaseColor", currentColor);
+        // Update metallic (water should be non-metallic)
+        waterMaterial.SetFloat("_Metallic", metallic);
+        
+        // Update water color with current alpha
+        Color finalColor = waterColor;
+        finalColor.a = alpha;
+        waterMaterial.SetColor("_BaseColor", finalColor);
+        
+        // Update rendering features
+        waterMaterial.SetFloat("_SpecularHighlights", specularHighlights ? 1f : 0f);
+        waterMaterial.SetFloat("_EnvironmentReflections", environmentReflections ? 1f : 0f);
     }
     
     private void OnDestroy()
