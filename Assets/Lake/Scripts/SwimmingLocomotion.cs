@@ -11,34 +11,34 @@ public class SwimmingLocomotion : MonoBehaviour
     
     [Header("Swimming Settings")]
     [Tooltip("Base swimming speed - higher = faster forward movement")]
-    public float swimSpeed = 5.0f;
+    public float swimSpeed = 16.0f;
     
     [Tooltip("Surface swimming speed for freestyle")]
-    public float surfaceSwimSpeed = 7.0f;
+    public float surfaceSwimSpeed = 14.0f;
     
     [Tooltip("How fast you swim upward when pulling arms down")]
-    public float upwardSwimSpeed = 6.0f;
+    public float upwardSwimSpeed = 12.0f;
     
     [Tooltip("How fast you dive down when pushing arms up")]
-    public float downwardSwimSpeed = 5.5f;
+    public float downwardSwimSpeed = 13.0f;
     
     [Tooltip("Speed multiplier for frog-style forward swimming")]
-    public float frogSwimSpeed = 6.5f;
+    public float frogSwimSpeed = 13.0f;
     
     [Tooltip("Side-to-side movement speed")]
-    public float strafeSpeed = 3.5f;
+    public float strafeSpeed = 7.0f;
     
     [Tooltip("Minimum arm speed to register movement (lower = more sensitive)")]
-    public float minArmSpeed = 0.12f;
+    public float minArmSpeed = 0.06f;
     
     [Tooltip("How quickly movement responds to arm motion")]
     public float responseSpeed = 12.0f;
     
     [Tooltip("Drag when not moving arms (lower = drift more)")]
-    public float waterDrag = 3.0f;
+    public float waterDrag = 0.7f;
     
     [Tooltip("Maximum swim speed")]
-    public float maxSwimSpeed = 10.0f;
+    public float maxSwimSpeed = 30.0f;
     
     [Header("Surface Detection")]
     [Tooltip("Distance from water surface to enable freestyle swimming")]
@@ -49,7 +49,7 @@ public class SwimmingLocomotion : MonoBehaviour
     
     [Header("Boost Settings")]
     [Tooltip("Boost speed when both arms pull back quickly")]
-    public float boostSpeed = 15f;
+    public float boostSpeed = 30f;
     
     [Tooltip("Minimum arm velocity to trigger boost")]
     public float boostThreshold = 1.5f;
@@ -245,9 +245,8 @@ void CheckSurfaceProximity()
         return swimForce;
     }
     
-    Vector3 CalculateUnderwaterSwimming(Vector3 armVelocity)
+Vector3 CalculateUnderwaterSwimming(Vector3 armVelocity)
     {
-        // Full 3D underwater swimming
         if (armVelocity.magnitude < minArmSpeed)
         {
             return Vector3.zero;
@@ -256,32 +255,33 @@ void CheckSurfaceProximity()
         Vector3 swimForce = Vector3.zero;
         Transform cameraTransform = Camera.main.transform;
         
+        // Use FULL camera direction including vertical (look down = swim down)
+        Vector3 lookDirection = cameraTransform.forward;
+        
         // === FROG-STYLE / BREASTSTROKE SWIMMING ===
         float forwardPush = Vector3.Dot(armVelocity, cameraTransform.forward);
         if (forwardPush > 0.3f)
         {
-            swimForce += cameraTransform.forward * forwardPush * frogSwimSpeed;
+            swimForce += lookDirection * forwardPush * frogSwimSpeed;
         }
         
         // === FREESTYLE BACKWARD PULL ===
         float backwardPull = -Vector3.Dot(armVelocity, cameraTransform.forward);
         if (backwardPull > 0)
         {
-            swimForce += cameraTransform.forward * backwardPull * swimSpeed;
+            swimForce += lookDirection * backwardPull * swimSpeed;
         }
         
-        // === UP/DOWN SWIMMING ===
+        // === ADDITIONAL UP/DOWN CONTROL (arms only) ===
         float armDownMotion = -armVelocity.y;
         
         if (armDownMotion > 0.2f)
         {
-            // Pulling down = swim up
-            swimForce += Vector3.up * armDownMotion * upwardSwimSpeed;
+            swimForce += Vector3.up * armDownMotion * upwardSwimSpeed * 0.5f;
         }
         else if (armDownMotion < -0.2f)
         {
-            // Pushing up = dive down
-            swimForce += Vector3.up * armDownMotion * downwardSwimSpeed;
+            swimForce += Vector3.up * armDownMotion * downwardSwimSpeed * 0.5f;
         }
         
         // === LEFT/RIGHT STRAFING ===
