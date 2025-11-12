@@ -17,7 +17,7 @@ RenderSettings:
   m_Fog: 1
   m_FogColor: {r: 0.3137255, g: 0.41960788, b: 0.5803922, a: 1}
   m_FogMode: 1
-  m_FogDensity: 0
+  m_FogDensity: 0.002
   m_LinearFogStart: 60
   m_LinearFogEnd: 1000
   m_AmbientSkyColor: {r: 0.8879232, g: 0.9911022, b: 0.9734455, a: 1}
@@ -1606,10 +1606,10 @@ MonoBehaviour:
   midDepthFogColor: {r: 0.2, g: 0.4, b: 0.6, a: 1}
   deepZoneFogColor: {r: 0.05, g: 0.15, b: 0.25, a: 1}
   caveFloorFogColor: {r: 0.02, g: 0.05, b: 0.08, a: 1}
-  surfaceFogDensity: 0.005
-  midDepthFogDensity: 0.02
-  deepZoneFogDensity: 0.05
-  caveFloorFogDensity: 0.08
+  surfaceFogDensity: 0.001
+  midDepthFogDensity: 0.002
+  deepZoneFogDensity: 0.003
+  caveFloorFogDensity: 0.005
   playerCamera: {fileID: 0}
 --- !u!4 &379899614
 Transform:
@@ -1640,7 +1640,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   enableFog: 1
   fogColor: {r: 0.2, g: 0.4, b: 0.6, a: 1}
-  fogDensity: 0.02
+  fogDensity: 0.0001
   fogStart: 0
   fogEnd: 50
 --- !u!1001 &406594532
@@ -2128,6 +2128,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1670256624, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 718537001}
+    - targetCorrespondingSourceObject: {fileID: 1670256624, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 718537006}
   m_SourcePrefab: {fileID: 100100000, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
 --- !u!4 &449301623 stripped
 Transform:
@@ -3324,6 +3327,25 @@ MonoBehaviour:
   enableHaptics: 1
   hapticIntensity: 0.5
   hapticDuration: 0.1
+--- !u!114 &718537006
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 718536995}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7b326b6327b46384e83422e98ea2bf21, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  flashlightPrefab: {fileID: 755441521}
+  flashlightController: {fileID: 718537001}
+  lightOptimizer: {fileID: 1842201744}
+  spotlight: {fileID: 1842201740}
+  volumetricBeam: {fileID: 0}
+  vrIntensityBoost: 2.5
+  useVRFillLight: 1
 --- !u!1 &721052122
 GameObject:
   m_ObjectHideFlags: 0
@@ -4498,24 +4520,48 @@ PrefabInstance:
       value: 50
       objectReference: {fileID: 0}
     - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_Type
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       propertyPath: m_Range
-      value: 50
+      value: 25
       objectReference: {fileID: 0}
     - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       propertyPath: m_Cookie
       value: 
-      objectReference: {fileID: 2800000, guid: b5e4bc231fd819e41ae29b3915506a6c, type: 3}
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_Color.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_Color.g
+      value: 0.98
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_Color.r
+      value: 0.98
+      objectReference: {fileID: 0}
     - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       propertyPath: m_Intensity
-      value: 50
+      value: 100
       objectReference: {fileID: 0}
     - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       propertyPath: m_SpotAngle
-      value: 60
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_RenderMode
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       propertyPath: m_InnerSpotAngle
-      value: 60
+      value: 35
+      objectReference: {fileID: 0}
+    - target: {fileID: 108988112164356356, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      propertyPath: m_Shadows.m_Type
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents:
     - {fileID: 114289188721040436, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
@@ -4527,7 +4573,13 @@ PrefabInstance:
       addedObject: {fileID: 1842201741}
     - targetCorrespondingSourceObject: {fileID: 1992372053300518, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       insertIndex: -1
-      addedObject: {fileID: 1842201742}
+      addedObject: {fileID: 1842201744}
+    - targetCorrespondingSourceObject: {fileID: 1992372053300518, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1842201749}
+    - targetCorrespondingSourceObject: {fileID: 1992372053300518, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1842201751}
     - targetCorrespondingSourceObject: {fileID: 1838534229082156, guid: 859587c7a0d6fc746a26b2cfe0516b92, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1548395448}
@@ -9099,7 +9151,7 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
---- !u!114 &1842201742
+--- !u!114 &1842201744
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -9108,14 +9160,85 @@ MonoBehaviour:
   m_GameObject: {fileID: 1842201738}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 493d2ea96eadc704b894a2b5acfd3bc8, type: 3}
+  m_Script: {fileID: 11500000, guid: e8260b969ca78ff4abd56e65497e8ee6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  beamLength: 30
-  startRadius: 0.05
-  endRadius: 6
-  beamColor: {r: 1, g: 0.95, b: 0.8, a: 0.15}
-  segments: 32
+  targetLight: {fileID: 1842201740}
+  vrIntensityMultiplier: 2.5
+  useVRFillLight: 1
+  fillLightIntensity: 0.15
+  enableShadows: 1
+  shadowResolution: 2
+  shadowDistance: 50
+  renderMode: 0
+  perPixelLighting: 1
+--- !u!20 &1842201749
+Camera:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1842201738}
+  m_Enabled: 0
+  serializedVersion: 2
+  m_ClearFlags: 1
+  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_projectionMatrixMode: 0
+  m_GateFitMode: 2
+  m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
+  m_SensorSize: {x: 36, y: 24}
+  m_LensShift: {x: 0, y: 0}
+  m_NormalizedViewPortRect:
+    serializedVersion: 2
+    x: 0
+    y: 0
+    width: 1
+    height: 1
+  near clip plane: 0.3
+  far clip plane: 150
+  field of view: 60
+  orthographic: 0
+  orthographic size: 5
+  m_Depth: -100
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967294
+  m_RenderingPath: -1
+  m_TargetTexture: {fileID: 0}
+  m_TargetDisplay: 0
+  m_TargetEye: 3
+  m_HDR: 1
+  m_AllowMSAA: 1
+  m_AllowDynamicResolution: 0
+  m_ForceIntoRT: 0
+  m_OcclusionCulling: 1
+  m_StereoConvergence: 10
+  m_StereoSeparation: 0.022
+--- !u!114 &1842201751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1842201738}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6932229744618dd4db0960b54cc36499, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  spotlight: {fileID: 1842201740}
+  beamLength: 25
+  beamColor: {r: 1, g: 1, b: 0.95, a: 0.5}
+  coneSides: 24
 --- !u!1001 &1846292326
 PrefabInstance:
   m_ObjectHideFlags: 0

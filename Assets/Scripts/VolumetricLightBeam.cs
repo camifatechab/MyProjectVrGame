@@ -3,7 +3,7 @@ using UnityEngine;
 public class VolumetricLightBeam : MonoBehaviour
 {
     [Header("Beam Settings")]
-    [Tooltip("Length of the light beam")]
+    [Tooltip("Length of the li60t beam")]
     public float beamLength = 30f;
     
     [Tooltip("Starting radius at flashlight")]

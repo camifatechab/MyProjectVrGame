@@ -16,14 +16,14 @@ public class VRFlashlightController : MonoBehaviour
     public Light pointLight;
     
     [Header("Light Settings")]
-    [Tooltip("Intensity for VR (10.0 recommended for underwater)")]
-    public float lightIntensity = 10.0f;
+    [Tooltip("Intensity for underwater - HIGH value needed (80-100)")]
+        public float lightIntensity = 100.0f;
     
-    [Tooltip("Spotlight angle")]
-    public float spotAngle = 60f;
+    [Tooltip("Spotlight angle - wider for better coverage")]
+    public float spotAngle = 90f;
     
-    [Tooltip("Light range")]
-    public float lightRange = 30f;
+    [Tooltip("Light range - longer for deep water")]
+    public float lightRange = 60f;
     
     [Header("Toggle Animation GameObjects")]
     [Tooltip("GameObject to show when lights are ON (automatically found)")]
@@ -50,7 +50,8 @@ public class VRFlashlightController : MonoBehaviour
     public float hapticDuration = 0.1f;
     
     // State
-    private bool lightsOn = true;    private VolumetricLightBeam volumetricBeam;
+    private bool lightsOn = true;
+    private VolumetricLightBeam volumetricBeam;
 
     private bool buttonWasPressed = false;
     private InputDevice controllerDevice;
@@ -88,7 +89,8 @@ void Start()
             {
                 if (light.type == LightType.Spot)
                 {
-                    spotlight = light;                    // Also find volumetric beam component
+                    spotlight = light;
+                    // Also find volumetric beam component
                     volumetricBeam = light.GetComponent<VolumetricLightBeam>();
 
                     Debug.Log("VRFlashlightController: Found Spotlight via GetComponentsInChildren");
