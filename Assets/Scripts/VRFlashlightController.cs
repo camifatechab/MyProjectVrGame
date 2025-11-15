@@ -174,8 +174,8 @@ void Start()
         // Apply initial settings
         // ApplyLightSettings(); // Commented out to preserve manual inspector settings
         
-        // Start with lights ON
-        SetLightsState(true);
+        // Start with lights OFF so player must turn on flashlight in dark cave
+        SetLightsState(false);
         
         Debug.Log($"VRFlashlightController: Initialized on {controllerNode} controller with lights ON");
         Debug.Log($"References: Spotlight={spotlight != null}, PointLight={pointLight != null}, LightsOn={lightsOnObject != null}, LightsOff={lightsOffObject != null}");

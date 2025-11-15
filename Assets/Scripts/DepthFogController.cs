@@ -15,7 +15,16 @@ public class DepthFogController : MonoBehaviour
     [Tooltip("Y position of cave floor")]
     public float caveFloorY = -23.52f;
 
-    [Header("Fog Colors - All Based on Surface Blue")]
+    
+    [Header("Ambient Light Control")]
+    [Tooltip("Ambient light intensity at surface (bright)")]
+    [Range(0f, 2f)]
+    public float surfaceAmbientIntensity = 1.0f;
+    
+    [Tooltip("Ambient light intensity at cave floor (pitch black)")]
+    [Range(0f, 2f)]
+    public float caveFloorAmbientIntensity = 0.0f;
+[Header("Fog Colors - All Based on Surface Blue")]
     [Tooltip("Surface/shallow water - same as your water color")]
     public Color surfaceFogColor = new Color(0.08f, 0.18f, 0.35f, 1f); // Your dark navy blue
     
@@ -68,48 +77,91 @@ public class DepthFogController : MonoBehaviour
         }
     }
 
-    private void Update()
+private void Update()
     {
         if (playerCamera == null) return;
 
         float currentDepth = playerCamera.position.y;
+        float normalizedDepth = 0f;
 
-        // Determine which depth zone we're in and interpolate fog SMOOTHLY
+        // Calculate normalized depth (0 = surface, 1 = cave floor)
         if (currentDepth >= waterSurfaceY)
         {
-            // Above water - use surface fog (still thick enough to hide bottom)
-            RenderSettings.fogColor = surfaceFogColor;
-            RenderSettings.fogDensity = surfaceFogDensity * 0.5f; // Slightly lighter above water
+            normalizedDepth = 0f;
         }
-        else if (currentDepth >= midDepthY)
+        else if (currentDepth <= caveFloorY)
         {
-            // Surface to mid-depth transition - SMOOTH
-            float t = Mathf.InverseLerp(waterSurfaceY, midDepthY, currentDepth);
-            t = Mathf.SmoothStep(0, 1, t); // Smooth interpolation for gradual transition
-            RenderSettings.fogColor = Color.Lerp(surfaceFogColor, midDepthFogColor, t);
-            RenderSettings.fogDensity = Mathf.Lerp(surfaceFogDensity, midDepthFogDensity, t);
-        }
-        else if (currentDepth >= deepZoneY)
-        {
-            // Mid-depth to deep zone transition - SMOOTH
-            float t = Mathf.InverseLerp(midDepthY, deepZoneY, currentDepth);
-            t = Mathf.SmoothStep(0, 1, t); // Smooth interpolation
-            RenderSettings.fogColor = Color.Lerp(midDepthFogColor, deepZoneFogColor, t);
-            RenderSettings.fogDensity = Mathf.Lerp(midDepthFogDensity, deepZoneFogDensity, t);
-        }
-        else if (currentDepth >= caveFloorY)
-        {
-            // Deep zone to cave floor transition - SMOOTH
-            float t = Mathf.InverseLerp(deepZoneY, caveFloorY, currentDepth);
-            t = Mathf.SmoothStep(0, 1, t); // Smooth interpolation
-            RenderSettings.fogColor = Color.Lerp(deepZoneFogColor, caveFloorFogColor, t);
-            RenderSettings.fogDensity = Mathf.Lerp(deepZoneFogDensity, caveFloorFogDensity, t);
+            normalizedDepth = 1f;
         }
         else
         {
-            // Below cave floor
-            RenderSettings.fogColor = caveFloorFogColor;
-            RenderSettings.fogDensity = caveFloorFogDensity;
+            // Inverse lerp from surface to cave floor
+            normalizedDepth = Mathf.InverseLerp(waterSurfaceY, caveFloorY, currentDepth);
+        }
+
+        // EXPONENTIAL fog density growth - this makes the difference!
+        // At surface (0): very light fog
+        // At cave floor (1): extremely thick fog
+        float baseDensity = 0.02f; // Increased for more atmosphere
+        float maxDensity = 0.25f; // Balanced for darkness while flashlight still works
+        float fogDensity = Mathf.Lerp(baseDensity, maxDensity, normalizedDepth * normalizedDepth * normalizedDepth);
+
+        // Smooth color transition from bright blue to nearly black
+        Color currentFogColor;
+        if (currentDepth >= waterSurfaceY)
+        {
+            currentFogColor = surfaceFogColor;
+        }
+        else if (currentDepth >= midDepthY)
+        {
+            float t = Mathf.InverseLerp(waterSurfaceY, midDepthY, currentDepth);
+            t = Mathf.SmoothStep(0, 1, t);
+            currentFogColor = Color.Lerp(surfaceFogColor, midDepthFogColor, t);
+        }
+        else if (currentDepth >= deepZoneY)
+        {
+            float t = Mathf.InverseLerp(midDepthY, deepZoneY, currentDepth);
+            t = Mathf.SmoothStep(0, 1, t);
+            currentFogColor = Color.Lerp(midDepthFogColor, deepZoneFogColor, t);
+        }
+        else if (currentDepth >= caveFloorY)
+        {
+            float t = Mathf.InverseLerp(deepZoneY, caveFloorY, currentDepth);
+            t = Mathf.SmoothStep(0, 1, t);
+            currentFogColor = Color.Lerp(deepZoneFogColor, caveFloorFogColor, t);
+        }
+        else
+        {
+            currentFogColor = caveFloorFogColor;
+        }
+
+        // Apply fog settings
+        RenderSettings.fogColor = currentFogColor;
+        RenderSettings.fogDensity = fogDensity;
+
+        // CRITICAL: Control ambient light intensity - this makes objects actually dark!
+        float ambientIntensity = Mathf.Lerp(surfaceAmbientIntensity, caveFloorAmbientIntensity, normalizedDepth * normalizedDepth);
+        RenderSettings.ambientIntensity = ambientIntensity;
+        
+        // Also darken ambient light color at depth
+        Color ambientColor = Color.Lerp(new Color(0.3f, 0.3f, 0.3f), Color.black, normalizedDepth * normalizedDepth);
+        RenderSettings.ambientLight = ambientColor;
+        
+        // CRITICAL: Kill skybox contribution at cave floor
+        RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+        RenderSettings.ambientSkyColor = ambientColor;
+        RenderSettings.ambientEquatorColor = ambientColor;
+        RenderSettings.ambientGroundColor = ambientColor;
+        
+        // CRITICAL: Disable reflection probes at depth
+        float reflectionIntensity = Mathf.Lerp(1.0f, 0.0f, normalizedDepth * normalizedDepth);
+        RenderSettings.reflectionIntensity = reflectionIntensity;
+        RenderSettings.defaultReflectionResolution = 16; // Minimal for performance
+
+        // Debug in cave zone
+        if (currentDepth < deepZoneY && Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"Depth: {currentDepth:F1}m | Fog Density: {fogDensity:F3} | Normalized: {normalizedDepth:F2}");
         }
     }
 
