@@ -15,7 +15,23 @@ public class VRFlashlightController : MonoBehaviour
     [Tooltip("Point light component (automatically found)")]
     public Light pointLight;
     
-    [Header("Light Settings")]
+    
+    [Header("Depth-Based Intensity")]
+    [Tooltip("Flashlight intensity at surface (low power needed)")]
+    public float surfaceIntensity = 10f;
+    
+    [Tooltip("Flashlight intensity at cave floor (high power needed)")]
+    public float caveFloorIntensity = 80f;
+    
+    [Tooltip("Y position of water surface")]
+    public float waterSurfaceY = 47.665f;
+    
+    [Tooltip("Y position of cave floor")]
+    public float caveFloorY = -23.52f;
+    
+    [Tooltip("Camera to track depth (auto-finds Main Camera)")]
+    public Transform playerCamera;
+[Header("Light Settings")]
     [Tooltip("Intensity for underwater - HIGH value needed (80-100)")]
         public float lightIntensity = 100.0f;
     
@@ -171,6 +187,16 @@ void Start()
         // Get the controller device
         controllerDevice = InputDevices.GetDeviceAtXRNode(controllerNode);
         
+        // Find camera for depth tracking
+        if (playerCamera == null)
+        {
+            playerCamera = Camera.main.transform;
+            if (playerCamera != null)
+            {
+                Debug.Log("VRFlashlightController: Found Main Camera for depth tracking");
+            }
+        }
+        
         // Apply initial settings
         // ApplyLightSettings(); // Commented out to preserve manual inspector settings
         
@@ -214,6 +240,9 @@ void Update()
         }
         
         buttonWasPressed = buttonPressed;
+        
+        // DEPTH-BASED INTENSITY: Adjust flashlight power based on depth
+        UpdateFlashlightIntensity();
     }
     
 void FindLightComponents()
@@ -383,6 +412,41 @@ void SetLightsState(bool on)
         else
         {
             Debug.LogWarning("VRFlashlightController: lightsOffObject is null in SetLightsState");
+        }
+    }
+
+    void UpdateFlashlightIntensity()
+    {
+        if (playerCamera == null || spotlight == null) return;
+        
+        // Get current depth
+        float currentDepth = playerCamera.position.y;
+        
+        // Calculate normalized depth (0 = surface, 1 = cave floor)
+        float normalizedDepth = 0f;
+        if (currentDepth >= waterSurfaceY)
+        {
+            normalizedDepth = 0f;
+        }
+        else if (currentDepth <= caveFloorY)
+        {
+            normalizedDepth = 1f;
+        }
+        else
+        {
+            normalizedDepth = Mathf.InverseLerp(waterSurfaceY, caveFloorY, currentDepth);
+        }
+        
+        // Calculate target intensity using exponential curve for dramatic increase
+        // At surface: low power, At cave floor: high power
+        float targetIntensity = Mathf.Lerp(surfaceIntensity, caveFloorIntensity, normalizedDepth * normalizedDepth);
+        
+        // Apply to lights
+        spotlight.intensity = targetIntensity;
+        if (pointLight != null)
+        {
+            // Point light scales proportionally but stays dimmer
+            pointLight.intensity = targetIntensity * 0.2f;
         }
     }
 }

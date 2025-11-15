@@ -2073,15 +2073,15 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 18.7
+      value: 0.15
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -17.7
+      value: 65.27
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 27.4
+      value: -95.23
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalRotation.w
@@ -3505,6 +3505,11 @@ MonoBehaviour:
   flashlightPrefab: {fileID: 0}
   spotlight: {fileID: 0}
   pointLight: {fileID: 0}
+  surfaceIntensity: 20
+  caveFloorIntensity: 1500
+  waterSurfaceY: 47.665
+  caveFloorY: -23.52
+  playerCamera: {fileID: 0}
   lightIntensity: 10
   spotAngle: 60
   lightRange: 30
