@@ -54,7 +54,17 @@ public class DepthFogController : MonoBehaviour
     [Range(0.01f, 0.2f)]
     public float caveFloorFogDensity = 0.12f;
 
-    [Header("References")]
+    
+    [Header("Directional Light (Sun) Control")]
+    [Tooltip("The main directional light to dim at depth (optional)")]
+    public Light directionalLight;
+    
+    [Tooltip("Directional light intensity at surface")]
+    public float surfaceSunIntensity = 1.0f;
+    
+    [Tooltip("Directional light intensity at cave floor (should be 0)")]
+    public float caveFloorSunIntensity = 0.0f;
+[Header("References")]
     [Tooltip("The camera to track depth (usually Main Camera)")]
     public Transform playerCamera;
 
@@ -74,6 +84,21 @@ public class DepthFogController : MonoBehaviour
         {
             Debug.LogError("DepthFogController: No camera found! Please assign playerCamera.");
             enabled = false;
+        }
+        
+        // Auto-find directional light if not assigned
+        if (directionalLight == null)
+        {
+            Light[] allLights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+            foreach (Light light in allLights)
+            {
+                if (light.type == LightType.Directional)
+                {
+                    directionalLight = light;
+                    Debug.Log($"DepthFogController: Auto-found Directional Light: {light.name}");
+                    break;
+                }
+            }
         }
     }
 
@@ -156,7 +181,15 @@ private void Update()
         // CRITICAL: Disable reflection probes at depth
         float reflectionIntensity = Mathf.Lerp(1.0f, 0.0f, normalizedDepth * normalizedDepth);
         RenderSettings.reflectionIntensity = reflectionIntensity;
-        RenderSettings.defaultReflectionResolution = 16; // Minimal for performance
+        
+        
+        // CRITICAL: Dim the directional sun light at depth
+        if (directionalLight != null)
+        {
+            float sunIntensity = Mathf.Lerp(surfaceSunIntensity, caveFloorSunIntensity, normalizedDepth * normalizedDepth);
+            directionalLight.intensity = sunIntensity;
+        }
+RenderSettings.defaultReflectionResolution = 16; // Minimal for performance
 
         // Debug in cave zone
         if (currentDepth < deepZoneY && Time.frameCount % 60 == 0)
