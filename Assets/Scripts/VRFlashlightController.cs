@@ -172,7 +172,7 @@ void Start()
         controllerDevice = InputDevices.GetDeviceAtXRNode(controllerNode);
         
         // Apply initial settings
-        ApplyLightSettings();
+        // ApplyLightSettings(); // Commented out to preserve manual inspector settings
         
         // Start with lights ON
         SetLightsState(true);
