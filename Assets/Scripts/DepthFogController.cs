@@ -24,7 +24,8 @@ public class DepthFogController : MonoBehaviour
     [Tooltip("Ambient light intensity at cave floor (pitch black)")]
     [Range(0f, 2f)]
     public float caveFloorAmbientIntensity = 0.0f;
-[Header("Fog Colors - All Based on Surface Blue")]
+
+    [Header("Fog Colors - All Based on Surface Blue")]
     [Tooltip("Surface/shallow water - same as your water color")]
     public Color surfaceFogColor = new Color(0.08f, 0.18f, 0.35f, 1f); // Your dark navy blue
     
@@ -37,22 +38,22 @@ public class DepthFogController : MonoBehaviour
     [Tooltip("Cave floor - almost black with blue hint")]
     public Color caveFloorFogColor = new Color(0.01f, 0.02f, 0.08f, 1f); // Nearly black
 
-    [Header("Fog Density - MUCH THICKER")]
-    [Tooltip("Surface fog density - thick so bottom is NOT visible")]
+    [Header("Fog Density - OPTIMIZED FOR VISIBILITY")]
+    [Tooltip("Surface fog density - light so you can see far")]
     [Range(0.01f, 0.2f)]
-    public float surfaceFogDensity = 0.04f;
+    public float surfaceFogDensity = 0.03f;
     
     [Tooltip("Mid-depth fog density")]
     [Range(0.01f, 0.2f)]
-    public float midDepthFogDensity = 0.06f;
+    public float midDepthFogDensity = 0.05f;
     
     [Tooltip("Deep zone fog density")]
     [Range(0.01f, 0.2f)]
-    public float deepZoneFogDensity = 0.08f;
+    public float deepZoneFogDensity = 0.07f;
     
-    [Tooltip("Cave floor fog density - maximum darkness")]
+    [Tooltip("Cave floor fog density - darker but still visible")]
     [Range(0.01f, 0.2f)]
-    public float caveFloorFogDensity = 0.12f;
+    public float caveFloorFogDensity = 0.1f;
 
     
     [Header("Directional Light (Sun) Control")]
@@ -64,7 +65,8 @@ public class DepthFogController : MonoBehaviour
     
     [Tooltip("Directional light intensity at cave floor (should be 0)")]
     public float caveFloorSunIntensity = 0.0f;
-[Header("References")]
+
+    [Header("References")]
     [Tooltip("The camera to track depth (usually Main Camera)")]
     public Transform playerCamera;
 
@@ -102,7 +104,7 @@ public class DepthFogController : MonoBehaviour
         }
     }
 
-private void Update()
+    private void Update()
     {
         if (playerCamera == null) return;
 
@@ -124,12 +126,12 @@ private void Update()
             normalizedDepth = Mathf.InverseLerp(waterSurfaceY, caveFloorY, currentDepth);
         }
 
-        // EXPONENTIAL fog density growth - this makes the difference!
+        // OPTIMIZED fog density - quadratic for better visibility
         // At surface (0): very light fog
-        // At cave floor (1): extremely thick fog
-        float baseDensity = 0.02f; // Increased for more atmosphere
-        float maxDensity = 0.25f; // Balanced for darkness while flashlight still works
-        float fogDensity = Mathf.Lerp(baseDensity, maxDensity, normalizedDepth * normalizedDepth * normalizedDepth);
+        // At cave floor (1): thick but still visible with flashlight
+        float baseDensity = 0.005f; // Lighter at surface
+        float maxDensity = 0.04f; // Reduced significantly for better visibility
+        float fogDensity = Mathf.Lerp(baseDensity, maxDensity, normalizedDepth * normalizedDepth);
 
         // Smooth color transition from bright blue to nearly black
         Color currentFogColor;
@@ -164,32 +166,33 @@ private void Update()
         RenderSettings.fogColor = currentFogColor;
         RenderSettings.fogDensity = fogDensity;
 
-        // CRITICAL: Control ambient light intensity - this makes objects actually dark!
+        // Control ambient light intensity - quadratic falloff for better visibility
         float ambientIntensity = Mathf.Lerp(surfaceAmbientIntensity, caveFloorAmbientIntensity, normalizedDepth * normalizedDepth);
         RenderSettings.ambientIntensity = ambientIntensity;
         
-        // Also darken ambient light color at depth
-        Color ambientColor = Color.Lerp(new Color(0.3f, 0.3f, 0.3f), Color.black, normalizedDepth * normalizedDepth);
+        // Also darken ambient light color at depth - but not as aggressively
+        Color ambientColor = Color.Lerp(new Color(0.4f, 0.4f, 0.4f), new Color(0.05f, 0.05f, 0.05f), normalizedDepth * normalizedDepth);
         RenderSettings.ambientLight = ambientColor;
         
-        // CRITICAL: Kill skybox contribution at cave floor
+        // Use flat ambient mode for consistent lighting
         RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
         RenderSettings.ambientSkyColor = ambientColor;
         RenderSettings.ambientEquatorColor = ambientColor;
         RenderSettings.ambientGroundColor = ambientColor;
         
-        // CRITICAL: Disable reflection probes at depth
-        float reflectionIntensity = Mathf.Lerp(1.0f, 0.0f, normalizedDepth * normalizedDepth);
+        // Reduce (but don't kill) reflection probes at depth
+        float reflectionIntensity = Mathf.Lerp(1.0f, 0.1f, normalizedDepth * normalizedDepth);
         RenderSettings.reflectionIntensity = reflectionIntensity;
         
         
-        // CRITICAL: Dim the directional sun light at depth
+        // Dim the directional sun light at depth
         if (directionalLight != null)
         {
             float sunIntensity = Mathf.Lerp(surfaceSunIntensity, caveFloorSunIntensity, normalizedDepth * normalizedDepth);
             directionalLight.intensity = sunIntensity;
         }
-RenderSettings.defaultReflectionResolution = 16; // Minimal for performance
+
+        RenderSettings.defaultReflectionResolution = 16; // Minimal for performance
 
         // Debug in cave zone
         if (currentDepth < deepZoneY && Time.frameCount % 60 == 0)
