@@ -1622,6 +1622,7 @@ Transform:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 --- !u!1 &172053928
 GameObject:
   m_ObjectHideFlags: 0
@@ -1653,6 +1654,8 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1712422558}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -3305,11 +3308,19 @@ PrefabInstance:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
       value: 3.98
       objectReference: {fileID: 0}
     - target: {fileID: 428266, guid: 3e298560750284bbd9690575fd53fbc8, type: 3}
       propertyPath: m_LocalPosition.z
       value: 31.54
+=======
+      value: 4.06
+      objectReference: {fileID: 0}
+    - target: {fileID: 428266, guid: 3e298560750284bbd9690575fd53fbc8, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 33.67
+>>>>>>> Stashed changes
 =======
       value: 4.06
       objectReference: {fileID: 0}
@@ -9514,6 +9525,7 @@ Transform:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 --- !u!1 &898172315
 GameObject:
   m_ObjectHideFlags: 0
@@ -9545,6 +9557,8 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1712422558}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -13848,6 +13862,7 @@ MonoBehaviour:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 --- !u!1 &1320710848
 GameObject:
   m_ObjectHideFlags: 0
@@ -13879,6 +13894,8 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1712422558}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 =======
@@ -16427,6 +16444,9 @@ Transform:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
@@ -16454,6 +16474,7 @@ Transform:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   - {fileID: 460055339}
   - {fileID: 1705579427}
   - {fileID: 385609063}
@@ -16467,6 +16488,10 @@ Transform:
   - {fileID: 2055265800}
   - {fileID: 95213045}
   - {fileID: 912311454}
+=======
+  - {fileID: 1733374347}
+  - {fileID: 555019147}
+>>>>>>> Stashed changes
 =======
   - {fileID: 1733374347}
   - {fileID: 555019147}
@@ -20969,8 +20994,14 @@ SceneRoots:
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   - {fileID: 179323472}
   - {fileID: 1712422558}
+=======
+  - {fileID: 908036295}
+  - {fileID: 742480624}
+  - {fileID: 1984017294}
+>>>>>>> Stashed changes
 =======
   - {fileID: 908036295}
   - {fileID: 742480624}
