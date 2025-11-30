@@ -21,7 +21,7 @@ public class VRFlashlightController : MonoBehaviour
     public float surfaceIntensity = 10f;
     
     [Tooltip("Flashlight intensity at cave floor (high power needed)")]
-    public float caveFloorIntensity = 80f;
+    public float caveFloorIntensity = 50f;
     
     [Tooltip("Y position of water surface")]
     public float waterSurfaceY = 47.665f;
