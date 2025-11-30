@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c27d7e87a2d4ad64e935274ae41a0e78
+timeCreated: 1492845123
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88701
+  packageName: Flashlight Modern with Script
+  packageVersion: 1.0
+  assetPath: Assets/FlashlightModern/Misc/FlashlightLightsON.prefab
+  uploadId: 239709
