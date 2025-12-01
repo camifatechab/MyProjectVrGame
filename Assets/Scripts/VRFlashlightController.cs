@@ -65,6 +65,10 @@ public class VRFlashlightController : MonoBehaviour
     [Tooltip("Haptic duration in seconds")]
     public float hapticDuration = 0.1f;
     
+    [Header("Audio")]
+    [Tooltip("AudioSource for switch sound (auto-found on flashlight)")]
+    public AudioSource switchSound;
+    
     // State
     private bool lightsOn = true;
     private VolumetricLightBeam volumetricBeam;
@@ -184,7 +188,17 @@ void Start()
             }
         }
         
-        // Get the controller device
+        // Auto-find AudioSource for switch sound
+        if (switchSound == null && flashlightPrefab != null)
+        {
+            switchSound = flashlightPrefab.GetComponent<AudioSource>();
+            if (switchSound != null)
+            {
+                Debug.Log("VRFlashlightController: Found switch sound AudioSource");
+            }
+        }
+        
+        // Get the controller devicee
         controllerDevice = InputDevices.GetDeviceAtXRNode(controllerNode);
         
         // Find camera for depth tracking
@@ -348,7 +362,13 @@ void FindAnimationObjects()
         lightsOn = !lightsOn;
         SetLightsState(lightsOn);
         
-        // Trigger haptic feedback
+        // Play switch sound
+        if (switchSound != null)
+        {
+            switchSound.Play();
+        }
+        
+        // Trigger haptic feedbackback
         if (enableHaptics && controllerDevice.isValid)
         {
             HapticCapabilities capabilities;

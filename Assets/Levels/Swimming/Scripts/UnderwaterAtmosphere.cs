@@ -41,7 +41,7 @@ public class UnderwaterAtmosphere : MonoBehaviour
     [Tooltip("Tag used for spaceship parts")]
     public string spaceshipPartTag = "SpaceshipPart";
 
-    
+
     [Header("=== FLASHLIGHT FLICKER SETTINGS ===")]
     [Tooltip("Reference to VRFlashlightController (auto-finds if empty)")]
     public VRFlashlightController flashlightController;
@@ -131,6 +131,7 @@ public class UnderwaterAtmosphere : MonoBehaviour
             spaceshipParts = GameObject.FindGameObjectsWithTag(spaceshipPartTag);
             Debug.Log($"UnderwaterAtmosphere: Found {spaceshipParts.Length} spaceship parts for proximity heartbeat");
         }
+        
         
         Debug.Log("UnderwaterAtmosphere: Initialized - Effects start at Y=" + effectStartY + ", max at Y=" + effectMaxY);
     }
@@ -267,14 +268,15 @@ public class UnderwaterAtmosphere : MonoBehaviour
             }
         }
         
+        
         // Only play heartbeat when in water AND at depth
         if (isInWater && depthFactor > 0.1f)
         {
             // Target volume scales with depth AND proximity
-            float volumeBoost = proximityFactor * 0.3f; // Up to 30% louder when close
+            float volumeBoost = proximityFactor * 0.3f; // Up to 30% louder when close to parts
             targetHeartbeatVolume = Mathf.Min(1f, maxHeartbeatVolume * depthFactor + volumeBoost);
             
-            // Pitch increases when near spaceship parts (faster heartbeat = more excitement)
+            // Pitch increases when near spaceship parts
             float targetPitch = 1f + (proximityFactor * (maxProximityPitch - 1f));
             heartbeatSource.pitch = Mathf.Lerp(heartbeatSource.pitch, targetPitch, Time.deltaTime * 3f);
             

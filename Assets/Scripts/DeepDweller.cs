@@ -45,8 +45,14 @@ public class DeepDweller : MonoBehaviour
     // State
     private enum DwellerState { Hidden, Watching }
     private DwellerState state = DwellerState.Hidden;
+    
+    // Public property for other scripts to check if watching
+    public bool IsWatching => state == DwellerState.Watching;
+    
     private float stateTimer;
     private Renderer[] renderers;
+    private Vector3 basePosition;
+    private float floatTimer;
     
     void Start()
     {
@@ -128,8 +134,19 @@ public class DeepDweller : MonoBehaviour
         }
     }
     
-    void UpdateWatching()
+void UpdateWatching()
     {
+        // Subtle floating motion (physics-safe, small range)
+        floatTimer += Time.deltaTime * 0.8f;
+        float floatOffset = Mathf.Sin(floatTimer) * 0.3f; // Small 0.3m bob
+        Vector3 floatPos = basePosition + Vector3.up * floatOffset;
+        
+        // Only apply if position is still clear
+        if (IsPositionClear(floatPos))
+        {
+            transform.position = floatPos;
+        }
+        
         // Face the player (slowly, subtly)
         FacePlayer();
         
@@ -158,32 +175,65 @@ public class DeepDweller : MonoBehaviour
         return player.position.y <= minimumDepth;
     }
     
-    void Appear()
+void Appear()
     {
-        // Choose position in peripheral vision, at depth
-        Vector3 playerForward = player.forward;
-        playerForward.y = 0;
-        playerForward.Normalize();
+        // Try up to 5 positions to find a clear spot
+        for (int attempt = 0; attempt < 5; attempt++)
+        {
+            // Choose position in peripheral vision, at depth
+            Vector3 playerForward = player.forward;
+            playerForward.y = 0;
+            playerForward.Normalize();
+            
+            // Random side
+            float side = Random.value > 0.5f ? 1f : -1f;
+            float angle = peripheralAngle + Random.Range(5f, 20f);
+            
+            Vector3 offsetDir = Quaternion.Euler(0, angle * side, 0) * playerForward;
+            
+            // Position
+            Vector3 newPos = player.position + offsetDir * watchDistance;
+            
+            // Match player depth or slightly deeper
+            newPos.y = Mathf.Min(player.position.y - Random.Range(0f, 3f), maximumDepth);
+            newPos.y = Mathf.Clamp(newPos.y, maximumDepth, minimumDepth);
+            
+            // Check if position is clear of obstacles
+            if (IsPositionClear(newPos))
+            {
+                transform.position = newPos;
+                basePosition = newPos; // Save for floating motion
+                floatTimer = 0f;
+                
+                // Show
+                SetVisible(true);
+                state = DwellerState.Watching;
+                stateTimer = watchDuration;
+                return;
+            }
+        }
         
-        // Random side
-        float side = Random.value > 0.5f ? 1f : -1f;
-        float angle = peripheralAngle + Random.Range(5f, 20f);
+        // Couldn't find clear spot, try again later
+        stateTimer = Random.Range(3f, 8f);
+    }
+    
+    bool IsPositionClear(Vector3 position)
+    {
+        // Check for collisions with a sphere cast
+        float checkRadius = 2.5f;
+        Collider[] colliders = Physics.OverlapSphere(position, checkRadius);
         
-        Vector3 offsetDir = Quaternion.Euler(0, angle * side, 0) * playerForward;
+        foreach (Collider col in colliders)
+        {
+            // Ignore self and triggers
+            if (col.gameObject == gameObject || col.isTrigger)
+                continue;
+                
+            // Found an obstacle
+            return false;
+        }
         
-        // Position
-        Vector3 newPos = player.position + offsetDir * watchDistance;
-        
-        // Match player depth or slightly deeper
-        newPos.y = Mathf.Min(player.position.y - Random.Range(0f, 3f), maximumDepth);
-        newPos.y = Mathf.Clamp(newPos.y, maximumDepth, minimumDepth);
-        
-        transform.position = newPos;
-        
-        // Show
-        SetVisible(true);
-        state = DwellerState.Watching;
-        stateTimer = watchDuration;
+        return true;
     }
     
     void Hide()
