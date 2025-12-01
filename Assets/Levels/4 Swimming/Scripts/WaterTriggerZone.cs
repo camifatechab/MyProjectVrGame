@@ -28,6 +28,13 @@ private void ConfigureTrigger()
 
 private void OnTriggerEnter(Collider other)
     {
+        // Notify UnderwaterAtmosphere system
+        UnderwaterAtmosphere atmosphere = FindObjectOfType<UnderwaterAtmosphere>();
+        if (atmosphere != null)
+        {
+            atmosphere.OnEnterWater();
+        }
+        
         // Detect when player enters water
         SimplePlayerController controller = other.GetComponent<SimplePlayerController>();
         if (controller != null)
@@ -53,6 +60,13 @@ private void OnTriggerEnter(Collider other)
 
 private void OnTriggerExit(Collider other)
     {
+        // Notify UnderwaterAtmosphere system
+        UnderwaterAtmosphere atmosphere = FindObjectOfType<UnderwaterAtmosphere>();
+        if (atmosphere != null)
+        {
+            atmosphere.OnExitWater();
+        }
+        
         // Detect when player exits water
         SimplePlayerController controller = other.GetComponent<SimplePlayerController>();
         if (controller != null)

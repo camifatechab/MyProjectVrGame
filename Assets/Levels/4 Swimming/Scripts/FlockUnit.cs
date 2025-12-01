@@ -7,7 +7,7 @@ public class FlockUnit : MonoBehaviour
 {
     [SerializeField] private float FOVAngle = 90f;
     [SerializeField] private float smoothDamp = 0.5f;
-    [SerializeField] private LayerMask obstacleMask = 1;
+    [SerializeField] private LayerMask obstacleMask = 2048; // Layer 11 = Obstacles= 1;
     [SerializeField] private Vector3[] directionsToCheckWhenAvoidingObstacles = {
         Vector3.forward, Vector3.back, Vector3.left, Vector3.right,
         Vector3.up, Vector3.down, new Vector3(1,1,0), new Vector3(-1,1,0),

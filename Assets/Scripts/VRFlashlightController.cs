@@ -21,7 +21,7 @@ public class VRFlashlightController : MonoBehaviour
     public float surfaceIntensity = 10f;
     
     [Tooltip("Flashlight intensity at cave floor (high power needed)")]
-    public float caveFloorIntensity = 80f;
+    public float caveFloorIntensity = 50f;
     
     [Tooltip("Y position of water surface")]
     public float waterSurfaceY = 47.665f;
@@ -64,6 +64,10 @@ public class VRFlashlightController : MonoBehaviour
     
     [Tooltip("Haptic duration in seconds")]
     public float hapticDuration = 0.1f;
+    
+    [Header("Audio")]
+    [Tooltip("AudioSource for switch sound (auto-found on flashlight)")]
+    public AudioSource switchSound;
     
     // State
     private bool lightsOn = true;
@@ -184,7 +188,17 @@ void Start()
             }
         }
         
-        // Get the controller device
+        // Auto-find AudioSource for switch sound
+        if (switchSound == null && flashlightPrefab != null)
+        {
+            switchSound = flashlightPrefab.GetComponent<AudioSource>();
+            if (switchSound != null)
+            {
+                Debug.Log("VRFlashlightController: Found switch sound AudioSource");
+            }
+        }
+        
+        // Get the controller devicee
         controllerDevice = InputDevices.GetDeviceAtXRNode(controllerNode);
         
         // Find camera for depth tracking
@@ -348,7 +362,13 @@ void FindAnimationObjects()
         lightsOn = !lightsOn;
         SetLightsState(lightsOn);
         
-        // Trigger haptic feedback
+        // Play switch sound
+        if (switchSound != null)
+        {
+            switchSound.Play();
+        }
+        
+        // Trigger haptic feedbackback
         if (enableHaptics && controllerDevice.isValid)
         {
             HapticCapabilities capabilities;

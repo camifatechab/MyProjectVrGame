@@ -18,14 +18,14 @@ public class Flock : MonoBehaviour
     [Range(0, 10)] [SerializeField] private float _avoidanceDistance = 1f;
     [Range(0, 10)] [SerializeField] private float _alignmentDistance = 2f;
     [Range(0, 100)] [SerializeField] private float _boundsDistance = 20f;
-    [Range(0, 10)] [SerializeField] private float _obstacleDistance = 5f;
+    [Range(0, 50)] [SerializeField] private float _obstacleDistance = 15f;
 
     [Header("Behaviour Weights")]
     [Range(0, 10)] [SerializeField] private float _cohesionWeight = 1.5f;
     [Range(0, 10)] [SerializeField] private float _avoidanceWeight = 1f;
     [Range(0, 10)] [SerializeField] private float _alignmentWeight = 1f;
     [Range(0, 10)] [SerializeField] private float _boundsWeight = 3f;
-    [Range(0, 10)] [SerializeField] private float _obstacleWeight = 10f;
+    [Range(0, 50)] [SerializeField] private float _obstacleWeight = 25f;
     
     public float cohesionDistance { get { return _cohesionDistance; } }
     public float avoidanceDistance { get { return _avoidanceDistance; } }
