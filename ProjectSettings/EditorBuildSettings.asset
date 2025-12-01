@@ -9,16 +9,19 @@ EditorBuildSettings:
     path: Assets/Scenes/SampleScene.unity
     guid: 55daccc09a3b69647bbab145b54a3ab3
   - enabled: 1
-    path: Assets/Levels/CampfireHub/CampfireHub.unity
+    path: Assets/Levels/1 Menu/Menu.unity
+    guid: 29487592446173a42bbd78cab308a256
+  - enabled: 1
+    path: Assets/Levels/3 CampfireHub/CampfireHub.unity
     guid: af8adeb4609a77949bd71a4a23f1b514
   - enabled: 1
-    path: Assets/Levels/Rover/Scene/Rover Level.unity
+    path: Assets/Levels/5 Rover/Scene/Rover Level.unity
     guid: b68bc99657527084c96f1c75f2d4eb5e
   - enabled: 1
-    path: Assets/Levels/Swimming/Swimming.unity
+    path: Assets/Levels/4 Swimming/Swimming.unity
     guid: 955480ec454296c4ea67133e24a324a6
   - enabled: 1
-    path: Assets/Levels/Jetpack/Jetpack.unity
+    path: Assets/Levels/6 Jetpack/Jetpack.unity
     guid: 9329348c3953ea34c8ccd52a7e2c1b35
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}

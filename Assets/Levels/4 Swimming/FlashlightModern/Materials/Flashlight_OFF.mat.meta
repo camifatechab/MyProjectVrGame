@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 80e0095c6da531a4ca83761e58c5039a
+timeCreated: 1492723922
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88701
+  packageName: Flashlight Modern with Script
+  packageVersion: 1.0
+  assetPath: Assets/FlashlightModern/Materials/Flashlight_OFF.mat
+  uploadId: 239709

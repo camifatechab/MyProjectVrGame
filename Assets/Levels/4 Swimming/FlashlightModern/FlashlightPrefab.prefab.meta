@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 859587c7a0d6fc746a26b2cfe0516b92
+timeCreated: 1492859692
+licenseType: Store
+NativeFormatImporter:
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 88701
+  packageName: Flashlight Modern with Script
+  packageVersion: 1.0
+  assetPath: Assets/FlashlightModern/FlashlightPrefab.prefab
+  uploadId: 239709
