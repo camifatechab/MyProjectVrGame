@@ -84,6 +84,10 @@ public class RideableCreature : MonoBehaviour
     private InputDevice rightDevice;
     private bool wasGripPressed = false;
     private Canvas uiCanvas;
+    private UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider moveProvider;
+    private UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.ContinuousTurnProvider turnProvider;
+    private UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.SnapTurnProvider snapTurnProvider;
+
 
 
     
@@ -92,6 +96,8 @@ public class RideableCreature : MonoBehaviour
     private Transform originalParent;
     private float idleBobOffset;
     private Vector3 idleBasePosition;
+    private Vector3 lastCreaturePosition;
+
 
     
     public bool IsPlayerMounted => isPlayerMounted;
@@ -300,6 +306,21 @@ private void CheckForMountInput()
         if (jetpackController != null)
             jetpackController.enabled = false;
         
+        // Find and disable locomotion providers (joystick movement)
+        if (moveProvider == null)
+            moveProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider>();
+        if (turnProvider == null)
+            turnProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.ContinuousTurnProvider>();
+        if (snapTurnProvider == null)
+            snapTurnProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.SnapTurnProvider>();
+        
+        if (moveProvider != null)
+            moveProvider.enabled = false;
+        if (turnProvider != null)
+            turnProvider.enabled = false;
+        if (snapTurnProvider != null)
+            snapTurnProvider.enabled = false;
+        
         // Hide UI canvas
         if (uiCanvas == null)
         {
@@ -347,6 +368,7 @@ private void CheckForMountInput()
         isTransitioning = false;
         currentFlightWaypointIndex = 0;
         hapticTimer = 0f;
+        lastCreaturePosition = transform.position; // Initialize for forward facing
         
         OnPlayerMounted?.Invoke();
         Debug.Log("Player mounted creature!");
@@ -358,6 +380,26 @@ private void UpdateMountedState()
         if (!leftDevice.isValid || !rightDevice.isValid)
         {
             RefreshInputDevices();
+        }
+        
+        // Make player face forward (direction of travel)
+        if (xrOrigin != null)
+        {
+            Vector3 moveDirection = transform.position - lastCreaturePosition;
+            if (moveDirection.sqrMagnitude > 0.001f)
+            {
+                // Calculate forward direction (ignore vertical for rotation)
+                Vector3 flatDirection = new Vector3(moveDirection.x, 0, moveDirection.z).normalized;
+                if (flatDirection.sqrMagnitude > 0.001f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(flatDirection, Vector3.up);
+                    xrOrigin.rotation = Quaternion.Slerp(xrOrigin.rotation, targetRotation, Time.deltaTime * 5f);
+                }
+            }
+            lastCreaturePosition = transform.position;
+            
+            // Keep player locked to seat position
+            xrOrigin.localPosition = seatOffset;
         }
         
         // Handle haptic feedback
@@ -479,6 +521,14 @@ private void UpdateMountedState()
         // Re-enable jetpack
         if (jetpackController != null)
             jetpackController.enabled = true;
+        
+        // Re-enable locomotion providers (joystick movement)
+        if (moveProvider != null)
+            moveProvider.enabled = true;
+        if (turnProvider != null)
+            turnProvider.enabled = true;
+        if (snapTurnProvider != null)
+            snapTurnProvider.enabled = true;
         
         // Show UI canvas again
         if (uiCanvas != null)
