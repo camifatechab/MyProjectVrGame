@@ -62,6 +62,12 @@ public class FlyingCreaturePatrol : MonoBehaviour
     // Runtime state
     private List<Vector3> waypointPositions = new List<Vector3>();
     private int currentWaypointIndex = 0;
+    
+    /// <summary>
+    /// Public accessor for current waypoint index (for SkyboxTransitionController)
+    /// </summary>
+    public int CurrentWaypointIndex => currentWaypointIndex;
+
     private int waypointDirection = 1;
     private float bobOffset;
     private float currentBank;
