@@ -228,7 +228,7 @@ public class FlyingCreaturePatrol : MonoBehaviour
         transform.rotation = targetRotation * bankRotation * offsetRotation;
     }
     
-    private void MoveToNextWaypoint()
+private void MoveToNextWaypoint()
     {
         if (loopWaypoints)
         {
@@ -236,17 +236,14 @@ public class FlyingCreaturePatrol : MonoBehaviour
         }
         else
         {
-            currentWaypointIndex += waypointDirection;
+            currentWaypointIndex++;
             
+            // Stop at last waypoint
             if (currentWaypointIndex >= waypointPositions.Count)
             {
-                currentWaypointIndex = waypointPositions.Count - 2;
-                waypointDirection = -1;
-            }
-            else if (currentWaypointIndex < 0)
-            {
-                currentWaypointIndex = 1;
-                waypointDirection = 1;
+                currentWaypointIndex = waypointPositions.Count - 1;
+                enabled = false;
+                Debug.Log("Flight complete - creature stopped at final waypoint");
             }
         }
     }
