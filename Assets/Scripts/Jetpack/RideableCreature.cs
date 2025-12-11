@@ -75,6 +75,8 @@ public class RideableCreature : MonoBehaviour
     private MonoBehaviour jetpackController;
     private float hapticTimer;
     private int currentFlightWaypointIndex = 0;
+    private bool isReversePath = false; // Direction flag: false = forward (0->10), true = reverse (10->0)
+
     private float splineT = 0f; // Progress along current spline segment (0-1)-1)0;
     
     // XR Controllers for haptics
@@ -418,12 +420,21 @@ private void CheckForMountInput()
         
         isPlayerMounted = true;
         isFlying = true; // Start flight when mounted
-        currentFlightWaypointIndex = 0;
+        
+        // Set starting waypoint based on direction
+        if (isReversePath)
+        {
+            currentFlightWaypointIndex = flightPathWaypoints.Count - 2; // Start from second-to-last for reverse
+        }
+        else
+        {
+            currentFlightWaypointIndex = 0; // Start from beginning for forward
+        }
         splineT = 0f;
         hapticTimer = 0f;
         lastCreaturePosition = transform.position;
         
-        Debug.Log($"Player mounted! isFlying={isFlying}, waypoints={flightPathWaypoints.Count}");
+        Debug.Log($"Player mounted! isFlying={isFlying}, reverse={isReversePath}, startWP={currentFlightWaypointIndex}, totalWP={flightPathWaypoints.Count}");;
         
         OnPlayerMounted?.Invoke();
         isTransitioning = false; // Allow Update to run!
@@ -506,65 +517,45 @@ private void FollowFlightPath()
             return;
         }
         
-        // Get the 4 points needed for Catmull-Rom spline
-        int p0 = Mathf.Clamp(currentFlightWaypointIndex - 1, 0, flightPathWaypoints.Count - 1);
-        int p1 = Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1);
-        int p2 = Mathf.Clamp(currentFlightWaypointIndex + 1, 0, flightPathWaypoints.Count - 1);
-        int p3 = Mathf.Clamp(currentFlightWaypointIndex + 2, 0, flightPathWaypoints.Count - 1);
+        // Get the 4 points needed for Catmull-Rom spline (adjusted for direction)
+        int p0, p1, p2, p3;
+        
+        if (isReversePath)
+        {
+            // Reverse: going from high index to low index
+            p1 = Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1);
+            p2 = Mathf.Clamp(currentFlightWaypointIndex - 1, 0, flightPathWaypoints.Count - 1);
+            p0 = Mathf.Clamp(currentFlightWaypointIndex + 1, 0, flightPathWaypoints.Count - 1);
+            p3 = Mathf.Clamp(currentFlightWaypointIndex - 2, 0, flightPathWaypoints.Count - 1);
+        }
+        else
+        {
+            // Forward: going from low index to high index
+            p0 = Mathf.Clamp(currentFlightWaypointIndex - 1, 0, flightPathWaypoints.Count - 1);
+            p1 = Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1);
+            p2 = Mathf.Clamp(currentFlightWaypointIndex + 1, 0, flightPathWaypoints.Count - 1);
+            p3 = Mathf.Clamp(currentFlightWaypointIndex + 2, 0, flightPathWaypoints.Count - 1);
+        }
         
         if (flightPathWaypoints[p1] == null || flightPathWaypoints[p2] == null)
         {
             Debug.LogWarning($"FollowFlightPath: Null waypoint at p1={p1} or p2={p2}");
-            currentFlightWaypointIndex++;
+            if (isReversePath)
+                currentFlightWaypointIndex--;
+            else
+                currentFlightWaypointIndex++;
             return;
         }
         
-        // Calculate segment length for consistent speed
-        float segmentLength = Vector3.Distance(flightPathWaypoints[p1].position, flightPathWaypoints[p2].position);
-        if (segmentLength < 0.1f) segmentLength = 0.1f;
-        
-        // Variable speed based on vertical direction - faster when diving!
-        Vector3 nextPos = flightPathWaypoints[p2].position;
-        float verticalDiff = nextPos.y - transform.position.y;
-        float speedMultiplier = 1f;
-        if (verticalDiff < -5f)
-            speedMultiplier = 1.6f; // Diving
-        else if (verticalDiff > 10f)
-            speedMultiplier = 0.7f; // Climbing
-        
-        float currentSpeed = rideSpeed * speedMultiplier;
-        
-        // Advance along spline based on speed
-        splineT += (currentSpeed / segmentLength) * Time.deltaTime;
-        
-        // Debug every ~1 second
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"Flight: wp={currentFlightWaypointIndex}, t={splineT:F2}, pos={transform.position}, target={nextPos}");
-        }
-        
-        // Move to next segment when t >= 1
-        if (splineT >= 1f)
-        {
-            splineT = 0f;
-            currentFlightWaypointIndex++;
-            Debug.Log($"Moving to waypoint {currentFlightWaypointIndex}");
-            
-            // Check if we've reached the end - return to idle, don't auto-dismount
-            if (currentFlightWaypointIndex >= flightPathWaypoints.Count - 1)
-            {
-                EndFlightReturnToIdle();
-                return;
-            }
-        }
-        
-        // Calculate smooth position using Catmull-Rom spline
+        // Calculate smooth position using Catmull-Rom spline BEFORE checking for segment completion
         Vector3 pos0 = flightPathWaypoints[p0] != null ? flightPathWaypoints[p0].position : flightPathWaypoints[p1].position;
         Vector3 pos1 = flightPathWaypoints[p1].position;
         Vector3 pos2 = flightPathWaypoints[p2].position;
         Vector3 pos3 = flightPathWaypoints[p3] != null ? flightPathWaypoints[p3].position : flightPathWaypoints[p2].position;
         
-        Vector3 newPosition = CatmullRom(pos0, pos1, pos2, pos3, splineT);
+        // Clamp splineT to valid range for position calculation
+        float clampedT = Mathf.Clamp01(splineT);
+        Vector3 newPosition = CatmullRom(pos0, pos1, pos2, pos3, clampedT);
         
         // Smooth rotation - calculate direction from movement
         Vector3 direction = (newPosition - transform.position).normalized;
@@ -575,7 +566,7 @@ private void FollowFlightPath()
             {
                 float targetYAngle = Mathf.Atan2(flatDirection.x, flatDirection.z) * Mathf.Rad2Deg;
                 float currentY = transform.eulerAngles.y;
-                float newY = Mathf.LerpAngle(currentY, targetYAngle, 0.8f * Time.deltaTime);
+                float newY = Mathf.LerpAngle(currentY, targetYAngle, 3f * Time.deltaTime);
                 
                 // Calculate gentle banking based on turn rate
                 float turnDelta = Mathf.DeltaAngle(currentY, targetYAngle);
@@ -585,23 +576,78 @@ private void FollowFlightPath()
             }
         }
         
+        // Apply position
         transform.position = newPosition;
+        
+        // Calculate segment length for consistent speed
+        float segmentLength = Vector3.Distance(pos1, pos2);
+        if (segmentLength < 0.1f) segmentLength = 0.1f;
+        
+        // Variable speed based on vertical direction - faster when diving!
+        float verticalDiff = pos2.y - transform.position.y;
+        float speedMultiplier = 1f;
+        if (verticalDiff < -5f)
+            speedMultiplier = 1.6f; // Diving
+        else if (verticalDiff > 10f)
+            speedMultiplier = 0.7f; // Climbing
+        
+        float currentSpeed = rideSpeed * speedMultiplier;
+        
+        // Advance along spline based on speed (for NEXT frame)
+        splineT += (currentSpeed / segmentLength) * Time.deltaTime;
+        
+        // Debug every ~1 second
+        if (Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"Flight: wp={currentFlightWaypointIndex}, t={splineT:F2}, reverse={isReversePath}, pos={transform.position}");
+        }
+        
+        // Check if we need to move to next segment (will take effect NEXT frame)
+        if (splineT >= 1f)
+        {
+            // Carry over the excess t value for smooth transition
+            splineT = splineT - 1f;
+            
+            if (isReversePath)
+            {
+                currentFlightWaypointIndex--;
+                Debug.Log($"Moving to waypoint {currentFlightWaypointIndex} (reverse)");
+                
+                // Check if we've reached the start (waypoint 0)
+                if (currentFlightWaypointIndex <= 0)
+                {
+                    EndFlightReturnToIdle();
+                    return;
+                }
+            }
+            else
+            {
+                currentFlightWaypointIndex++;
+                Debug.Log($"Moving to waypoint {currentFlightWaypointIndex} (forward)");
+                
+                // Check if we've reached the end
+                if (currentFlightWaypointIndex >= flightPathWaypoints.Count - 1)
+                {
+                    EndFlightReturnToIdle();
+                    return;
+                }
+            }
+        }
     }
 
 private void EndFlightReturnToIdle()
     {
-        Debug.Log("Flight complete - creature returning to idle. Press grip or E to dismount.");
+        Debug.Log($"Flight complete at waypoint {currentFlightWaypointIndex}. Creature staying here. Press grip or E to ride again (reverse direction).");
         isFlying = false;
         
-        // Reset flight path index for potential future rides
-        currentFlightWaypointIndex = 0;
-        splineT = 0f;
+        // Toggle direction for next ride
+        isReversePath = !isReversePath;
         
-        // Return creature to idle position and rotation
-        transform.position = idleBasePosition;
-        transform.rotation = Quaternion.Euler(60.9f, 0f, 0f); // Original idle rotation
+        // Keep creature at current position (waypoint 10 or waypoint 0)
+        // Update idleBasePosition to current location so idle bobbing happens here
+        idleBasePosition = transform.position;
         
-        // Resume idle bobbing
+        // Resume idle bobbing at current location
         startIdle = true;
     }
 
