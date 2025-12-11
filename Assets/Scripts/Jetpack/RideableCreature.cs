@@ -106,6 +106,11 @@ public class RideableCreature : MonoBehaviour
 
     
     public bool IsPlayerMounted => isPlayerMounted;
+    public bool IsFlying => isFlying;
+    public int CurrentWaypointIndex => currentFlightWaypointIndex;
+    public int TotalWaypoints => flightPathWaypoints.Count;
+    public float FlightProgress => flightPathWaypoints.Count > 1 ? (float)currentFlightWaypointIndex / (flightPathWaypoints.Count - 1) : 0f;
+    public bool IsReversePath => isReversePath;
     
     // Events
     public System.Action OnPlayerMounted;
