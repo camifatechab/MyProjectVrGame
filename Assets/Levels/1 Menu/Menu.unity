@@ -924,7 +924,7 @@ MonoBehaviour:
   m_text: "Our daring space explorer wakes up in an abandoned space station with
     one mission on his mind: return to his family. \n\nHe makes his way to the command
     center of the station, but instead of finding his way back home, he is launched
-    into deep space, far away from home. \n"
+    into deep space, far away from Earth. \n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
   m_sharedMaterial: {fileID: 4924455296522437806, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
@@ -1681,7 +1681,7 @@ MonoBehaviour:
       m_Calls: []
   m_text: "Alien Planets Vol.2 - Red Panda\n\nScuba Diving Equipment Model - your3dworld\n\nSimple
     JetPack - ramiromalleret08 \n\nMoonrover space vehicle - reaperrr1\n\nAlien Planet
-    1(Lybanthan) - TyroSmith2"
+    1(Lybanthan) - TyroSmith2\n\nWooden Ramp - AbsoluteMadLadd"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
   m_sharedMaterial: {fileID: 4924455296522437806, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
@@ -1746,7 +1746,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: -8.403133, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -2169,6 +2169,15 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 1812056501}
     m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 178306, guid: c61f320d62b986e4b9af36d3c160fcca, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 789693406}
+    - targetCorrespondingSourceObject: {fileID: 178306, guid: c61f320d62b986e4b9af36d3c160fcca, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 789693405}
+    - targetCorrespondingSourceObject: {fileID: 178306, guid: c61f320d62b986e4b9af36d3c160fcca, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 789693407}
     - targetCorrespondingSourceObject: {fileID: 144796, guid: c61f320d62b986e4b9af36d3c160fcca, type: 3}
       insertIndex: -1
       addedObject: {fileID: 789693403}
@@ -2206,6 +2215,74 @@ MonoBehaviour:
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
   m_SoftShadowQuality: 0
+--- !u!1 &789693404 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 178306, guid: c61f320d62b986e4b9af36d3c160fcca, type: 3}
+  m_PrefabInstance: {fileID: 789693400}
+  m_PrefabAsset: {fileID: 0}
+--- !u!65 &789693405
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 789693404}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.807634, y: 0.56634885, z: 1.292388}
+  m_Center: {x: -1.4038175, y: 1.4143196, z: 0.64619374}
+--- !u!65 &789693406
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 789693404}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 2.807634, y: 0.56634885, z: 1.292388}
+  m_Center: {x: -1.4038175, y: -1.41432, z: 0.64619374}
+--- !u!65 &789693407
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 789693404}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 1.1720234, y: 3.3928177, z: 1.292388}
+  m_Center: {x: -0.5860114, y: 0.0010847214, z: 0.6461936}
 --- !u!1 &799230733
 GameObject:
   m_ObjectHideFlags: 0
@@ -2745,8 +2822,8 @@ AudioSource:
   m_Enabled: 1
   serializedVersion: 4
   OutputAudioMixerGroup: {fileID: 0}
-  m_audioClip: {fileID: 8300000, guid: 36d5431c545fffc44b0190814c7955f6, type: 3}
-  m_Resource: {fileID: 8300000, guid: 36d5431c545fffc44b0190814c7955f6, type: 3}
+  m_audioClip: {fileID: 8300000, guid: 1f3b14c4806e7c8488e21b4dff44e84d, type: 3}
+  m_Resource: {fileID: 8300000, guid: 1f3b14c4806e7c8488e21b4dff44e84d, type: 3}
   m_PlayOnAwake: 0
   m_Volume: 1
   m_Pitch: 1
@@ -2845,7 +2922,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dialogueSource: {fileID: 1003426089}
-  dialogueClip: {fileID: 8300000, guid: 36d5431c545fffc44b0190814c7955f6, type: 3}
+  dialogueClip: {fileID: 8300000, guid: 1f3b14c4806e7c8488e21b4dff44e84d, type: 3}
   subtitleText: 
   subtitleManager: {fileID: 1982132397}
 --- !u!65 &1003426091
@@ -4502,7 +4579,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1166723154028586633, guid: efa4f40f995825749ad93a848b33c204, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3215926549651341159, guid: efa4f40f995825749ad93a848b33c204, type: 3}
       propertyPath: m_LocalPosition.x
@@ -5263,8 +5340,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: -90, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -1.1609993, y: 2.2843838}
-  m_SizeDelta: {x: 251.046, y: 149.5035}
+  m_AnchoredPosition: {x: -1.1609993, y: 2.1993}
+  m_SizeDelta: {x: 251.046, y: 166.5215}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1690457307
 MonoBehaviour:
@@ -6512,7 +6589,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: -180, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.0009491144, y: 39.5}
+  m_AnchoredPosition: {x: -0.0009491144, y: 44.5}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2008490050
@@ -6880,7 +6957,7 @@ MonoBehaviour:
   pressedMaterial: {fileID: 2100000, guid: 00ae5d3a77f884d458eb265b063fd0b2, type: 2}
   pressSound: {fileID: 1113769219}
   fadeScreen: {fileID: 22136771}
-  sceneToLoad: CampfireHub
+  sceneToLoad: CrashToPlanet
   fadeDelay: 2.5
 --- !u!114 &2070719856
 MonoBehaviour:
