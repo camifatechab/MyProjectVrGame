@@ -6,6 +6,10 @@ TagManager:
   tags:
   - Anchor
   - SpaceshipPart
+  - Rover
+  - SlowTerrain
+  - Platform
+  - LandingPlatform
   layers:
   - Default
   - TransparentFX

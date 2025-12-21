@@ -53,13 +53,25 @@ public class RideableCreature : MonoBehaviour
     [Tooltip("Idle bob speed")]
     public float idleBobSpeed = 1f;
     
-    
-[Header("Visual Indicator")]
+    [Header("Visual Indicator")]
     [Tooltip("Show prompt when player is near")]
     public bool showMountPrompt = true;
     
     [Tooltip("UI text to show mount prompt")]
     public string mountPromptText = "Grip to Ride";
+    
+    [Header("Platform Parking")]
+    [Tooltip("Tag used to identify landing platforms")]
+    public string platformTag = "LandingPlatform";
+    
+    [Tooltip("Maximum distance to search for platforms")]
+    public float platformSearchRadius = 200f;
+    
+    [Tooltip("Height offset above platform for landing")]
+    public float landingHeightOffset = 3f;
+    
+    [Tooltip("Speed when flying to platform")]
+    public float parkingSpeed = 20f;
     
     [Header("References")]
     public Transform playerCamera;
@@ -67,17 +79,19 @@ public class RideableCreature : MonoBehaviour
     
     // Runtime state
     private bool isPlayerMounted = false;
-    private bool isFlying = false; // True during flight path, false when idle on creature
+    private bool isFlying = false;
     private bool isTransitioning = false;
+    private bool isParking = false;
+        private Transform targetPlatform;
+    private Vector3 landingPosition;
     private Vector3 startPosition;
     private Quaternion startRotation;
     private FlyingCreaturePatrol patrolScript;
     private MonoBehaviour jetpackController;
     private float hapticTimer;
     private int currentFlightWaypointIndex = 0;
-    private bool isReversePath = false; // Direction flag: false = forward (0->10), true = reverse (10->0)
-
-    private float splineT = 0f; // Progress along current spline segment (0-1)-1)0;
+    private bool isReversePath = false;
+    private float splineT = 0f;
     
     // XR Controllers for haptics
     private ActionBasedController leftController;
@@ -87,30 +101,30 @@ public class RideableCreature : MonoBehaviour
     private InputDevice leftDevice;
     private InputDevice rightDevice;
     private bool wasGripPressed = false;
+    private float dismountCooldown = 0f;
+    private const float DISMOUNT_COOLDOWN_TIME = 1.5f;
+
     private Canvas uiCanvas;
     private UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider moveProvider;
     private UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.ContinuousTurnProvider turnProvider;
     private UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.SnapTurnProvider snapTurnProvider;
 
-
-
-    
     // Player state before mounting
     private Vector3 playerOriginalPosition;
     private Transform originalParent;
     private float idleBobOffset;
     private Vector3 idleBasePosition;
     private Vector3 lastCreaturePosition;
-    private Quaternion mountedRotation; // Locked rotation during ride (prevents dizziness)
-
-
+    private Quaternion mountedRotation;
     
     public bool IsPlayerMounted => isPlayerMounted;
     public bool IsFlying => isFlying;
+    public bool IsParking => isParking;
     public int CurrentWaypointIndex => currentFlightWaypointIndex;
     public int TotalWaypoints => flightPathWaypoints.Count;
     public float FlightProgress => flightPathWaypoints.Count > 1 ? (float)currentFlightWaypointIndex / (flightPathWaypoints.Count - 1) : 0f;
     public bool IsReversePath => isReversePath;
+    
     
     // Events
     public System.Action OnPlayerMounted;
@@ -123,18 +137,15 @@ public class RideableCreature : MonoBehaviour
         idleBasePosition = transform.position;
         idleBobOffset = Random.Range(0f, Mathf.PI * 2f);
         
-        // If starting idle, disable patrol
         if (startIdle)
         {
             var patrol = GetComponent<FlyingCreaturePatrol>();
             if (patrol != null)
                 patrol.enabled = false;
         }
-
         
         patrolScript = GetComponent<FlyingCreaturePatrol>();
         
-        // Auto-find XR components
         if (xrOrigin == null)
         {
             var origin = FindObjectOfType<Unity.XR.CoreUtils.XROrigin>();
@@ -145,37 +156,33 @@ public class RideableCreature : MonoBehaviour
             }
         }
         
-        // Find XR controllers for haptics
         FindXRControllers();
-        
-        // Find jetpack controller to disable during ride
         FindJetpackController();
         
-        // Cache locomotion providers (avoid FindObjectOfType in Update)
         moveProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider>();
         turnProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.ContinuousTurnProvider>();
         snapTurnProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.SnapTurnProvider>();
         
-        // Cache UI canvas
         var canvases = FindObjectsOfType<Canvas>();
         foreach (var canvas in canvases)
         {
-            if (canvas.gameObject.name.Contains("UI") || canvas.gameObject.name.Contains("Canvas"))
+            // Find VR UI Canvas specifically (fuel/gems), not CreatureRideUI
+            if (canvas.gameObject.name.Contains("VR UI") || canvas.gameObject.name.Contains("Fuel"))
             {
                 uiCanvas = canvas;
                 break;
             }
         }
-            // Auto-find flight waypoints if not assigned
+
+        
         if (flightPathWaypoints.Count == 0)
         {
             AutoFindWaypoints();
         }
     }
 
-private void AutoFindWaypoints()
+    private void AutoFindWaypoints()
     {
-        // Look for waypoint parent objects - try FlightPath first, then FlightWaypoints
         GameObject waypointParent = GameObject.Find("FlightPath");
         if (waypointParent == null)
             waypointParent = GameObject.Find("FlightWaypoints");
@@ -186,24 +193,21 @@ private void AutoFindWaypoints()
             return;
         }
         
-        // Get all waypoints sorted by name (WP01, WP02, etc.)
-        var waypoints = new System.Collections.Generic.List<Transform>();
+        var waypoints = new List<Transform>();
         foreach (Transform child in waypointParent.transform)
         {
             waypoints.Add(child);
         }
         
-        // Sort by name to ensure correct order
         waypoints.Sort((a, b) => a.name.CompareTo(b.name));
         
         flightPathWaypoints.Clear();
         flightPathWaypoints.AddRange(waypoints);
         
-        Debug.Log($"RideableCreature: Auto-found {flightPathWaypoints.Count} flight waypoints from {waypointParent.name}");
+        Debug.Log($"RideableCreature: Auto-found {flightPathWaypoints.Count} flight waypoints");
     }
-
     
-private void FindXRControllers()
+    private void FindXRControllers()
     {
         var controllers = FindObjectsOfType<ActionBasedController>();
         foreach (var controller in controllers)
@@ -215,51 +219,39 @@ private void FindXRControllers()
                 rightController = controller;
         }
         
-        // Also get InputDevices for direct grip detection
-        var leftHandDevices = new System.Collections.Generic.List<InputDevice>();
+        var leftHandDevices = new List<InputDevice>();
         InputDevices.GetDevicesAtXRNode(XRNode.LeftHand, leftHandDevices);
         if (leftHandDevices.Count > 0)
-        {
             leftDevice = leftHandDevices[0];
-            Debug.Log("RideableCreature: Found left hand device");
-        }
         
-        var rightHandDevices = new System.Collections.Generic.List<InputDevice>();
+        var rightHandDevices = new List<InputDevice>();
         InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightHandDevices);
         if (rightHandDevices.Count > 0)
-        {
             rightDevice = rightHandDevices[0];
-            Debug.Log("RideableCreature: Found right hand device");
-        }
     }
     
-private void FindJetpackController()
+    private void FindJetpackController()
     {
-        // Look for AutoJetpackController specifically
         if (xrOrigin != null)
         {
-            // Try to find by component type directly
             var controllers = xrOrigin.GetComponentsInChildren<MonoBehaviour>();
             foreach (var controller in controllers)
             {
                 if (controller.GetType().Name == "AutoJetpackController")
                 {
                     jetpackController = controller;
-                    Debug.Log("RideableCreature: Found AutoJetpackController");
                     return;
                 }
             }
         }
     }
     
-private void Update()
+    private void Update()
     {
         if (isTransitioning) return;
         
-        // Desktop testing shortcut - press M to mount from anywhere
         if (!isPlayerMounted && Input.GetKeyDown(KeyCode.M))
         {
-            Debug.Log("[Desktop Test] M pressed - force mounting creature");
             MountCreature();
             return;
         }
@@ -270,47 +262,42 @@ private void Update()
         }
         else
         {
-            CheckForMountInput();
-            
-            // Gentle idle bobbing while waiting
-            if (startIdle && idleBobAmplitude > 0f)
             {
-                float bob = Mathf.Sin((Time.time * idleBobSpeed) + idleBobOffset) * idleBobAmplitude;
-                transform.position = idleBasePosition + new Vector3(0f, bob, 0f);
+                CheckForMountInput();
+                
+                if (startIdle && idleBobAmplitude > 0f)
+                {
+                    float bob = Mathf.Sin((Time.time * idleBobSpeed) + idleBobOffset) * idleBobAmplitude;
+                    transform.position = idleBasePosition + new Vector3(0f, bob, 0f);
+                }
             }
         }
     }
+
     
-private void CheckForMountInput()
+    private void CheckForMountInput()
     {
-        if (playerCamera == null)
+        if (playerCamera == null) return;
+        
+        // Cooldown after dismount to prevent immediate remount
+        if (dismountCooldown > 0f)
         {
+            dismountCooldown -= Time.deltaTime;
             return;
         }
         
-        // Refresh devices if not valid (VR devices may not be ready at Start)
         if (!leftDevice.isValid || !rightDevice.isValid)
-        {
             RefreshInputDevices();
-        }
         
         float distance = Vector3.Distance(transform.position, playerCamera.position);
         
         if (distance <= mountDistance)
         {
-            // Use direct grip detection like AutoJetpackController
             bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
+            if (Input.GetKeyDown(KeyCode.E)) gripPressed = true;
             
-            // Fallback to keyboard for testing
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                gripPressed = true;
-            }
-            
-            // Detect grip press (not held)
             if (gripPressed && !wasGripPressed)
             {
-                Debug.Log("Grip pressed - mounting creature!");
                 MountCreature();
             }
             
@@ -324,12 +311,12 @@ private void CheckForMountInput()
     
     private void RefreshInputDevices()
     {
-        var leftHandDevices = new System.Collections.Generic.List<InputDevice>();
+        var leftHandDevices = new List<InputDevice>();
         InputDevices.GetDevicesAtXRNode(XRNode.LeftHand, leftHandDevices);
         if (leftHandDevices.Count > 0)
             leftDevice = leftHandDevices[0];
         
-        var rightHandDevices = new System.Collections.Generic.List<InputDevice>();
+        var rightHandDevices = new List<InputDevice>();
         InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightHandDevices);
         if (rightHandDevices.Count > 0)
             rightDevice = rightHandDevices[0];
@@ -337,15 +324,12 @@ private void CheckForMountInput()
     
     private bool IsGripPressed(InputDevice device)
     {
-        if (!device.isValid)
-            return false;
+        if (!device.isValid) return false;
         
-        // Try grip button (binary)
         bool gripButton = false;
         if (device.TryGetFeatureValue(CommonUsages.gripButton, out gripButton) && gripButton)
             return true;
         
-        // Try grip (analog)
         float grip = 0f;
         if (device.TryGetFeatureValue(CommonUsages.grip, out grip) && grip > 0.5f)
             return true;
@@ -356,7 +340,6 @@ private void CheckForMountInput()
     private void MountCreature()
     {
         if (isPlayerMounted || isTransitioning) return;
-        
         StartCoroutine(MountTransition());
     }
     
@@ -364,43 +347,25 @@ private void CheckForMountInput()
     {
         isTransitioning = true;
         
-        // Store player's original state
         if (xrOrigin != null)
         {
             playerOriginalPosition = xrOrigin.position;
             originalParent = xrOrigin.parent;
         }
         
-        // Disable jetpack
         if (jetpackController != null)
             jetpackController.enabled = false;
         
-        // Disable locomotion providers (already cached in Start)
-        if (moveProvider != null)
-            moveProvider.enabled = false;
-        if (turnProvider != null)
-            turnProvider.enabled = false;
-        if (snapTurnProvider != null)
-            snapTurnProvider.enabled = false;
+        if (moveProvider != null) moveProvider.enabled = false;
+        if (turnProvider != null) turnProvider.enabled = false;
+        if (snapTurnProvider != null) snapTurnProvider.enabled = false;
+        if (uiCanvas != null) uiCanvas.enabled = false;
+        if (patrolScript != null) patrolScript.enabled = false;
         
-        // Hide UI canvas (already cached in Start)
-        if (uiCanvas != null)
-            uiCanvas.enabled = false;
-        
-        // Disable normal patrol
-        if (patrolScript != null)
-            patrolScript.enabled = false;
-        
-        // Parent player to creature for reliable following
         if (xrOrigin != null)
         {
-            playerOriginalPosition = xrOrigin.position;
-            originalParent = xrOrigin.parent;
-            
-            // Parent to creature
             xrOrigin.SetParent(transform);
             
-            // Smoothly move player to seat position
             Vector3 targetLocalPos = seatOffset;
             float elapsed = 0f;
             Vector3 startLocalPos = xrOrigin.localPosition;
@@ -409,67 +374,47 @@ private void CheckForMountInput()
             {
                 elapsed += Time.deltaTime;
                 float t = elapsed / transitionDuration;
-                t = t * t * (3f - 2f * t); // Smoothstep
+                t = t * t * (3f - 2f * t);
                 
                 xrOrigin.localPosition = Vector3.Lerp(startLocalPos, targetLocalPos, t);
-                // Keep player upright during transition
                 xrOrigin.rotation = Quaternion.Euler(0, xrOrigin.eulerAngles.y, 0);
                 yield return null;
             }
             
             xrOrigin.localPosition = targetLocalPos;
-            
-            // Store initial rotation - will be locked during entire ride
             mountedRotation = xrOrigin.rotation;
         }
         
         isPlayerMounted = true;
-        isFlying = true; // Start flight when mounted
+        isFlying = true;
         
-        // Set starting waypoint based on direction
         if (isReversePath)
-        {
-            currentFlightWaypointIndex = flightPathWaypoints.Count - 2; // Start from second-to-last for reverse
-        }
+            currentFlightWaypointIndex = flightPathWaypoints.Count - 2;
         else
-        {
-            currentFlightWaypointIndex = 0; // Start from beginning for forward
-        }
+            currentFlightWaypointIndex = 0;
+        
         splineT = 0f;
         hapticTimer = 0f;
         lastCreaturePosition = transform.position;
         
-        Debug.Log($"Player mounted! isFlying={isFlying}, reverse={isReversePath}, startWP={currentFlightWaypointIndex}, totalWP={flightPathWaypoints.Count}");;
-        
         OnPlayerMounted?.Invoke();
-        isTransitioning = false; // Allow Update to run!
+        isTransitioning = false;
     }
     
-private void UpdateMountedState()
+    private void UpdateMountedState()
     {
-        // Refresh devices if not valid
         if (!leftDevice.isValid || !rightDevice.isValid)
-        {
             RefreshInputDevices();
-        }
         
-        // Lock player to creature - facing creature's forward, but staying upright
         if (xrOrigin != null)
         {
-            // Add bobbing motion that matches the creature's flying animation
-            // This syncs the player with the creature's visual movement to prevent motion sickness
             float rideBob = Mathf.Sin(Time.time * idleBobSpeed) * idleBobAmplitude;
             Vector3 bobbedSeatOffset = seatOffset + new Vector3(0f, rideBob, 0f);
-            
-            // Keep player at seat offset with matching bob
             xrOrigin.localPosition = bobbedSeatOffset;
-            
-            // Face creature's forward direction but stay upright (like riding a dragon)
             float creatureYaw = transform.eulerAngles.y;
             xrOrigin.rotation = Quaternion.Euler(0, creatureYaw, 0);
         }
         
-        // Handle haptic feedback
         if (enableHaptics)
         {
             hapticTimer += Time.deltaTime;
@@ -480,32 +425,38 @@ private void UpdateMountedState()
             }
         }
         
-        // Follow flight path if currently flying
-        if (isFlying)
+        // Handle parking movement (overrides normal flight)
+        if (isParking)
         {
-            if (flightPathWaypoints.Count > 0)
+            UpdateParkingMovement();
+        }
+        // Follow flight path if currently flying (and not parking)
+        else if (isFlying)
+        {
+            // Check for grip to trigger parking
+            bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
+            if (Input.GetKeyDown(KeyCode.P)) gripPressed = true;
+            
+            if (gripPressed && !wasGripPressed)
+            {
+                TryParkAtNearestPlatform();
+            }
+            wasGripPressed = gripPressed;
+            
+            if (flightPathWaypoints.Count > 0 && !isParking)
             {
                 FollowFlightPath();
             }
-            else
-            {
-                Debug.LogWarning("isFlying is true but no waypoints! Count: " + flightPathWaypoints.Count);
-            }
         }
         
-        // Only allow dismount when NOT flying (creature is idle)
-        if (!isFlying)
+        // Only allow dismount when NOT flying and NOT parking
+        if (!isFlying && !isParking)
         {
             bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
+            if (Input.GetKeyDown(KeyCode.E)) gripPressed = true;
             
-            // Fallback to keyboard
-            if (Input.GetKeyDown(KeyCode.E))
-                gripPressed = true;
-            
-            // Detect grip press (not held)
             if (gripPressed && !wasGripPressed)
             {
-                Debug.Log("Grip pressed - dismounting creature!");
                 DismountCreature();
             }
             
@@ -513,21 +464,18 @@ private void UpdateMountedState()
         }
     }
     
-private void FollowFlightPath()
+    private void FollowFlightPath()
     {
         if (flightPathWaypoints.Count < 2)
         {
-            Debug.LogWarning("FollowFlightPath: Not enough waypoints!");
             EndFlightReturnToIdle();
             return;
         }
         
-        // Get the 4 points needed for Catmull-Rom spline (adjusted for direction)
         int p0, p1, p2, p3;
         
         if (isReversePath)
         {
-            // Reverse: going from high index to low index
             p1 = Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1);
             p2 = Mathf.Clamp(currentFlightWaypointIndex - 1, 0, flightPathWaypoints.Count - 1);
             p0 = Mathf.Clamp(currentFlightWaypointIndex + 1, 0, flightPathWaypoints.Count - 1);
@@ -535,7 +483,6 @@ private void FollowFlightPath()
         }
         else
         {
-            // Forward: going from low index to high index
             p0 = Mathf.Clamp(currentFlightWaypointIndex - 1, 0, flightPathWaypoints.Count - 1);
             p1 = Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1);
             p2 = Mathf.Clamp(currentFlightWaypointIndex + 1, 0, flightPathWaypoints.Count - 1);
@@ -544,7 +491,6 @@ private void FollowFlightPath()
         
         if (flightPathWaypoints[p1] == null || flightPathWaypoints[p2] == null)
         {
-            Debug.LogWarning($"FollowFlightPath: Null waypoint at p1={p1} or p2={p2}");
             if (isReversePath)
                 currentFlightWaypointIndex--;
             else
@@ -552,17 +498,14 @@ private void FollowFlightPath()
             return;
         }
         
-        // Calculate smooth position using Catmull-Rom spline BEFORE checking for segment completion
         Vector3 pos0 = flightPathWaypoints[p0] != null ? flightPathWaypoints[p0].position : flightPathWaypoints[p1].position;
         Vector3 pos1 = flightPathWaypoints[p1].position;
         Vector3 pos2 = flightPathWaypoints[p2].position;
         Vector3 pos3 = flightPathWaypoints[p3] != null ? flightPathWaypoints[p3].position : flightPathWaypoints[p2].position;
         
-        // Clamp splineT to valid range for position calculation
         float clampedT = Mathf.Clamp01(splineT);
         Vector3 newPosition = CatmullRom(pos0, pos1, pos2, pos3, clampedT);
         
-        // Smooth rotation - calculate direction from movement
         Vector3 direction = (newPosition - transform.position).normalized;
         if (direction.sqrMagnitude > 0.001f)
         {
@@ -573,7 +516,6 @@ private void FollowFlightPath()
                 float currentY = transform.eulerAngles.y;
                 float newY = Mathf.LerpAngle(currentY, targetYAngle, 3f * Time.deltaTime);
                 
-                // Calculate gentle banking based on turn rate
                 float turnDelta = Mathf.DeltaAngle(currentY, targetYAngle);
                 float bankAngle = Mathf.Clamp(turnDelta * 0.2f, -20f, 20f);
                 
@@ -581,44 +523,28 @@ private void FollowFlightPath()
             }
         }
         
-        // Apply position
         transform.position = newPosition;
         
-        // Calculate segment length for consistent speed
         float segmentLength = Vector3.Distance(pos1, pos2);
         if (segmentLength < 0.1f) segmentLength = 0.1f;
         
-        // Variable speed based on vertical direction - faster when diving!
         float verticalDiff = pos2.y - transform.position.y;
         float speedMultiplier = 1f;
         if (verticalDiff < -5f)
-            speedMultiplier = 1.6f; // Diving
+            speedMultiplier = 1.6f;
         else if (verticalDiff > 10f)
-            speedMultiplier = 0.7f; // Climbing
+            speedMultiplier = 0.7f;
         
         float currentSpeed = rideSpeed * speedMultiplier;
-        
-        // Advance along spline based on speed (for NEXT frame)
         splineT += (currentSpeed / segmentLength) * Time.deltaTime;
         
-        // Debug every ~1 second
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"Flight: wp={currentFlightWaypointIndex}, t={splineT:F2}, reverse={isReversePath}, pos={transform.position}");
-        }
-        
-        // Check if we need to move to next segment (will take effect NEXT frame)
         if (splineT >= 1f)
         {
-            // Carry over the excess t value for smooth transition
             splineT = splineT - 1f;
             
             if (isReversePath)
             {
                 currentFlightWaypointIndex--;
-                Debug.Log($"Moving to waypoint {currentFlightWaypointIndex} (reverse)");
-                
-                // Check if we've reached the start (waypoint 0)
                 if (currentFlightWaypointIndex <= 0)
                 {
                     EndFlightReturnToIdle();
@@ -628,9 +554,6 @@ private void FollowFlightPath()
             else
             {
                 currentFlightWaypointIndex++;
-                Debug.Log($"Moving to waypoint {currentFlightWaypointIndex} (forward)");
-                
-                // Check if we've reached the end
                 if (currentFlightWaypointIndex >= flightPathWaypoints.Count - 1)
                 {
                     EndFlightReturnToIdle();
@@ -640,24 +563,205 @@ private void FollowFlightPath()
         }
     }
 
-private void EndFlightReturnToIdle()
+    private void EndFlightReturnToIdle()
     {
-        Debug.Log($"Flight complete at waypoint {currentFlightWaypointIndex}. Creature staying here. Press grip or E to ride again (reverse direction).");
         isFlying = false;
-        
-        // Toggle direction for next ride
         isReversePath = !isReversePath;
-        
-        // Keep creature at current position (waypoint 10 or waypoint 0)
-        // Update idleBasePosition to current location so idle bobbing happens here
         idleBasePosition = transform.position;
-        
-        // Resume idle bobbing at current location
         startIdle = true;
     }
 
+
+    #region Platform Parking
     
-    // Catmull-Rom spline interpolation - creates smooth curves through points
+    private void TryParkAtNearestPlatform()
+    {
+        Transform nearest = FindNearestPlatform();
+        
+        if (nearest != null)
+        {
+            StartParking(nearest);
+        }
+        else
+        {
+            Debug.Log("RideableCreature: No landing platforms found within range");
+        }
+    }
+    
+    private Transform FindNearestPlatform()
+    {
+        GameObject[] platforms = GameObject.FindGameObjectsWithTag(platformTag);
+        
+        if (platforms.Length == 0)
+        {
+            Debug.LogWarning("RideableCreature: No objects with tag '" + platformTag + "' found. Tag your platforms!");
+            return null;
+        }
+        
+        Transform nearest = null;
+        float nearestDistance = platformSearchRadius;
+        
+        foreach (GameObject platform in platforms)
+        {
+            float distance = Vector3.Distance(transform.position, platform.transform.position);
+            if (distance < nearestDistance)
+            {
+                nearestDistance = distance;
+                nearest = platform.transform;
+            }
+        }
+        
+        if (nearest != null)
+        {
+            Debug.Log("RideableCreature: Found platform '" + nearest.name + "' at " + nearestDistance.ToString("F1") + "m");
+        }
+        
+        return nearest;
+    }
+    
+    private void StartParking(Transform platform)
+    {
+        isParking = true;
+        targetPlatform = platform;
+        
+        // Find the TOP surface of the platform to land ON it, not inside it
+        // Use raycast from above to find the actual walkable surface
+        Collider platformCollider = platform.GetComponent<Collider>();
+        if (platformCollider != null)
+        {
+            // Cast a ray from above the platform down to find the surface
+            Vector3 rayOrigin = new Vector3(platform.position.x, platformCollider.bounds.max.y + 50f, platform.position.z);
+            RaycastHit hit;
+            if (Physics.Raycast(rayOrigin, Vector3.down, out hit, 100f))
+            {
+                // Land on the hit surface plus offset for creature height
+                landingPosition = hit.point + Vector3.up * landingHeightOffset;
+            }
+            else
+            {
+                // Fallback: use platform's Y position (ground level) plus offset
+                landingPosition = new Vector3(
+                    platform.position.x,
+                    platform.position.y + landingHeightOffset,
+                    platform.position.z
+                );
+            }
+        }
+        else
+        {
+            landingPosition = platform.position + Vector3.up * landingHeightOffset;
+        }
+        
+        Debug.Log("RideableCreature: Parking at " + targetPlatform.name + " landing Y=" + landingPosition.y);
+    }
+    
+    private void UpdateParkingMovement()
+    {
+        if (targetPlatform == null)
+        {
+            isParking = false;
+            return;
+        }
+        
+        Vector3 direction = (landingPosition - transform.position);
+        float distance = direction.magnitude;
+        
+        if (distance > 1.5f)
+        {
+            direction.Normalize();
+            transform.position += direction * parkingSpeed * Time.deltaTime;
+            
+            if (direction.sqrMagnitude > 0.001f)
+            {
+                Vector3 flatDir = new Vector3(direction.x, 0, direction.z).normalized;
+                if (flatDir.sqrMagnitude > 0.001f)
+                {
+                    float targetYaw = Mathf.Atan2(flatDir.x, flatDir.z) * Mathf.Rad2Deg;
+                    float currentYaw = transform.eulerAngles.y;
+                    float newYaw = Mathf.LerpAngle(currentYaw, targetYaw, 3f * Time.deltaTime);
+                    transform.rotation = Quaternion.Euler(61f, newYaw, 0f);
+                }
+            }
+        }
+        else
+        {
+            CompleteLanding();
+        }
+    }
+    
+    private void CompleteLanding()
+    {
+        Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked, player dismounting");
+        
+        isParking = false;
+        isFlying = false;
+        
+        // Update idle position to this platform
+        idleBasePosition = transform.position;
+        startIdle = true;
+        
+        // Auto-dismount the player onto the platform
+        if (isPlayerMounted)
+        {
+            StartCoroutine(DismountOnPlatform());
+        }
+        
+        targetPlatform = null;
+    }
+    
+    
+private System.Collections.IEnumerator DismountOnPlatform()
+    {
+        isTransitioning = true;
+        
+        // Dismount player onto the platform
+        if (xrOrigin != null)
+        {
+            Vector3 dismountPos = transform.position + transform.right * 2f;
+            dismountPos.y = transform.position.y - landingHeightOffset + 1f;
+            
+            xrOrigin.SetParent(originalParent);
+            
+            float elapsed = 0f;
+            Vector3 startPos = xrOrigin.position;
+            
+            while (elapsed < transitionDuration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / transitionDuration;
+                t = t * t * (3f - 2f * t);
+                xrOrigin.position = Vector3.Lerp(startPos, dismountPos, t);
+                yield return null;
+            }
+            
+            xrOrigin.position = dismountPos;
+        }
+        
+        // Re-enable player controls
+        if (jetpackController != null) jetpackController.enabled = true;
+        if (moveProvider != null) moveProvider.enabled = true;
+        if (turnProvider != null) turnProvider.enabled = true;
+        if (snapTurnProvider != null) snapTurnProvider.enabled = true;
+        if (uiCanvas != null) uiCanvas.enabled = true;
+        
+        isPlayerMounted = false;
+        dismountCooldown = DISMOUNT_COOLDOWN_TIME;
+        
+        OnPlayerDismounted?.Invoke();
+        isTransitioning = false;
+        
+        Debug.Log("RideableCreature: Player dismounted, creature waiting on platform");
+    }
+    
+
+    
+
+    
+
+    
+    #endregion
+
+    
     private Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
     {
         float t2 = t * t;
@@ -674,20 +778,15 @@ private void EndFlightReturnToIdle()
     private void SendHapticPulse()
     {
         if (leftController != null)
-        {
             leftController.SendHapticImpulse(hapticIntensity, hapticDuration);
-        }
         
         if (rightController != null)
-        {
             rightController.SendHapticImpulse(hapticIntensity, hapticDuration);
-        }
     }
     
     private void DismountCreature()
     {
         if (!isPlayerMounted || isTransitioning) return;
-        
         StartCoroutine(DismountTransition());
     }
     
@@ -695,15 +794,13 @@ private void EndFlightReturnToIdle()
     {
         isTransitioning = true;
         
-        // Unparent and move player to safe dismount position
         if (xrOrigin != null)
         {
-            // Unparent first
+            Vector3 dismountPos = transform.position + transform.right * 2f;
+            dismountPos.y = transform.position.y;
+            
             xrOrigin.SetParent(originalParent);
             
-            Vector3 dismountPosition = transform.position + Vector3.up * 2f + Vector3.forward * 2f;
-            
-            // Smoothly move player to dismount position
             float elapsed = 0f;
             Vector3 startPos = xrOrigin.position;
             
@@ -713,105 +810,27 @@ private void EndFlightReturnToIdle()
                 float t = elapsed / transitionDuration;
                 t = t * t * (3f - 2f * t);
                 
-                xrOrigin.position = Vector3.Lerp(startPos, dismountPosition, t);
+                xrOrigin.position = Vector3.Lerp(startPos, dismountPos, t);
                 yield return null;
             }
             
-            xrOrigin.position = dismountPosition;
+            xrOrigin.position = dismountPos;
         }
         
-        // Re-enable jetpack
         if (jetpackController != null)
             jetpackController.enabled = true;
         
-        // Re-enable locomotion providers (joystick movement)
-        if (moveProvider != null)
-            moveProvider.enabled = true;
-        if (turnProvider != null)
-            turnProvider.enabled = true;
-        if (snapTurnProvider != null)
-            snapTurnProvider.enabled = true;
-        
-        // Show UI canvas again
-        if (uiCanvas != null)
-            uiCanvas.enabled = true;
+        if (moveProvider != null) moveProvider.enabled = true;
+        if (turnProvider != null) turnProvider.enabled = true;
+        if (snapTurnProvider != null) snapTurnProvider.enabled = true;
+        if (uiCanvas != null) uiCanvas.enabled = true;
         
         isPlayerMounted = false;
-        isTransitioning = false;
+        isFlying = false;
+        dismountCooldown = DISMOUNT_COOLDOWN_TIME; // Prevent immediate remount
+
         
         OnPlayerDismounted?.Invoke();
-        Debug.Log("Player dismounted creature!");
-        
-        // Return creature to start or resume patrol
-        if (returnToStartAfterDismount)
-        {
-            StartCoroutine(ReturnToStart());
-        }
-        else if (patrolScript != null)
-        {
-            patrolScript.enabled = true;
-        }
-    }
-    
-    private System.Collections.IEnumerator ReturnToStart()
-    {
-        float elapsed = 0f;
-        float returnDuration = 3f;
-        Vector3 startPos = transform.position;
-        Quaternion startRot = transform.rotation;
-        
-        while (elapsed < returnDuration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / returnDuration;
-            t = t * t * (3f - 2f * t);
-            
-            transform.position = Vector3.Lerp(startPos, startPosition, t);
-            transform.rotation = Quaternion.Slerp(startRot, startRotation, t);
-            
-            yield return null;
-        }
-        
-        transform.position = startPosition;
-        transform.rotation = startRotation;
-        
-        // Resume patrol
-        if (patrolScript != null)
-            patrolScript.enabled = true;
-    }
-    
-    private void OnDrawGizmosSelected()
-    {
-        // Draw mount radius
-        Gizmos.color = new Color(0f, 1f, 0f, 0.3f);
-        Gizmos.DrawWireSphere(transform.position, mountDistance);
-        
-        // Draw seat position
-        Gizmos.color = Color.blue;
-        Gizmos.DrawWireSphere(transform.TransformPoint(seatOffset), 0.3f);
-        
-        // Draw flight path
-        if (flightPathWaypoints.Count > 0)
-        {
-            Gizmos.color = Color.magenta;
-            for (int i = 0; i < flightPathWaypoints.Count; i++)
-            {
-                if (flightPathWaypoints[i] == null) continue;
-                
-                Gizmos.DrawWireSphere(flightPathWaypoints[i].position, 1f);
-                
-                if (i > 0 && flightPathWaypoints[i - 1] != null)
-                {
-                    Gizmos.DrawLine(flightPathWaypoints[i - 1].position, flightPathWaypoints[i].position);
-                }
-            }
-            
-            // Line from creature to first waypoint
-            if (flightPathWaypoints[0] != null)
-            {
-                Gizmos.color = new Color(1f, 0f, 1f, 0.5f);
-                Gizmos.DrawLine(transform.position, flightPathWaypoints[0].position);
-            }
-        }
+        isTransitioning = false;
     }
 }
