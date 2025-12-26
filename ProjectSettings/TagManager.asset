@@ -6,6 +6,9 @@ TagManager:
   tags:
   - Anchor
   - SpaceshipPart
+  - Rover
+  - SlowTerrain
+  - Ground
   layers:
   - Default
   - TransparentFX
@@ -13,7 +16,7 @@ TagManager:
   - 
   - Water
   - UI
-  - 
+  - UI_Subtitles
   - 
   - Suimono_Water
   - Suimono_Depth
