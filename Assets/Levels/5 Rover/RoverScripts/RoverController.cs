@@ -72,12 +72,20 @@ public class RoverController : MonoBehaviour
     private float terrainMultiplier = 1f; // current terrain speed factor
     private float basePitch = 1f; // Default engine pitch multiplier
 
-    //Added 24/10/2025
-    /*void Awake()
-    {
-        defaultAcceleration = acceleration;
-        defaultMaxSpeed = maxSpeed;
-    }*/
+
+    [Header("Visuals")]
+    public RoverSuspensionTilt suspensionTilt; // drag the body object here
+
+    public WheelCollider wheelFL;
+    public WheelCollider wheelFR;
+    public WheelCollider wheelRL;
+    public WheelCollider wheelRR;
+
+    public float motorTorque = 1500f;
+    public float steerAngle = 35f;
+
+    private float throttleInput;
+    private float steeringInput;
 
     void Start()
     {
@@ -100,153 +108,14 @@ public class RoverController : MonoBehaviour
 
     void FixedUpdate()
     {
-        /*float accel = accelerateAction.action?.ReadValue<float>() ?? 0f;
-        float brake = brakeAction.action?.ReadValue<float>() ?? 0f;
-        Vector2 steer = steerAction.action?.ReadValue<Vector2>() ?? Vector2.zero;
-
-        // Forward acceleration
-        if (accel > 0.1f && rb.linearVelocity.magnitude < maxSpeed)
-            rb.AddForce(transform.forward * accel * acceleration, ForceMode.Acceleration);
-
-        // Reverse / brake
-        if (brake > 0.1f)
-        {
-            rb.AddForce(-transform.forward * brake * brakeForce, ForceMode.Acceleration);
-
-            if (!isBraking && brakeSource && brakeClip)
-            {
-                brakeSource.PlayOneShot(brakeClip);
-                isBraking = true;
-            }
-        }
-        else
-        {
-            isBraking = false;
-        }
-
-        // Steering (left stick X-axis)
-        float turn = steer.x * turnSpeed * Time.fixedDeltaTime;
-        transform.Rotate(0f, turn, 0f);
-
-        //Featherable boost 
-        bool boostHeld = false;
-
-        // --- Boost Input ---
-        if (Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame) // For PC testing
-        {
-            StartCoroutine(Boost());
-        }
-        else if (boostAction.action.WasPressedThisFrame())
-        {
-            StartCoroutine(Boost());
-        }
-        if (!boosting)
-        {
-            // For PC testing
-            if ((Keyboard.current != null && Keyboard.current.bKey.wasPressedThisFrame) ||
-                boostAction.action.WasPressedThisFrame())
-            {
-                if (canBoost)
-                    StartCoroutine(Boost());
-            }
-        }
-
-        bool boostPressed = false;
-
-        // Check both PC key and Quest controller input
-        if (Keyboard.current != null && Keyboard.current.bKey.isPressed)
-            boostPressed = true;
-        else if (boostAction.action.IsPressed())
-            boostPressed = true;
-
-        if (boostPressed && canBoost && !boosting)
-        {
-            StartCoroutine(Boost());
-        }
-
-
-        // Engine sound pitch scaling with speed
-        if (engineSource)
-        {
-            float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
-            float accelOrBrake = Mathf.Max(accel, brake);
-
-        // Smooth pitch based on speed
-        engineSource.pitch = Mathf.Lerp(enginePitchMin, enginePitchMax, speedPercent);
-
-        // Target volume increases with acceleration/speed
-        targetEngineVolume = Mathf.Lerp(0.1f, maxEngineVolume, Mathf.Max(speedPercent, accelOrBrake));
-
-        // Smoothly fade towards target volume
-        engineSource.volume = Mathf.MoveTowards(engineSource.volume, targetEngineVolume, fadeSpeed * Time.fixedDeltaTime);
-        //engineSource.pitch = Mathf.Lerp(enginePitchMin, enginePitchMax, speedPercent);
-        }
-    }*/
-
-        //Last update: 22/10/2025
-        /*float accel = accelerateAction.action?.ReadValue<float>() ?? 0f;
-        float brake = brakeAction.action?.ReadValue<float>() ?? 0f;
-        Vector2 steer = steerAction.action?.ReadValue<Vector2>() ?? Vector2.zero;
-
-        // Forward acceleration
-        if (accel > 0.1f && rb.linearVelocity.magnitude < maxSpeed)
-            rb.AddForce(transform.forward * accel * acceleration, ForceMode.Acceleration);
-
-        // Reverse / brake
-        if (brake > 0.1f)
-        {
-            rb.AddForce(-transform.forward * brake * brakeForce, ForceMode.Acceleration);
-
-            if (!isBraking && brakeSource && brakeClip)
-            {
-                brakeSource.PlayOneShot(brakeClip);
-                isBraking = true;
-            }
-        }
-        else isBraking = false;
-
-        // Steering (left stick X-axis)
-        float turn = steer.x * turnSpeed * Time.fixedDeltaTime;
-        transform.Rotate(0f, turn, 0f);
-
-        // --- FEATHERABLE BOOST ---
-        bool boostHeld = false;
-
-        // For PC and Meta Quest
-        if (Keyboard.current != null && Keyboard.current.bKey.isPressed)
-            boostHeld = true;
-        else if (boostAction.action.IsPressed())
-            boostHeld = true;
-
-        if (boostHeld && canBoost)
-        {
-            boosting = true;
-            rb.AddForce(transform.forward * boostForce, ForceMode.Acceleration);
-
-            // Drain meter
-            boostMeter -= boostUsageRate * Time.fixedDeltaTime;
-            boostMeter = Mathf.Max(boostMeter, 0f);
-        }
-        else
-        {
-            boosting = false;
-        }
-
-        UpdateBoostUI();
-
-        // Engine sound pitch scaling with speed
-        if (engineSource)
-        {
-            float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
-            float accelOrBrake = Mathf.Max(accel, brake);
-            engineSource.pitch = Mathf.Lerp(enginePitchMin, enginePitchMax, speedPercent);
-            targetEngineVolume = Mathf.Lerp(0.1f, maxEngineVolume, Mathf.Max(speedPercent, accelOrBrake));
-            engineSource.volume = Mathf.MoveTowards(engineSource.volume, targetEngineVolume, fadeSpeed * Time.fixedDeltaTime);
-        }*/
-
         float accel = accelerateAction.action?.ReadValue<float>() ?? 0f;
         float brake = brakeAction.action?.ReadValue<float>() ?? 0f;
         Vector2 steer = steerAction.action?.ReadValue<Vector2>() ?? Vector2.zero;
+
+        throttleInput = accel;
+        steeringInput = steer.x;
+
+        ApplyWheelForces(throttleInput, steeringInput);
 
         // --- Forward acceleration (affected by terrain slowdown)---
         /*if (accel > 0.1f && rb.linearVelocity.magnitude < maxSpeed)
@@ -274,6 +143,24 @@ public class RoverController : MonoBehaviour
         float turn = steer.x * turnSpeed * Time.fixedDeltaTime;
         transform.Rotate(0f, turn, 0f);
 
+        // after calculating accel, steer, and updating rb:
+        if (suspensionTilt != null)
+        {
+            // steer.x is -1..1 from the left stick (already used for turning)
+            suspensionTilt.turnInput = steer.x;
+
+            // accel is 0..1 for forward; brake is 0..1 for braking
+            // we want accelInput in -1..+1 where positive = accelerate, negative = braking
+            float accelInputValue = 0f;
+            if (accel > 0.1f) accelInputValue = Mathf.Clamp01(accel);     // forward
+            else if (brake > 0.1f) accelInputValue = -Mathf.Clamp01(brake); // braking as negative
+
+            suspensionTilt.accelInput = accelInputValue;
+
+            // speed: horizontal speed magnitude (ignore vertical)
+            suspensionTilt.speed = new Vector3(rb.linearVelocity.x, 0f, rb.linearVelocity.z).magnitude;
+        }
+
         // --- Featherable Boost ---
         bool boostHeld = /*(Keyboard.current != null && Keyboard.current.bKey.isPressed) || */boostAction.action.IsPressed();
 
@@ -289,14 +176,6 @@ public class RoverController : MonoBehaviour
         UpdateBoostUI();
 
         // --- Engine Sound ---
-        /*if (engineSource)
-        {
-            float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
-            float accelOrBrake = Mathf.Max(accel, brake);
-            engineSource.pitch = Mathf.Lerp(enginePitchMin, enginePitchMax, speedPercent);
-            targetEngineVolume = Mathf.Lerp(0.1f, maxEngineVolume, Mathf.Max(speedPercent, accelOrBrake));
-            engineSource.volume = Mathf.MoveTowards(engineSource.volume, targetEngineVolume, fadeSpeed * Time.fixedDeltaTime);
-        }*/
         if (engineSource)
         {
             float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
@@ -335,30 +214,6 @@ public class RoverController : MonoBehaviour
 
         targetBoostValue = boostMeter / 100f;
     }
-
-    //Added 24/10/2025
-    /*public void ApplyTerrainSlowdown(float speedMultiplier, float duration)
-    {
-        // Cancel any existing reset coroutine
-        if (terrainResetCoroutine != null)
-            StopCoroutine(terrainResetCoroutine);
-
-        // Reduce speed and acceleration temporarily
-        acceleration = defaultAcceleration * speedMultiplier;
-        maxSpeed = defaultMaxSpeed * speedMultiplier;
-
-        // Reset after duration
-        terrainResetCoroutine = StartCoroutine(ResetTerrainEffect(duration));
-    }*/
-
-    //Added 24/10/2025
-    /*private IEnumerator ResetTerrainEffect(float delay)
-    {
-        yield return new WaitForSeconds(delay);
-        acceleration = defaultAcceleration;
-        maxSpeed = defaultMaxSpeed;
-        terrainResetCoroutine = null;
-    }*/
 
     //Added 26/10/2025
     // --- Slow Terrain System ---
@@ -484,225 +339,16 @@ boosting = false;
         }
     }
 
+    void ApplyWheelForces(float throttle, float steering)
+    {
+        // Steering (front wheels)
+        wheelFL.steerAngle = steering * steerAngle;
+        wheelFR.steerAngle = steering * steerAngle;
+
+        // Motor (all-wheel drive feel)
+        wheelFL.motorTorque = throttle * motorTorque;
+        wheelFR.motorTorque = throttle * motorTorque;
+        wheelRL.motorTorque = throttle * motorTorque;
+        wheelRR.motorTorque = throttle * motorTorque;
+    }
 }
-
-/*using System.Collections;
-using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.InputSystem;
-using UnityEngine.XR.Interaction.Toolkit.Inputs;
-
-[RequireComponent(typeof(Rigidbody))]
-public class RoverController : MonoBehaviour
-{
-    [Header("Driving Settings")]
-    public float acceleration = 15f;
-    public float brakeForce = 20f;
-    public float maxSpeed = 10f;
-    public float turnSpeed = 45f;
-
-    [Header("Input Actions")]
-    public InputActionProperty accelerateAction; // Right trigger
-    public InputActionProperty brakeAction;      // Left trigger
-    public InputActionProperty steerAction;      // Left joystick (Vector2)
-    public InputActionProperty boostAction;      // B button
-
-    [Header("Audio")]
-    public AudioSource engineSource;
-    public AudioSource brakeSource;
-    public AudioClip engineLoop;
-    public AudioClip brakeClip;
-    public AudioClip boostSound;
-    [Range(0.5f, 2f)] public float enginePitchMin = 0.8f;
-    [Range(0.5f, 2f)] public float enginePitchMax = 1.5f;
-    public float fadeSpeed = 2f;
-    public float maxEngineVolume = 0.6f;
-
-    [Header("Boost Settings")]
-    public float boostForce = 30f;
-    public float boostUsageRate = 50f; // how fast it drains
-    public float boostMeter = 100f;    // 0–100
-    public float boostRegenPerBattery = 33.3f;
-
-    [Header("Boost UI")]
-    public Slider boostSlider;
-    public float boostUISmoothSpeed = 3f;
-    private float targetBoostValue;
-
-    [Header("Steering Wheel (Optional)")]
-    /*public Transform steeringWheel;
-    public float maxSteerAngle = 45f;
-    public SteeringWheelController steeringWheelController;
-
-    [Header("Visuals")]
-    public WheelVisuals wheelVisuals;
-
-    private bool boosting = false;
-    private bool canBoost => boostMeter > 0f;
-
-    private Rigidbody rb;
-    private bool isBraking;
-    private float targetEngineVolume;
-    private float currentSteerInput;
-
-    // For terrain modifiers
-    private float originalAcceleration;
-    private float originalMaxSpeed;
-
-    void Start()
-    {
-        rb = GetComponent<Rigidbody>();
-        rb.maxAngularVelocity = 5f;
-
-        originalAcceleration = acceleration;
-        originalMaxSpeed = maxSpeed;
-
-        if (boostSlider)
-        {
-            boostSlider.value = boostMeter / 100f;
-            targetBoostValue = boostSlider.value;
-        }
-
-        if (engineSource && engineLoop)
-        {
-            engineSource.clip = engineLoop;
-            engineSource.loop = true;
-            engineSource.volume = 0f;
-            engineSource.Play();
-        }
-    }
-
-    void FixedUpdate()
-    {
-        float accel = accelerateAction.action?.ReadValue<float>() ?? 0f;
-        float brake = brakeAction.action?.ReadValue<float>() ?? 0f;
-
-        // Handle steering input
-        /*if (steeringWheel != null)
-        {
-            float steerAngle = steeringWheel.localEulerAngles.z;
-            if (steerAngle > 180f) steerAngle -= 360f;
-            currentSteerInput = Mathf.Clamp(steerAngle / maxSteerAngle, -1f, 1f);
-        }
-        else
-        {
-            Vector2 steer = steerAction.action?.ReadValue<Vector2>() ?? Vector2.zero;
-            currentSteerInput = steer.x;
-        }
-        if (steeringWheelController != null)
-        {
-            currentSteerInput = steeringWheelController.GetSteerInput();
-        }
-        else
-        {
-            Vector2 steer = steerAction.action?.ReadValue<Vector2>() ?? Vector2.zero;
-            currentSteerInput = steer.x;
-        }
-
-        // Update steering visuals
-        if (wheelVisuals != null)
-        {
-            wheelVisuals.UpdateWheelVisuals(currentSteerInput);
-            wheelVisuals.SpinWheels(rb.linearVelocity.magnitude);
-        }
-
-        // Movement
-        if (accel > 0.1f && rb.linearVelocity.magnitude < maxSpeed)
-            rb.AddForce(transform.forward * accel * acceleration, ForceMode.Acceleration);
-
-        if (brake > 0.1f)
-        {
-            rb.AddForce(-transform.forward * brake * brakeForce, ForceMode.Acceleration);
-
-            if (!isBraking && brakeSource && brakeClip)
-            {
-                brakeSource.PlayOneShot(brakeClip);
-                isBraking = true;
-            }
-        }
-        else
-        {
-            isBraking = false;
-        }
-
-        // Steering
-        float turn = currentSteerInput * turnSpeed * Time.fixedDeltaTime;
-        transform.Rotate(0f, turn, 0f);
-
-        // --- Boost Input ---
-        bool boostPressed = false;
-        if (Keyboard.current != null && Keyboard.current.bKey.isPressed)
-            boostPressed = true;
-        else if (boostAction.action.IsPressed())
-            boostPressed = true;
-
-        if (boostPressed && canBoost && !boosting)
-        {
-            StartCoroutine(Boost());
-        }
-
-        // Engine audio scaling
-        if (engineSource)
-        {
-            float speedPercent = Mathf.Clamp01(rb.linearVelocity.magnitude / maxSpeed);
-            float accelOrBrake = Mathf.Max(accel, brake);
-
-            engineSource.pitch = Mathf.Lerp(enginePitchMin, enginePitchMax, speedPercent);
-            targetEngineVolume = Mathf.Lerp(0.1f, maxEngineVolume, Mathf.Max(speedPercent, accelOrBrake));
-            engineSource.volume = Mathf.MoveTowards(engineSource.volume, targetEngineVolume, fadeSpeed * Time.fixedDeltaTime);
-        }
-    }
-
-    void Update()
-    {
-        if (boostSlider)
-        {
-            boostSlider.value = Mathf.Lerp(boostSlider.value, targetBoostValue, boostUISmoothSpeed * Time.deltaTime);
-        }
-    }
-
-    public void UpdateBoostUI()
-    {
-        if (!boostSlider) return;
-        targetBoostValue = boostMeter / 100f;
-    }
-
-    private IEnumerator Boost()
-    {
-        boosting = true;
-
-        if (boostSound)
-            AudioSource.PlayClipAtPoint(boostSound, transform.position, 0.8f);
-
-        while ((Keyboard.current != null && Keyboard.current.bKey.isPressed || boostAction.action.IsPressed()) && boostMeter > 0f)
-        {
-            rb.AddForce(transform.forward * boostForce, ForceMode.Acceleration);
-            boostMeter -= boostUsageRate * Time.deltaTime;
-            boostMeter = Mathf.Max(boostMeter, 0f);
-            UpdateBoostUI();
-            yield return null;
-        }
-
-        boosting = false;
-        UpdateBoostUI();
-    }
-
-    // --- Swamp slow-down ---
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("SlowTerrain"))
-        {
-            acceleration *= 0.5f;
-            maxSpeed *= 0.6f;
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("SlowTerrain"))
-        {
-            acceleration = originalAcceleration;
-            maxSpeed = originalMaxSpeed;
-        }
-    }
-}*/
