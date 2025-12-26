@@ -3154,22 +3154,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 939326e778065b74fa9d08373757f9b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gripThreshold: 0.8
-  platformTag: LandingPlatform
-  searchRadius: 150
-  landingHeightOffset: 2
-  parkingSpeed: 15
-  rotationSpeed: 60
-  arrivalThreshold: 1
-  landingStartSound: {fileID: 0}
-  landingCompleteSound: {fileID: 0}
-  landingParticles: {fileID: 0}
-  rideableCreature: {fileID: 0}
-  isParking: 0
-  targetPlatform: {fileID: 0}
-  landingPosition: {x: 0, y: 0, z: 0}
-  audioSource: {fileID: 0}
-  wasGripPressed: 0
 --- !u!1 &888525131 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 160076, guid: 2df16640116260446b007bd4a975385c, type: 3}
@@ -9640,6 +9624,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1538019865}
+    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1538019871}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474330848}
@@ -9674,6 +9661,27 @@ MonoBehaviour:
   cornerVertices: 100
   minVertexDistance: 0.05
   jetpackController: {fileID: 0}
+--- !u!114 &1538019871
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912543128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 67ab7ff3d830ec64090de9196a74bb9b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  wp01Transform: {fileID: 0}
+  fallThreshold: 15
+  respawnOffset: {x: 0, y: 2, z: 0}
+  respawnCooldown: 2
+  respawnOnFall: 1
+  respawnOnNoFuelFall: 1
+  outOfFuelGracePeriod: 3
+  respawnSound: {fileID: 0}
+  respawnSoundVolume: 0.8
 --- !u!134 &1555645924
 PhysicsMaterial:
   m_ObjectHideFlags: 0
