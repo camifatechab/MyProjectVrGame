@@ -8,19 +8,6 @@ public class SlowTerrain : MonoBehaviour
     public float slowdownDuration = 2f; // How long the slowdown lasts after exiting
     public AudioClip enterSound;
 
-    /*private void OnTriggerEnter(Collider other)
-    {
-        RoverController rover = other.GetComponentInParent<RoverController>();
-        if (rover)
-        {
-            rover.ApplyTerrainSlowdown(speedMultiplier, slowdownDuration);
-
-            if (enterSound)
-                AudioSource.PlayClipAtPoint(enterSound, transform.position, 0.8f);
-        }
-        Debug.Log("Entered slow terrain: " + other.name);
-    }*/
-
     private void OnCollisionEnter(Collision collision)
     {
         RoverController rover = collision.gameObject.GetComponentInParent<RoverController>();
