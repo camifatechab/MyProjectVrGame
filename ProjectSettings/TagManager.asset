@@ -9,6 +9,8 @@ TagManager:
   - Rover
   - SlowTerrain
   - Ground
+  - Platform
+  - LandingPlatform
   layers:
   - Default
   - TransparentFX
@@ -22,7 +24,7 @@ TagManager:
   - Suimono_Depth
   - Suimono_Screen
   - Obstacles
-  - 
+  - Cloud Layer
   - 
   - 
   - 
