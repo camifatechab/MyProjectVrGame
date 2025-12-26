@@ -50,6 +50,18 @@ public class FlyingCreaturePatrol : MonoBehaviour
     [Tooltip("How quickly banking responds")]
     public float bankSmoothing = 3f;
     
+    [Tooltip("Extra pitch angle when diving down")]
+    public float divePitchAngle = 30f;
+    
+    [Tooltip("Speed multiplier when diving down")]
+    public float diveSpeedMultiplier = 1.5f;
+    
+    [Tooltip("Rotation offset when diving deep")]
+    public Vector3 diveRotationOffset = new Vector3(20.66f, 260.72f, 160.75f);
+
+
+
+    
     [Header("Facing Direction")]
     [Tooltip("Rotation offset to make model face forward")]
     public Vector3 forwardRotationOffset = new Vector3(75f, 0f, 0f);
@@ -170,7 +182,15 @@ public class FlyingCreaturePatrol : MonoBehaviour
         smoothedDirection = Vector3.Lerp(smoothedDirection, directionToTarget, turnSpeed * Time.deltaTime);
         
         // Move toward waypoint
-        Vector3 movement = smoothedDirection * moveSpeed * Time.deltaTime;
+        // Calculate speed - faster when diving
+        float currentSpeed = moveSpeed;
+        if (smoothedDirection.y < 0)
+        {
+            currentSpeed = moveSpeed * (1f + Mathf.Abs(smoothedDirection.y) * (diveSpeedMultiplier - 1f));
+        }
+        
+        // Move toward waypoint
+        Vector3 movement = smoothedDirection * currentSpeed * Time.deltaTime;
         transform.position += movement;
         
         // Apply bobbing
@@ -205,7 +225,7 @@ public class FlyingCreaturePatrol : MonoBehaviour
         transform.position = pos;
     }
     
-    private void ApplyRotationAndBanking(Vector3 targetDirection)
+private void ApplyRotationAndBanking(Vector3 targetDirection)
     {
         if (targetDirection.sqrMagnitude < 0.001f) return;
         
@@ -213,7 +233,6 @@ public class FlyingCreaturePatrol : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(smoothedDirection, Vector3.up);
         
         // Calculate banking based on turning
-        Vector3 velocity = (transform.position - lastPosition) / Time.deltaTime;
         Vector3 cross = Vector3.Cross(transform.forward, targetDirection);
         float turnAmount = cross.y;
         
@@ -221,11 +240,19 @@ public class FlyingCreaturePatrol : MonoBehaviour
         targetBank = Mathf.Clamp(targetBank, -maxBankAngle, maxBankAngle);
         currentBank = Mathf.Lerp(currentBank, targetBank, bankSmoothing * Time.deltaTime);
         
-        // Apply rotation with offset and banking
+        // Calculate dive amount (0 = level, 1 = steep dive)
+        float diveAmount = Mathf.Clamp01(-smoothedDirection.y);
+        
+        // Normal flight rotation
         Quaternion offsetRotation = Quaternion.Euler(forwardRotationOffset);
         Quaternion bankRotation = Quaternion.Euler(0f, 0f, currentBank);
+        Quaternion normalRotation = targetRotation * bankRotation * offsetRotation;
         
-        transform.rotation = targetRotation * bankRotation * offsetRotation;
+        // Dive rotation - use exact rotation you specified
+        Quaternion diveRotation = Quaternion.Euler(diveRotationOffset);
+        
+        // Blend between normal and dive rotation
+        transform.rotation = Quaternion.Slerp(normalRotation, diveRotation, diveAmount);
     }
     
 private void MoveToNextWaypoint()
