@@ -8065,6 +8065,7 @@ MonoBehaviour:
   airDrag: 2
   groundDrag: 4
   moveProvider: {fileID: 0}
+  audioManager: {fileID: 0}
   jetpackAudioSource: {fileID: 0}
   flyingSound: {fileID: 8300000, guid: 8fb18a68279f6ff4b88af484aaa6a534, type: 3}
   flyingSoundVolume: 0.7
@@ -9592,6 +9593,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1538019871}
+    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1538019877}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474330848}
@@ -9647,6 +9651,44 @@ MonoBehaviour:
   outOfFuelGracePeriod: 3
   respawnSound: {fileID: 0}
   respawnSoundVolume: 0.8
+--- !u!114 &1538019877
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912543128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46f80e71d91a8b545b5e83546d93d4bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ignitionSound: {fileID: 8300000, guid: 29c8525988de66e449edc2bdc1aee624, type: 3}
+  thrustLoopSound: {fileID: 8300000, guid: 14fc7a63cdc17494f9a91c9bec379d0f, type: 3}
+  boostSound: {fileID: 8300000, guid: 67d05f5be67ae3941bb3b9668bd73299, type: 3}
+  lowFuelWarningSound: {fileID: 8300000, guid: b2e4c3e36a864964a98cebe335b35e9e, type: 3}
+  landingSoftSound: {fileID: 8300000, guid: 124b1c235b5d89140860bbb6e80faf68, type: 3}
+  landingHardSound: {fileID: 8300000, guid: ac9dc306aa5ff604783612ac67f306a9, type: 3}
+  platformTouchdownSound: {fileID: 8300000, guid: d4aa0c94207dc6641a1ff51473f87069, type: 3}
+  windHighAltitudeSound: {fileID: 8300000, guid: e22cb9773fdeb1b46892020c5893ebfd, type: 3}
+  windRushingSpeedSound: {fileID: 8300000, guid: 365666d65be02b246a0ef439dca7b59b, type: 3}
+  masterVolume: 1
+  ignitionVolume: 0.8
+  thrustVolume: 0.7
+  boostVolume: 0.9
+  warningVolume: 5
+  warningRepeatInterval: 2
+  landingVolume: 0.8
+  windVolume: 0.5
+  windAltitudeThreshold: 50
+  windSpeedThreshold: 5
+  maxWindAltitude: 150
+  maxWindSpeed: 15
+  hardLandingVelocity: 8
+  softLandingVelocity: 2
+  thrustFadeInDuration: 0.2
+  thrustFadeOutDuration: 0.5
+  windFadeDuration: 1
 --- !u!134 &1555645924
 PhysicsMaterial:
   m_ObjectHideFlags: 0
