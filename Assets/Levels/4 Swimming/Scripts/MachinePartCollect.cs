@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 using UnityEngine.SceneManagement;
 using System.Collections;
@@ -6,60 +6,53 @@ using System.Collections;
 public class MachinePartCollect : MonoBehaviour
 {
     [Header("Subtitle")]
-    public TMP_Text subtitleText;          // Subtitle canvas text
-    [TextArea]
-    public string dialogueLine;
+    public TMP_Text subtitleText;
+    [TextArea] public string dialogueLine;
 
     [Header("Dialogue Audio")]
-    public AudioSource dialogueSource;     // 2D AudioSource
+    public AudioSource dialogueSource;
     public AudioClip dialogueClip;
 
     [Header("Scene Transition")]
     public FadeScreen fadeScreen;
     public string nextSceneName = "NextLevel";
-    public float delayAfterDialogue = 1.5f;
+    public float delayAfterFade = 1.5f;
 
-    private bool collected = false;
+    private bool triggered = false;
 
-    private void OnTriggerEnter(Collider other)
+    // 🔹 THIS is what SpaceshipPiece will call
+    public void OnPartCollected()
     {
-        if (collected) return;
+        if (triggered) return;
+        triggered = true;
 
-        if (other.CompareTag("Player"))
-        {
-            collected = true;
-            StartCoroutine(CollectSequence());
-        }
+        StartCoroutine(CollectSequence());
     }
 
     private IEnumerator CollectSequence()
     {
-        // Disable the part visually
-        gameObject.SetActive(false);
-
-        // Show subtitle
+        // Subtitle
         if (subtitleText)
             subtitleText.text = dialogueLine;
 
-        float waitTime = delayAfterDialogue;
+        float waitTime = 1f;
 
-        // Play dialogue
+        // Audio
         if (dialogueSource && dialogueClip)
         {
             dialogueSource.PlayOneShot(dialogueClip);
             waitTime = dialogueClip.length;
         }
 
-        // Wait for dialogue
         yield return new WaitForSeconds(waitTime);
 
-        // Fade out
+        // Fade to black
         if (fadeScreen)
             fadeScreen.FadeOut();
 
-        yield return new WaitForSeconds(delayAfterDialogue);
+        yield return new WaitForSeconds(delayAfterFade);
 
-        // Load next scene
+        // Scene change
         SceneManager.LoadScene(nextSceneName);
     }
 }

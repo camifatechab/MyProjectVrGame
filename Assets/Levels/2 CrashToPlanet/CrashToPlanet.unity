@@ -1028,7 +1028,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fadeScreen: {fileID: 22136771}
-  nextSceneName: CampfireHub
+  nextSceneName: 1CampfireHub
   delayBeforeSceneLoad: 2
   transitionSound: {fileID: 8300000, guid: 945dbedbaa0a6b449a871ff32c26cf22, type: 3}
 --- !u!1001 &375216214
@@ -20807,7 +20807,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1166723154028586633, guid: efa4f40f995825749ad93a848b33c204, type: 3}
       propertyPath: m_IsActive
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3215926549651341159, guid: efa4f40f995825749ad93a848b33c204, type: 3}
       propertyPath: m_LocalPosition.x

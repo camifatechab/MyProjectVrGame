@@ -63368,7 +63368,7 @@ MonoBehaviour:
   finalDialogueClip: {fileID: 8300000, guid: 3298ddd4f850b7743b18bf46bdb98356, type: 3}
   finalDialogueLine: That should be enough. Now, back to the campsite.
   fadeScreen: {fileID: 928358568}
-  nextSceneName: CampfireHub
+  nextSceneName: 4CampfireHub
   delayBeforeSceneLoad: 3
 --- !u!4 &2008925606
 Transform:
