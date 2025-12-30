@@ -1,4 +1,4 @@
-using UnityEngine;
+/*using UnityEngine;
 using UnityEngine.Events;
 
 namespace Lake
@@ -214,6 +214,192 @@ namespace Lake
             Vector3 labelPos = transform.position + Vector3.up * 2f;
             UnityEditor.Handles.Label(labelPos, $"{pieceName}\nID: {pieceID}");
             #endif
+        }
+    }
+}*/
+
+using UnityEngine;
+using UnityEngine.Events;
+using UnityEngine.SceneManagement;
+using System.Collections;
+
+namespace Lake
+{
+    /// <summary>
+    /// Collectible spaceship piece that the player can pick up underwater.
+    /// Tracks collection and can trigger events for game progression.
+    /// </summary>
+    public class SpaceshipPiece : MonoBehaviour
+    {
+        [Header("Piece Info")]
+        [SerializeField] private string pieceID = "Piece_01";
+        [SerializeField] private string pieceName = "Engine Part";
+        [SerializeField] private string description = "A crucial component of the spaceship engine.";
+
+        [Header("Collection Settings")]
+        [SerializeField] private bool canBeCollected = true;
+        [SerializeField] private bool autoCollect = true;
+        [SerializeField] private string collectorTag = "Player";
+
+        [Header("Visual Effects")]
+        [SerializeField] private Transform visualObject;
+        [SerializeField] private float rotationSpeed = 30f;
+        [SerializeField] private bool enableBobbing = true;
+        [SerializeField] private float bobbingHeight = 0.3f;
+        [SerializeField] private float bobbingSpeed = 2f;
+
+        [Header("Particle Effects")]
+        [SerializeField] private ParticleSystem collectParticles;
+        [SerializeField] private GameObject glowEffect;
+
+        [Header("Audio")]
+        [SerializeField] private AudioClip collectSound;
+
+        [Header("Scene Transition")]
+        [SerializeField] private bool changeSceneOnCollect = true;
+        [SerializeField] private FadeScreen fadeScreen;
+        [SerializeField] private string nextSceneName = "NextLevel";
+        [SerializeField] private float delayAfterFade = 1.5f;
+
+        [Header("Events")]
+        public UnityEvent OnCollected;
+        public UnityEvent<string> OnPieceCollected;
+
+        private Vector3 startPosition;
+        private float bobbingTimer;
+        private bool isCollected = false;
+        private AudioSource audioSource;
+
+        // Public properties
+        public string PieceID => pieceID;
+        public string PieceName => pieceName;
+        public string Description => description;
+        public bool IsCollected => isCollected;
+
+        private void Awake()
+        {
+            startPosition = transform.position;
+            bobbingTimer = Random.Range(0f, Mathf.PI * 2f);
+
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null && collectSound != null)
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
+                audioSource.spatialBlend = 1f;
+            }
+
+            if (visualObject == null)
+                visualObject = transform;
+        }
+
+        private void Update()
+        {
+            if (isCollected) return;
+
+            if (visualObject != null)
+                visualObject.Rotate(Vector3.up, rotationSpeed * Time.deltaTime, Space.World);
+
+            if (enableBobbing)
+            {
+                bobbingTimer += Time.deltaTime * bobbingSpeed;
+                float yOffset = Mathf.Sin(bobbingTimer) * bobbingHeight;
+                transform.position = startPosition + new Vector3(0f, yOffset, 0f);
+            }
+        }
+
+        private void OnTriggerEnter(Collider other)
+        {
+            if (!other.CompareTag(collectorTag)) return;
+            if (!canBeCollected || isCollected) return;
+
+            if (autoCollect)
+                CollectPiece(other.gameObject);
+        }
+
+        /// <summary>
+        /// Collects this spaceship piece
+        /// </summary>
+        public void CollectPiece(GameObject collector)
+        {
+            if (isCollected) return;
+            isCollected = true;
+
+            // --- Visual feedback ---
+            if (collectParticles != null)
+            {
+                collectParticles.transform.SetParent(null);
+                collectParticles.Play();
+                Destroy(collectParticles.gameObject, collectParticles.main.duration);
+            }
+
+            if (glowEffect != null)
+                glowEffect.SetActive(false);
+
+            // --- Audio ---
+            if (collectSound != null)
+                AudioSource.PlayClipAtPoint(collectSound, transform.position);
+
+            // --- Events ---
+            OnCollected?.Invoke();
+            OnPieceCollected?.Invoke(pieceID);
+
+            Debug.Log($"Collected spaceship piece: {pieceName} (ID: {pieceID})");
+
+            // --- Notify manager ---
+            SpaceshipCollectionManager manager = FindFirstObjectByType<SpaceshipCollectionManager>();
+            if (manager != null)
+                manager.RegisterCollection(this);
+
+            // --- Hide visuals ---
+            if (visualObject != null && visualObject != transform)
+                visualObject.gameObject.SetActive(false);
+
+            // --- Scene transition ---
+            if (changeSceneOnCollect)
+                StartCoroutine(FadeAndChangeScene());
+        }
+
+        private IEnumerator FadeAndChangeScene()
+        {
+            if (fadeScreen != null)
+            {
+                fadeScreen.FadeOut();
+            }
+            else
+            {
+                Debug.LogWarning("FadeScreen not assigned on SpaceshipPiece");
+            }
+
+            yield return new WaitForSeconds(delayAfterFade);
+
+            if (!string.IsNullOrEmpty(nextSceneName))
+            {
+                SceneManager.LoadScene(nextSceneName);
+            }
+            else
+            {
+                Debug.LogError("Next scene name not set on SpaceshipPiece");
+            }
+        }
+
+        private void OnDrawGizmos()
+        {
+            if (isCollected) return;
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireSphere(transform.position, 0.5f);
+        }
+
+        private void OnDrawGizmosSelected()
+        {
+            if (isCollected) return;
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawSphere(transform.position, 0.6f);
+
+#if UNITY_EDITOR
+            Vector3 labelPos = transform.position + Vector3.up * 2f;
+            UnityEditor.Handles.Label(labelPos, $"{pieceName}\nID: {pieceID}");
+#endif
         }
     }
 }
