@@ -11,6 +11,7 @@ TagManager:
   - Ground
   - Platform
   - LandingPlatform
+  - Crystal
   layers:
   - Default
   - TransparentFX

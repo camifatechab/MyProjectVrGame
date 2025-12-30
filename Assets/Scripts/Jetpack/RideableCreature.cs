@@ -73,7 +73,12 @@ public class RideableCreature : MonoBehaviour
     [Tooltip("Speed when flying to platform")]
     public float parkingSpeed = 20f;
     
-    [Header("References")]
+    [Header("Audio")]
+    [Tooltip("Reference to CreatureAudioManager - will be auto-created if not assigned")]
+    public CreatureAudioManager audioManager;
+    
+    
+[Header("References")]
     public Transform playerCamera;
     public Transform xrOrigin;
     
@@ -156,7 +161,9 @@ public class RideableCreature : MonoBehaviour
             }
         }
         
-        FindXRControllers();
+        SetupAudioManager();
+        
+FindXRControllers();
         FindJetpackController();
         
         moveProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider>();
@@ -181,7 +188,22 @@ public class RideableCreature : MonoBehaviour
         }
     }
 
-    private void AutoFindWaypoints()
+    private void SetupAudioManager()
+    {
+        if (audioManager == null)
+        {
+            audioManager = GetComponent<CreatureAudioManager>();
+            if (audioManager == null)
+            {
+                audioManager = gameObject.AddComponent<CreatureAudioManager>();
+                Debug.Log("<color=cyan>✓ Created CreatureAudioManager</color>");
+            }
+        }
+        Debug.Log("<color=green>✓ CreatureAudioManager Ready!</color>");
+    }
+    
+    
+private void AutoFindWaypoints()
     {
         GameObject waypointParent = GameObject.Find("FlightPath");
         if (waypointParent == null)
@@ -387,6 +409,13 @@ public class RideableCreature : MonoBehaviour
         
         isPlayerMounted = true;
         isFlying = true;
+        
+        // Play mount audio
+        if (audioManager != null)
+        {
+            audioManager.PlayMount();
+            audioManager.StartFlightAmbient();
+        }
         
         if (isReversePath)
             currentFlightWaypointIndex = flightPathWaypoints.Count - 2;
@@ -693,6 +722,14 @@ public class RideableCreature : MonoBehaviour
     {
         Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked, player dismounting");
         
+        // Play landing audio
+        if (audioManager != null)
+        {
+            audioManager.PlayLanding();
+            audioManager.PlayCallExcited();
+            audioManager.StopFlightAmbient();
+        }
+        
         isParking = false;
         isFlying = false;
         
@@ -747,6 +784,12 @@ private System.Collections.IEnumerator DismountOnPlatform()
         isPlayerMounted = false;
         dismountCooldown = DISMOUNT_COOLDOWN_TIME;
         
+        // Play dismount audio
+        if (audioManager != null)
+        {
+            audioManager.PlayDismount();
+        }
+        
         OnPlayerDismounted?.Invoke();
         isTransitioning = false;
         
@@ -775,13 +818,19 @@ private System.Collections.IEnumerator DismountOnPlatform()
         );
     }
     
-    private void SendHapticPulse()
+private void SendHapticPulse()
     {
         if (leftController != null)
             leftController.SendHapticImpulse(hapticIntensity, hapticDuration);
         
         if (rightController != null)
             rightController.SendHapticImpulse(hapticIntensity, hapticDuration);
+        
+        // Sync wing flap sound with haptic pulse
+        if (audioManager != null && audioManager.SyncWingFlapWithHaptics)
+        {
+            audioManager.PlayWingFlap();
+        }
     }
     
     private void DismountCreature()
@@ -828,6 +877,13 @@ private System.Collections.IEnumerator DismountOnPlatform()
         isPlayerMounted = false;
         isFlying = false;
         dismountCooldown = DISMOUNT_COOLDOWN_TIME; // Prevent immediate remount
+        
+        // Play dismount audio
+        if (audioManager != null)
+        {
+            audioManager.PlayDismount();
+            audioManager.StopFlightAmbient();
+        }
 
         
         OnPlayerDismounted?.Invoke();

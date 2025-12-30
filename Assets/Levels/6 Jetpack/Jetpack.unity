@@ -1912,7 +1912,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f5e015839dfb146af0179cc6eacbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collectionSound: {fileID: 8300000, guid: 2dacffddec735ed48968ed8900d73f51, type: 3}
+  collectionSound: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
   soundVolume: 0.7
   rotateWhileIdle: 1
   rotationSpeed: 30
@@ -2518,7 +2518,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f5e015839dfb146af0179cc6eacbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collectionSound: {fileID: 8300000, guid: 2dacffddec735ed48968ed8900d73f51, type: 3}
+  collectionSound: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
   soundVolume: 0.7
   rotateWhileIdle: 1
   rotationSpeed: 30
@@ -2995,6 +2995,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 100008, guid: e5a6f709f99c2d74db7d5369004521cc, type: 3}
       insertIndex: -1
       addedObject: {fileID: 874939182}
+    - targetCorrespondingSourceObject: {fileID: 100008, guid: e5a6f709f99c2d74db7d5369004521cc, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 874939188}
   m_SourcePrefab: {fileID: 100100000, guid: e5a6f709f99c2d74db7d5369004521cc, type: 3}
 --- !u!1 &874939178 stripped
 GameObject:
@@ -3042,6 +3045,7 @@ MonoBehaviour:
   platformSearchRadius: 200
   landingHeightOffset: 3
   parkingSpeed: 20
+  audioManager: {fileID: 0}
   playerCamera: {fileID: 0}
   xrOrigin: {fileID: 0}
 --- !u!65 &874939182
@@ -3119,6 +3123,37 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400008, guid: e5a6f709f99c2d74db7d5369004521cc, type: 3}
   m_PrefabInstance: {fileID: 874939177}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &874939188
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 874939178}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab30e1965d7aa174388790649a94a73f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mountSound: {fileID: 8300000, guid: d58691a0f9cbed242982b2c4276615c0, type: 3}
+  dismountSound: {fileID: 8300000, guid: ee45311dedc6c1043ab264d29361d522, type: 3}
+  wingFlapSound: {fileID: 8300000, guid: 38d28e11222a5c44d90ef737b5c4f49d, type: 3}
+  wingFlapFastSound: {fileID: 8300000, guid: 90e6b589c5560eb47909f61c800c14b3, type: 3}
+  creatureCallFriendly: {fileID: 8300000, guid: 227c0013eb5f3e342860edb145bc981c, type: 3}
+  creatureCallExcited: {fileID: 0}
+  creatureLandingSound: {fileID: 8300000, guid: c59ec34a557bd034a88f6921779d98bd, type: 3}
+  flightAmbientSound: {fileID: 8300000, guid: f3d7ae7764a2254438584ba7ca671c6c, type: 3}
+  creatureBreathingSound: {fileID: 8300000, guid: fb61c0a63e4e1c0418a524849e739466, type: 3}
+  masterVolume: 1
+  mountVolume: 1
+  wingFlapVolume: 0.02
+  callVolume: 0.9
+  landingVolume: 1
+  ambientVolume: 0.5
+  breathingVolume: 0.3
+  ambientFadeInDuration: 1
+  ambientFadeOutDuration: 1.5
+  syncWingFlapWithHaptics: 1
 --- !u!1 &888525131 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 160076, guid: 2df16640116260446b007bd4a975385c, type: 3}
@@ -8285,7 +8320,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f5e015839dfb146af0179cc6eacbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collectionSound: {fileID: 8300000, guid: 2dacffddec735ed48968ed8900d73f51, type: 3}
+  collectionSound: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
   soundVolume: 0.7
   rotateWhileIdle: 1
   rotationSpeed: 30
@@ -9081,7 +9116,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f5e015839dfb146af0179cc6eacbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collectionSound: {fileID: 8300000, guid: 2dacffddec735ed48968ed8900d73f51, type: 3}
+  collectionSound: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
   soundVolume: 0.7
   rotateWhileIdle: 1
   rotationSpeed: 30
@@ -9092,7 +9127,7 @@ SphereCollider:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1371071806}
-  m_Material: {fileID: 1555645924}
+  m_Material: {fileID: 1612385482}
   m_IncludeLayers:
     serializedVersion: 2
     m_Bits: 0
@@ -9485,7 +9520,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c1f5e015839dfb146af0179cc6eacbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  collectionSound: {fileID: 8300000, guid: 2dacffddec735ed48968ed8900d73f51, type: 3}
+  collectionSound: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
   soundVolume: 0.7
   rotateWhileIdle: 1
   rotationSpeed: 30
@@ -9596,6 +9631,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1538019877}
+    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1538019879}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474330848}
@@ -9689,19 +9727,43 @@ MonoBehaviour:
   thrustFadeInDuration: 0.2
   thrustFadeOutDuration: 0.5
   windFadeDuration: 1
---- !u!134 &1555645924
-PhysicsMaterial:
+--- !u!114 &1538019879
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: ' (Instance)'
-  serializedVersion: 2
-  m_DynamicFriction: 0.6
-  m_StaticFriction: 0.6
-  m_Bounciness: 0
-  m_FrictionCombine: 0
-  m_BounceCombine: 0
+  m_GameObject: {fileID: 912543128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 37862f9b511dd9c41a7f6716ebfbf35f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  collectClip: {fileID: 8300000, guid: dcb0e67740bbcbc4cb0765e08b1614d7, type: 3}
+  nearbyHumClip: {fileID: 8300000, guid: 03097f8d3f6029349996d000232cf780, type: 3}
+  spawnClip: {fileID: 8300000, guid: 4dd5014858d844549bdbbac047c6ecf1, type: 3}
+  pulseClip: {fileID: 8300000, guid: 4dfb4b4dfdabe214d9972bef38ab9c3f, type: 3}
+  comboClip: {fileID: 8300000, guid: eb261bf22a39d014e9c8c94565227162, type: 3}
+  allCollectedClip: {fileID: 8300000, guid: 70831f6a8c9b52448b40ab7be6c62c3f, type: 3}
+  collectVolume: 0.8
+  collectPitchMin: 0.95
+  collectPitchMax: 1.1
+  humMaxDistance: 15
+  humMinDistance: 2
+  humMaxVolume: 0.4
+  humPitchMin: 0.8
+  humPitchMax: 1.2
+  pulseVolume: 0.1
+  pulseDynamicVolume: 1
+  spawnVolume: 0.7
+  comboWindow: 15
+  comboThreshold: 2
+  comboVolume: 0.9
+  comboPitchBase: 1
+  comboPitchIncrement: 0.1
+  comboPitchMax: 1.5
+  victoryVolume: 1
+  playerTransform: {fileID: 0}
 --- !u!1 &1563788903
 GameObject:
   m_ObjectHideFlags: 0
@@ -9751,6 +9813,19 @@ MonoBehaviour:
   blendDistance: 0
   weight: 1
   sharedProfile: {fileID: 11400000, guid: 10fc4df2da32a41aaa32d77bc913491c, type: 2}
+--- !u!134 &1612385482
+PhysicsMaterial:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: ' (Instance) (Instance)'
+  serializedVersion: 2
+  m_DynamicFriction: 0.6
+  m_StaticFriction: 0.6
+  m_Bounciness: 0
+  m_FrictionCombine: 0
+  m_BounceCombine: 0
 --- !u!1 &1651294866
 GameObject:
   m_ObjectHideFlags: 0
