@@ -15,7 +15,6 @@ public class CreatureRideUI : MonoBehaviour
     
     [Header("Prompt Messages")]
     public string nearCreaturePrompt = "Grip to Ride";
-    public string flyingPrompt = "Grip to Park";
     
     [Header("Settings")]
     public float fadeSpeed = 3f;
@@ -92,13 +91,8 @@ public class CreatureRideUI : MonoBehaviour
     
     private void UpdatePromptState()
     {
-        // Simple logic: 2 states only
-        if (creature.IsPlayerMounted && creature.IsFlying)
-        {
-            // Flying - show park prompt
-            SetPrompt(flyingPrompt, true);
-        }
-        else if (!creature.IsPlayerMounted)
+        // Simple logic: show "Grip to Ride" when near creature and not mounted
+        if (!creature.IsPlayerMounted)
         {
             // Not mounted - check distance
             float distance = Vector3.Distance(playerCamera.position, creature.transform.position);
@@ -113,7 +107,7 @@ public class CreatureRideUI : MonoBehaviour
         }
         else
         {
-            // Mounted but not flying (parking or idle) - hide UI
+            // Mounted (flying or parked) - hide UI
             SetPrompt("", false);
         }
     }

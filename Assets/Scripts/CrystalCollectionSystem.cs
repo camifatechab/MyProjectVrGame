@@ -26,10 +26,10 @@ public class CrystalCollectionSystem : MonoBehaviour
         instance = this;
     }
     
-    void Start()
+void Start()
     {
-        // Count crystals in scene automatically
-        Crystal[] crystalsInScene = FindObjectsOfType<Crystal>();
+        // Count crystals in scene automatically - look for CrystalCollectible component
+        CrystalCollectible[] crystalsInScene = FindObjectsByType<CrystalCollectible>(FindObjectsSortMode.None);
         totalCrystals = crystalsInScene.Length;
         
         if (enableDebugLogs)
