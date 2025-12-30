@@ -24,7 +24,7 @@ public class CrystalCollectible : MonoBehaviour
     private bool isCollected = false;
     // AudioSource no longer needed - using PlayClipAtPoint instead
 
-    void Start()
+void Start()
     {
         // Register with manager
         if (CrystalManager.Instance != null)
@@ -36,7 +36,11 @@ public class CrystalCollectible : MonoBehaviour
             Debug.LogWarning("CrystalManager not found in scene! Please add one.");
         }
         
-        // Note: No need to setup AudioSource - we use PlayClipAtPoint which handles it automatically!
+        // Auto-add particle effects if not present
+        if (GetComponent<CrystalParticles>() == null)
+        {
+            gameObject.AddComponent<CrystalParticles>();
+        }
     }
 
     void Update()
@@ -63,25 +67,32 @@ void Collect()
         
         isCollected = true;
         
-        // STEP 1: Hide visual IMMEDIATELY (instant feedback!)
+        // STEP 1: Trigger particle burst BEFORE hiding
+        CrystalParticles particles = GetComponent<CrystalParticles>();
+        if (particles != null)
+        {
+            // Detach particles so they continue after crystal is destroyed
+            particles.transform.SetParent(null);
+            particles.TriggerCollectionBurst();
+        }
+        
+        // STEP 2: Hide visual IMMEDIATELY (instant feedback!)
         MeshRenderer meshRenderer = GetComponent<MeshRenderer>();
         if (meshRenderer != null)
         {
             meshRenderer.enabled = false;
         }
         
-        // STEP 2: Disable collider IMMEDIATELY (prevent double collection)
+        // STEP 3: Disable collider IMMEDIATELY (prevent double collection)
         Collider col = GetComponent<Collider>();
         if (col != null)
         {
             col.enabled = false;
         }
         
-        // STEP 3: Play sound (after gem is hidden) - Use PlayClipAtPoint for reliability!
+        // STEP 4: Play sound (after gem is hidden) - Use PlayClipAtPoint for reliability!
         if (collectionSound != null)
         {
-            // PlayClipAtPoint creates a temporary AudioSource that auto-destroys after playing
-            // This ensures sound plays completely even if GameObject is destroyed
             AudioSource.PlayClipAtPoint(collectionSound, transform.position, soundVolume);
             Debug.Log($"<color=cyan>♪ Crystal collection sound playing at {transform.position}</color>");
         }
@@ -90,13 +101,13 @@ void Collect()
             Debug.LogWarning("<color=yellow>No collection sound assigned to crystal!</color>");
         }
         
-        // STEP 4: Notify manager (updates UI immediately)
+        // STEP 5: Notify manager (updates UI immediately)
         if (CrystalManager.Instance != null)
         {
             CrystalManager.Instance.OnCrystalCollected(this);
         }
         
-        // STEP 5: Destroy immediately (sound plays independently via PlayClipAtPoint)
-        Destroy(gameObject, 0.1f); // Small delay to ensure all callbacks complete
+        // STEP 6: Destroy immediately (sound and particles play independently)
+        Destroy(gameObject, 0.1f);
     }
 }

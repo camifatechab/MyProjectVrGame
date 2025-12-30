@@ -58,7 +58,11 @@ public class AutoJetpackController : MonoBehaviour
     [SerializeField] private MonoBehaviour moveProvider;
     
     
-    [Header("Audio Settings")]
+    [Header("Audio Manager")]
+    [Tooltip("Reference to JetpackAudioManager - will be auto-created if not assigned")]
+    [SerializeField] private JetpackAudioManager audioManager;
+    
+    [Header("Legacy Audio Settings (Deprecated - Use AudioManager)")]
     [Tooltip("Audio source for jetpack sound effects")]
     [SerializeField] private AudioSource jetpackAudioSource;
     
@@ -97,7 +101,11 @@ public class AutoJetpackController : MonoBehaviour
     // Collection trigger
     private GameObject collectionTrigger;
     
-    // Track previous grounded state
+    // Landing detection
+    private float previousVerticalVelocity = 0f;
+    
+    
+// Track previous grounded state
     private bool wasGrounded = true;
     
 void Start()
@@ -113,7 +121,10 @@ void Start()
         }
         
         
-        // Setup audio source
+        // Setup audio manager (new system)
+        SetupAudioManager();
+        
+        // Setup legacy audio source (deprecated but kept for compatibility)
         SetupAudioSource();
         
 // Initialize fuel
@@ -162,7 +173,24 @@ void Start()
         Debug.Log($"<color=green>✓ Fuel System Initialized: {currentFuel}/{maxFuel}</color>");
     }
     
-    void SetupCollectionTrigger()
+    void SetupAudioManager()
+    {
+        // Auto-create JetpackAudioManager if not assigned
+        if (audioManager == null)
+        {
+            audioManager = GetComponent<JetpackAudioManager>();
+            if (audioManager == null)
+            {
+                audioManager = gameObject.AddComponent<JetpackAudioManager>();
+                Debug.Log("<color=cyan>✓ Created JetpackAudioManager component</color>");
+            }
+        }
+        
+        Debug.Log("<color=green>✓ JetpackAudioManager Ready!</color>");
+    }
+    
+    
+void SetupCollectionTrigger()
     {
         // Create a child GameObject for collection detection
         collectionTrigger = new GameObject("CollectionTrigger");
@@ -296,8 +324,10 @@ void Update()
         UpdateFuelSystem();
         UpdateFuelRecharge();
         UpdateAudioFade();
+        UpdateAudioManagerState();
 
         ApplyMovement();
+        CheckLanding();
         UpdateGroundMovementState();
     }
     
@@ -329,20 +359,28 @@ void CheckJetpackActivation()
             {
                 Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
                 
-                // Start flying sound
-                if (jetpackAudioSource != null && flyingSound != null)
+                // Start jetpack haptic vibration
+                if (HapticsManager.Instance != null)
                 {
-                    // Cancel any ongoing fade out
+                    HapticsManager.Instance.StartJetpackVibration();
+                }
+                
+                // Start flying sound via AudioManager (new system)
+                if (audioManager != null)
+                {
+                    audioManager.StartThrust();
+                }
+                // Legacy audio fallback
+                else if (jetpackAudioSource != null && flyingSound != null)
+                {
                     if (isFadingOut)
                     {
                         isFadingOut = false;
                         jetpackAudioSource.volume = flyingSoundVolume;
                     }
-                    
                     if (!jetpackAudioSource.isPlaying)
                     {
                         jetpackAudioSource.Play();
-                        Debug.Log("<color=green>🔊 Flying sound started</color>");
                     }
                 }
             }
@@ -351,8 +389,22 @@ void CheckJetpackActivation()
                 string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
                 Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
                 
-                // Fade out flying sound smoothly
-                StartAudioFadeOut();
+                // Stop jetpack haptic vibration
+                if (HapticsManager.Instance != null)
+                {
+                    HapticsManager.Instance.StopJetpackVibration();
+                }
+                
+                // Stop thrust sound via AudioManager (new system)
+                if (audioManager != null)
+                {
+                    audioManager.StopThrust();
+                }
+                // Legacy audio fallback
+                else
+                {
+                    StartAudioFadeOut();
+                }
             }
         }
         
@@ -362,8 +414,21 @@ void CheckJetpackActivation()
             isFlying = false;
             Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
             
-            // Fade out sound when out of fuel
-            StartAudioFadeOut();
+            // Stop jetpack haptics
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.StopJetpackVibration();
+            }
+            
+            // Stop thrust sound via AudioManager
+            if (audioManager != null)
+            {
+                audioManager.StopThrust();
+            }
+            else
+            {
+                StartAudioFadeOut();
+            }
         }
     }
 
@@ -394,6 +459,12 @@ void CheckJetpackActivation()
                 {
                     isOutOfFuel = true;
                     Debug.Log("<color=red>⚠ OUT OF FUEL! ⚠</color>");
+                    
+                    // Stop the low fuel warning - we're past that now!
+                    if (audioManager != null)
+                    {
+                        audioManager.StopLowFuelWarning();
+                    }
                 }
             }
             
@@ -403,6 +474,12 @@ void CheckJetpackActivation()
             {
                 hasShownLowFuelWarning = true;
                 Debug.Log($"<color=orange>⚠ LOW FUEL WARNING: {fuelPercentage:F1}% remaining! ⚠</color>");
+                
+                // Play low fuel warning sound
+                if (audioManager != null)
+                {
+                    audioManager.PlayLowFuelWarning();
+                }
             }
         }
         else
@@ -447,6 +524,12 @@ void UpdateFuelRecharge()
             if (hasShownLowFuelWarning && (currentFuel / maxFuel * 100f) > lowFuelThreshold)
             {
                 hasShownLowFuelWarning = false;
+                
+                // Reset audio manager warning state
+                if (audioManager != null)
+                {
+                    audioManager.ResetLowFuelWarning();
+                }
             }
             
             // Recharge complete message
@@ -489,7 +572,38 @@ void UpdateFuelRecharge()
     public bool IsFlying() => isFlying;
 
     
-    void UpdateGroundMovementState()
+    void UpdateAudioManagerState()
+    {
+        if (audioManager == null) return;
+        
+        // Update wind audio based on altitude and speed
+        audioManager.UpdatePlayerState(transform.position.y, velocity.magnitude);
+    }
+    
+void CheckLanding()
+    {
+        // Detect landing (was in air, now grounded)
+        if (characterController.isGrounded && !wasGrounded)
+        {
+            // Haptic feedback for landing
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.PulseLanding(previousVerticalVelocity);
+            }
+            
+            // Audio feedback for landing
+            if (audioManager != null)
+            {
+                audioManager.PlayLanding(previousVerticalVelocity);
+            }
+        }
+        
+        // Store velocity for next frame
+        previousVerticalVelocity = velocity.y;
+    }
+    
+    
+void UpdateGroundMovementState()
     {
         if (moveProvider == null) return;
         
