@@ -718,16 +718,22 @@ private void AutoFindWaypoints()
         }
     }
     
-    private void CompleteLanding()
+private void CompleteLanding()
     {
         Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked, player dismounting");
         
-        // Play landing audio
+        // Strong haptic feedback for platform landing
+        if (HapticsManager.Instance != null)
+        {
+            HapticsManager.Instance.PulsePlatformLanding();
+        }
+        
+        // Play landing audio and stop ALL flight sounds (creature has landed)
         if (audioManager != null)
         {
             audioManager.PlayLanding();
             audioManager.PlayCallExcited();
-            audioManager.StopFlightAmbient();
+            audioManager.StopAllFlightSounds();
         }
         
         isParking = false;

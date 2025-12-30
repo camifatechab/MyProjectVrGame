@@ -3144,6 +3144,7 @@ MonoBehaviour:
   creatureLandingSound: {fileID: 8300000, guid: c59ec34a557bd034a88f6921779d98bd, type: 3}
   flightAmbientSound: {fileID: 8300000, guid: f3d7ae7764a2254438584ba7ca671c6c, type: 3}
   creatureBreathingSound: {fileID: 8300000, guid: fb61c0a63e4e1c0418a524849e739466, type: 3}
+  flyingWingFlapLoop: {fileID: 8300000, guid: 285cb387ebc3bd34d953ffea504938e6, type: 3}
   masterVolume: 1
   mountVolume: 1
   wingFlapVolume: 0.02
@@ -3151,6 +3152,11 @@ MonoBehaviour:
   landingVolume: 1
   ambientVolume: 0.5
   breathingVolume: 0.3
+  flyingWingVolume: 0.5
+  spatialBlend: 1
+  minDistance: 1
+  maxDistance: 50
+  rolloffMode: 1
   ambientFadeInDuration: 1
   ambientFadeOutDuration: 1.5
   syncWingFlapWithHaptics: 1
@@ -9634,6 +9640,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1538019879}
+    - targetCorrespondingSourceObject: {fileID: 1717954561962503725, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1538019884}
     - targetCorrespondingSourceObject: {fileID: 1767192433, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1474330848}
@@ -9764,6 +9773,33 @@ MonoBehaviour:
   comboPitchMax: 1.5
   victoryVolume: 1
   playerTransform: {fileID: 0}
+--- !u!114 &1538019884
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 912543128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1890a1b8b916dab4196308c2ef2a6935, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  crystalPulseIntensity: 0.5
+  crystalPulseDuration: 0.15
+  jetpackVibrationIntensity: 0.15
+  enableJetpackVibration: 1
+  softLandingIntensity: 0.3
+  hardLandingIntensity: 0.8
+  softLandingDuration: 0.1
+  hardLandingDuration: 0.25
+  hardLandingVelocity: 8
+  platformLandingIntensity: 0.7
+  platformLandingDuration: 0.3
+  victoryIntensity: 0.6
+  victoryDuration: 0.5
+  victoryPulseCount: 3
+  victoryPulseInterval: 0.15
 --- !u!1 &1563788903
 GameObject:
   m_ObjectHideFlags: 0

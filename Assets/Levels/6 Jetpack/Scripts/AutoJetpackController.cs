@@ -359,6 +359,12 @@ void CheckJetpackActivation()
             {
                 Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
                 
+                // Start jetpack haptic vibration
+                if (HapticsManager.Instance != null)
+                {
+                    HapticsManager.Instance.StartJetpackVibration();
+                }
+                
                 // Start flying sound via AudioManager (new system)
                 if (audioManager != null)
                 {
@@ -383,6 +389,12 @@ void CheckJetpackActivation()
                 string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
                 Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
                 
+                // Stop jetpack haptic vibration
+                if (HapticsManager.Instance != null)
+                {
+                    HapticsManager.Instance.StopJetpackVibration();
+                }
+                
                 // Stop thrust sound via AudioManager (new system)
                 if (audioManager != null)
                 {
@@ -401,6 +413,12 @@ void CheckJetpackActivation()
         {
             isFlying = false;
             Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
+            
+            // Stop jetpack haptics
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.StopJetpackVibration();
+            }
             
             // Stop thrust sound via AudioManager
             if (audioManager != null)
@@ -562,15 +580,22 @@ void UpdateFuelRecharge()
         audioManager.UpdatePlayerState(transform.position.y, velocity.magnitude);
     }
     
-    void CheckLanding()
+void CheckLanding()
     {
-        if (audioManager == null) return;
-        
         // Detect landing (was in air, now grounded)
         if (characterController.isGrounded && !wasGrounded)
         {
-            // Use the velocity we had before landing
-            audioManager.PlayLanding(previousVerticalVelocity);
+            // Haptic feedback for landing
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.PulseLanding(previousVerticalVelocity);
+            }
+            
+            // Audio feedback for landing
+            if (audioManager != null)
+            {
+                audioManager.PlayLanding(previousVerticalVelocity);
+            }
         }
         
         // Store velocity for next frame
