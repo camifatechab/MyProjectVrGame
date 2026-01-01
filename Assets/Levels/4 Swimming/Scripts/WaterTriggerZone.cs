@@ -3,7 +3,7 @@ using Lake;
 
 public class WaterTriggerZone : MonoBehaviour
 {
-private void Awake()
+    private void Awake()
     {
         ConfigureTrigger();
     }
@@ -13,7 +13,7 @@ private void Awake()
         ConfigureTrigger();
     }
     
-private void ConfigureTrigger()
+    private void ConfigureTrigger()
     {
         // Configure this object as a trigger zone
         BoxCollider col = GetComponent<BoxCollider>();
@@ -26,7 +26,7 @@ private void ConfigureTrigger()
         }
     }
 
-private void OnTriggerEnter(Collider other)
+    private void OnTriggerEnter(Collider other)
     {
         // Notify UnderwaterAtmosphere system
         UnderwaterAtmosphere atmosphere = FindObjectOfType<UnderwaterAtmosphere>();
@@ -46,7 +46,6 @@ private void OnTriggerEnter(Collider other)
         SwimmingLocomotion swimLoco = other.GetComponent<SwimmingLocomotion>();
         if (swimLoco != null)
         {
-            
             swimLoco.EnableSwimming(true);
         }
         
@@ -56,9 +55,16 @@ private void OnTriggerEnter(Collider other)
         {
             moveProvider.enabled = false;
         }
+
+        // Enable oxygen consumption
+        OxygenSystem oxygenSystem = other.GetComponent<OxygenSystem>();
+        if (oxygenSystem != null)
+        {
+            oxygenSystem.EnterWater(transform.position.y);
+        }
     }
 
-private void OnTriggerExit(Collider other)
+    private void OnTriggerExit(Collider other)
     {
         // Notify UnderwaterAtmosphere system
         UnderwaterAtmosphere atmosphere = FindObjectOfType<UnderwaterAtmosphere>();
@@ -78,8 +84,7 @@ private void OnTriggerExit(Collider other)
         SwimmingLocomotion swimLoco = other.GetComponent<SwimmingLocomotion>();
         if (swimLoco != null)
         {
-        
-swimLoco.EnableSwimming(false);
+            swimLoco.EnableSwimming(false);
         }
         
         // Re-enable regular continuous movement
@@ -87,6 +92,13 @@ swimLoco.EnableSwimming(false);
         if (moveProvider != null)
         {
             moveProvider.enabled = true;
+        }
+
+        // Stop oxygen consumption
+        OxygenSystem oxygenSystem = other.GetComponent<OxygenSystem>();
+        if (oxygenSystem != null)
+        {
+            oxygenSystem.ExitWater();
         }
     }
 }
