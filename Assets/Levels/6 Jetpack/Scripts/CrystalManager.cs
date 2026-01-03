@@ -188,7 +188,7 @@ void Update()
 
         yield return new WaitForSeconds(delayAfterDialogue);
 
-        // SceneManager.LoadScene(nextSceneName); // DISABLED FOR TESTING
+        SceneManager.LoadScene(nextSceneName);
     }
 
     /// <summary>
