@@ -73,7 +73,21 @@ public class RideableCreature : MonoBehaviour
     [Tooltip("Speed when flying to platform")]
     public float parkingSpeed = 20f;
     
-    [Header("Audio")]
+        [Header("Mount Protection")]
+    [Tooltip("Require player to look at creature to mount")]
+    public bool requireLookToMount = true;
+    
+    [Tooltip("Maximum angle from look direction to allow mount (degrees)")]
+    [Range(15f, 90f)]
+    public float mountLookAngle = 45f;
+    
+    [Tooltip("Block mounting while jetpack trigger is pressed")]
+    public bool triggerBlocksMount = true;
+    
+    [Tooltip("Cooldown after dismount before remounting is allowed")]
+    public float remountCooldown = 2.0f;
+    
+[Header("Audio")]
     [Tooltip("Reference to CreatureAudioManager - will be auto-created if not assigned")]
     public CreatureAudioManager audioManager;
     
@@ -96,6 +110,8 @@ public class RideableCreature : MonoBehaviour
     private float hapticTimer;
     private int currentFlightWaypointIndex = 0;
     private bool isReversePath = false;
+    private bool hasStartedPath = false;
+
     private float splineT = 0f;
     
     // XR Controllers for haptics
@@ -320,6 +336,21 @@ private void AutoFindWaypoints()
             
             if (gripPressed && !wasGripPressed)
             {
+                // Mount protection checks
+                if (triggerBlocksMount && IsTriggerPressed())
+                {
+                    // Jetpack trigger is pressed, block mount
+                    wasGripPressed = gripPressed;
+                    return;
+                }
+                
+                if (requireLookToMount && !IsPlayerLookingAtCreature())
+                {
+                    // Player not looking at creature, block mount
+                    wasGripPressed = gripPressed;
+                    return;
+                }
+                
                 MountCreature();
             }
             
@@ -344,7 +375,31 @@ private void AutoFindWaypoints()
             rightDevice = rightHandDevices[0];
     }
     
-    private bool IsGripPressed(InputDevice device)
+        private bool IsTriggerPressed()
+    {
+        float leftTrigger = 0f;
+        float rightTrigger = 0f;
+        
+        if (leftDevice.isValid)
+            leftDevice.TryGetFeatureValue(CommonUsages.trigger, out leftTrigger);
+        if (rightDevice.isValid)
+            rightDevice.TryGetFeatureValue(CommonUsages.trigger, out rightTrigger);
+        
+        return leftTrigger > 0.5f || rightTrigger > 0.5f;
+    }
+    
+    private bool IsPlayerLookingAtCreature()
+    {
+        if (playerCamera == null) return true;
+        
+        Vector3 toCreature = (transform.position - playerCamera.position).normalized;
+        Vector3 lookDir = playerCamera.forward;
+        
+        float angle = Vector3.Angle(lookDir, toCreature);
+        return angle <= mountLookAngle;
+    }
+    
+private bool IsGripPressed(InputDevice device)
     {
         if (!device.isValid) return false;
         
@@ -417,12 +472,19 @@ private void AutoFindWaypoints()
             audioManager.StartFlightAmbient();
         }
         
-        if (isReversePath)
-            currentFlightWaypointIndex = flightPathWaypoints.Count - 2;
-        else
-            currentFlightWaypointIndex = 0;
+        // Only reset waypoint index if this is the first time starting the path
+        // Otherwise continue from where we left off
+        if (!hasStartedPath)
+        {
+            if (isReversePath)
+                currentFlightWaypointIndex = flightPathWaypoints.Count - 2;
+            else
+                currentFlightWaypointIndex = 0;
+            
+            splineT = 0f;
+            hasStartedPath = true;
+        }
         
-        splineT = 0f;
         hapticTimer = 0f;
         lastCreaturePosition = transform.position;
         
@@ -437,9 +499,10 @@ private void AutoFindWaypoints()
         
         if (xrOrigin != null)
         {
-            float rideBob = Mathf.Sin(Time.time * idleBobSpeed) * idleBobAmplitude;
-            Vector3 bobbedSeatOffset = seatOffset + new Vector3(0f, rideBob, 0f);
-            xrOrigin.localPosition = bobbedSeatOffset;
+            // Fixed position - no bobbing while riding
+            xrOrigin.localPosition = seatOffset;
+            
+            // Lock body rotation to creature direction, head tracking still works
             float creatureYaw = transform.eulerAngles.y;
             xrOrigin.rotation = Quaternion.Euler(0, creatureYaw, 0);
         }
@@ -788,7 +851,7 @@ private System.Collections.IEnumerator DismountOnPlatform()
         if (uiCanvas != null) uiCanvas.enabled = true;
         
         isPlayerMounted = false;
-        dismountCooldown = DISMOUNT_COOLDOWN_TIME;
+        dismountCooldown = remountCooldown;
         
         // Play dismount audio
         if (audioManager != null)
@@ -882,7 +945,7 @@ private void SendHapticPulse()
         
         isPlayerMounted = false;
         isFlying = false;
-        dismountCooldown = DISMOUNT_COOLDOWN_TIME; // Prevent immediate remount
+        dismountCooldown = remountCooldown; // Prevent immediate remount
         
         // Play dismount audio
         if (audioManager != null)

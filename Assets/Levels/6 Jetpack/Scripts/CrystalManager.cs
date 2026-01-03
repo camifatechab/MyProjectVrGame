@@ -1,130 +1,3 @@
-/*using UnityEngine;
-using System.Collections.Generic;
-
-/// <summary>
-/// Manages all crystals in the scene.
-/// Tracks collection progress and can trigger events when all collected.
-/// </summary>
-public class CrystalManager : MonoBehaviour
-{
-    // Singleton pattern for easy access
-    public static CrystalManager Instance { get; private set; }
-    
-    [Header("Crystal Tracking")]
-    private List<CrystalCollectible> allCrystals = new List<CrystalCollectible>();
-    private int collectedCount = 0;
-    
-    [Header("Debug")]
-    [Tooltip("Show collection messages in console")]
-    public bool showDebugMessages = true;
-    
-    // Properties for easy access
-    public int TotalCrystals => allCrystals.Count;
-    public int CollectedCrystals => collectedCount;
-    public int RemainingCrystals => TotalCrystals - CollectedCrystals;
-    public bool AllCollected => RemainingCrystals == 0 && TotalCrystals > 0;
-    
-    void Awake()
-    {
-        // Singleton setup
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Debug.LogWarning("Multiple CrystalManagers found! Destroying duplicate.");
-            Destroy(gameObject);
-        }
-    }
-    
-    /// <summary>
-    /// Register a crystal with the manager (called by CrystalCollectible on Start)
-    /// </summary>
-    public void RegisterCrystal(CrystalCollectible crystal)
-    {
-        if (!allCrystals.Contains(crystal))
-        {
-            allCrystals.Add(crystal);
-            
-            if (showDebugMessages)
-            {
-                Debug.Log($"Crystal registered. Total crystals: {TotalCrystals}");
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Called when a crystal is collected
-    /// </summary>
-public void OnCrystalCollected(CrystalCollectible crystal)
-    {
-        if (allCrystals.Contains(crystal))
-        {
-            collectedCount++;
-            
-            // Haptic feedback for crystal collection
-            if (HapticsManager.Instance != null)
-            {
-                HapticsManager.Instance.PulseCrystalCollect();
-            }
-            
-            if (showDebugMessages)
-            {
-                Debug.Log($"Crystal collected! Progress: {CollectedCrystals}/{TotalCrystals} ({RemainingCrystals} remaining)");
-            }
-            
-            // Check if all collected
-            if (AllCollected)
-            {
-                OnAllCrystalsCollected();
-            }
-        }
-    }
-    
-    /// <summary>
-    /// Called when all crystals have been collected
-    /// </summary>
-void OnAllCrystalsCollected()
-    {
-        if (showDebugMessages)
-        {
-            Debug.Log("🎉 ALL CRYSTALS COLLECTED! Mission Complete!");
-        }
-        
-        // Victory haptic feedback
-        if (HapticsManager.Instance != null)
-        {
-            HapticsManager.Instance.PulseVictory();
-        }
-    }
-    
-    /// <summary>
-    /// Reset collection progress (useful for testing)
-    /// </summary>
-    public void ResetProgress()
-    {
-        collectedCount = 0;
-        
-        if (showDebugMessages)
-        {
-            Debug.Log("Crystal collection progress reset.");
-        }
-    }
-    
-    // Display info in Unity Editor
-    void OnGUI()
-    {
-        if (showDebugMessages && Application.isPlaying)
-        {
-            // Top-left corner display
-            GUI.Box(new Rect(10, 10, 200, 60), "");
-            GUI.Label(new Rect(20, 20, 180, 20), $"Crystals: {CollectedCrystals}/{TotalCrystals}");
-            GUI.Label(new Rect(20, 40, 180, 20), $"Remaining: {RemainingCrystals}");
-        }
-    }
-}*/
-
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -133,7 +6,7 @@ using UnityEngine.SceneManagement;
 
 /// <summary>
 /// Manages all crystals in the scene.
-/// Tracks collection progress and triggers final sequence when all are collected.
+/// Tracks collection progress, timing, and triggers final sequence when all are collected.
 /// </summary>
 public class CrystalManager : MonoBehaviour
 {
@@ -147,7 +20,7 @@ public class CrystalManager : MonoBehaviour
     public TMP_Text subtitleText;
     [TextArea]
     public string finalDialogueLine;
-    public AudioSource dialogueSource;     // 2D AudioSource
+    public AudioSource dialogueSource;
     public AudioClip finalDialogueClip;
 
     [Header("Scene Transition")]
@@ -155,8 +28,35 @@ public class CrystalManager : MonoBehaviour
     public string nextSceneName = "CampfireHub";
     public float delayAfterDialogue = 1.5f;
 
+    [Header("Completion UI")]
+    [Tooltip("How long to display the completion UI before transitioning")]
+    public float completionDisplayTime = 8f;
+
+    [Header("Timer & Scoring")]
+    [Tooltip("Time threshold for 3 stars (in seconds)")]
+    public float threeStarTime = 90f;   // 1:30
+    [Tooltip("Time threshold for 2 stars (in seconds)")]
+    public float twoStarTime = 150f;    // 2:30
+    [Tooltip("Time threshold for 1 star (in seconds)")]
+    public float oneStarTime = 240f;    // 4:00
+    
+    private float elapsedTime = 0f;
+    private bool timerRunning = false;
+    public float ElapsedTime => elapsedTime;
+    
+    // PlayerPrefs key for best time
+    private const string BEST_TIME_KEY = "JetpackCrystals_BestTime";
+
     [Header("Debug")]
     public bool showDebugMessages = true;
+
+    [Header("Test Button (Play Mode Only)")]
+    [Tooltip("Check this box during Play Mode to trigger completion")]
+    public bool triggerCompletion = false;
+    [Tooltip("Check this box during Play Mode to clear best time")]
+    public bool clearBestTime = false;
+
+
 
     public int TotalCrystals => allCrystals.Count;
     public int CollectedCrystals => collectedCount;
@@ -178,6 +78,39 @@ public class CrystalManager : MonoBehaviour
 
         if (subtitleText)
             subtitleText.text = "";
+    }
+
+    void Start()
+    {
+        // Start timer when scene loads
+        timerRunning = true;
+        elapsedTime = 0f;
+        
+        if (showDebugMessages)
+            Debug.Log("<color=cyan>Crystal Timer started!</color>");
+    }
+
+void Update()
+    {
+        // Track elapsed time
+        if (timerRunning)
+        {
+            elapsedTime += Time.deltaTime;
+        }
+
+        // Inspector checkbox trigger for testing
+        if (triggerCompletion && !sequenceStarted)
+        {
+            triggerCompletion = false;
+            DebugCompleteAllCrystals();
+        }
+
+        // Inspector checkbox to clear best time
+        if (clearBestTime)
+        {
+            clearBestTime = false;
+            DebugClearBestTime();
+        }
     }
 
     public void RegisterCrystal(CrystalCollectible crystal)
@@ -209,23 +142,45 @@ public class CrystalManager : MonoBehaviour
 
     private IEnumerator FinalSequence()
     {
+        // Stop timer
+        timerRunning = false;
+        float completionTime = elapsedTime;
+        
         if (showDebugMessages)
-            Debug.Log("ALL CRYSTALS COLLECTED – FINAL SEQUENCE");
+            Debug.Log($"ALL CRYSTALS COLLECTED - Time: {FormatTime(completionTime)}");
+
+        // Calculate stars and check for new record
+        int stars = GetStarRating(completionTime);
+        bool isNewRecord = TrySaveBestTime(completionTime);
+        float bestTime = GetBestTime();
+
+        if (showDebugMessages)
+            Debug.Log($"Stars: {stars}, Best Time: {FormatTime(bestTime)}, New Record: {isNewRecord}");
+
+        // Show completion UI with timer data
+        if (CrystalCompleteUI.Instance != null)
+        {
+            CrystalCompleteUI.Instance.ShowCompletion(completionTime, stars, bestTime, isNewRecord);
+        }
 
         // Show subtitle
         if (subtitleText)
             subtitleText.text = finalDialogueLine;
 
-        float waitTime = delayAfterDialogue;
-
-        // Play dialogue
+        // Play dialogue audio if available
         if (dialogueSource && finalDialogueClip)
         {
             dialogueSource.PlayOneShot(finalDialogueClip);
-            waitTime = finalDialogueClip.length;
         }
 
-        yield return new WaitForSeconds(waitTime);
+        // Wait for completion display time
+        yield return new WaitForSeconds(completionDisplayTime);
+
+        // Hide completion UI before fade
+        if (CrystalCompleteUI.Instance != null)
+        {
+            CrystalCompleteUI.Instance.Hide();
+        }
 
         // Fade out
         if (fadeScreen)
@@ -236,12 +191,95 @@ public class CrystalManager : MonoBehaviour
         SceneManager.LoadScene(nextSceneName);
     }
 
+    /// <summary>
+    /// Calculate star rating based on completion time
+    /// </summary>
+    public int GetStarRating(float time)
+    {
+        if (time <= threeStarTime) return 3;
+        if (time <= twoStarTime) return 2;
+        if (time <= oneStarTime) return 1;
+        return 0;
+    }
+
+    /// <summary>
+    /// Get best time from PlayerPrefs (returns -1 if no best time saved)
+    /// </summary>
+    public float GetBestTime()
+    {
+        return PlayerPrefs.GetFloat(BEST_TIME_KEY, -1f);
+    }
+
+    /// <summary>
+    /// Save best time if it's a new record
+    /// </summary>
+    public bool TrySaveBestTime(float time)
+    {
+        float currentBest = GetBestTime();
+        
+        if (currentBest < 0 || time < currentBest)
+        {
+            PlayerPrefs.SetFloat(BEST_TIME_KEY, time);
+            PlayerPrefs.Save();
+            return true; // New record!
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Format time as M:SS
+    /// </summary>
+    public static string FormatTime(float seconds)
+    {
+        int mins = Mathf.FloorToInt(seconds / 60f);
+        int secs = Mathf.FloorToInt(seconds % 60f);
+        return $"{mins}:{secs:D2}";
+    }
+
     public void ResetProgress()
     {
         collectedCount = 0;
         sequenceStarted = false;
+        timerRunning = true;
+        elapsedTime = 0f;
 
         if (showDebugMessages)
             Debug.Log("Crystal progress reset.");
+    }
+
+    /// <summary>
+    /// DEBUG: Instantly complete all crystals for testing UI
+    /// </summary>
+    [ContextMenu("DEBUG: Complete All Crystals")]
+    public void DebugCompleteAllCrystals()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode to test completion!");
+            return;
+        }
+
+        if (sequenceStarted)
+        {
+            Debug.LogWarning("Sequence already started!");
+            return;
+        }
+
+        Debug.Log("<color=yellow>DEBUG: Forcing crystal completion...</color>");
+        
+        collectedCount = allCrystals.Count;
+        sequenceStarted = true;
+        StartCoroutine(FinalSequence());
+    }
+
+    /// <summary>
+    /// DEBUG: Clear best time record
+    /// </summary>
+    [ContextMenu("DEBUG: Clear Best Time")]
+    public void DebugClearBestTime()
+    {
+        PlayerPrefs.DeleteKey(BEST_TIME_KEY);
+        PlayerPrefs.Save();
+        Debug.Log("<color=yellow>DEBUG: Best time cleared!</color>");
     }
 }
