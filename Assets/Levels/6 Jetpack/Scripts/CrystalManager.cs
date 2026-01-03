@@ -37,6 +37,12 @@ public class CrystalManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
+
+
+
+
+
+
     
     /// <summary>
     /// Register a crystal with the manager (called by CrystalCollectible on Start)
@@ -59,26 +65,24 @@ public class CrystalManager : MonoBehaviour
     /// </summary>
 public void OnCrystalCollected(CrystalCollectible crystal)
     {
-        if (allCrystals.Contains(crystal))
+        if (!allCrystals.Contains(crystal)) return;
+
+        collectedCount++;
+
+        if (showDebugMessages)
+            Debug.Log($"Crystal collected {CollectedCrystals}/{TotalCrystals}");
+
+        if (AllCollected && !sequenceStarted)
         {
-            collectedCount++;
+            sequenceStarted = true;
             
-            // Haptic feedback for crystal collection
-            if (HapticsManager.Instance != null)
+            // Show completion UI
+            if (CrystalCompleteUI.Instance != null)
             {
-                HapticsManager.Instance.PulseCrystalCollect();
+                CrystalCompleteUI.Instance.ShowCompletion();
             }
             
-            if (showDebugMessages)
-            {
-                Debug.Log($"Crystal collected! Progress: {CollectedCrystals}/{TotalCrystals} ({RemainingCrystals} remaining)");
-            }
-            
-            // Check if all collected
-            if (AllCollected)
-            {
-                OnAllCrystalsCollected();
-            }
+            StartCoroutine(FinalSequence());
         }
     }
     
@@ -123,6 +127,61 @@ void OnAllCrystalsCollected()
             GUI.Label(new Rect(20, 40, 180, 20), $"Remaining: {RemainingCrystals}");
         }
     }
+
+
+
+    /// <summary>
+    /// DEBUG: Instantly complete all crystals for testing UI
+    /// Access via right-click on component in Inspector
+    /// </summary>
+    [ContextMenu("DEBUG: Complete All Crystals")]
+    public void DebugCompleteAllCrystals()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode to test completion!");
+            return;
+        }
+
+        if (sequenceStarted)
+        {
+            Debug.LogWarning("Sequence already started!");
+            return;
+        }
+
+        Debug.Log("<color=yellow>DEBUG: Forcing crystal completion...</color>");
+        
+        // Set collected count to total
+        collectedCount = allCrystals.Count;
+        
+        // Trigger the sequence
+        sequenceStarted = true;
+        StartCoroutine(FinalSequence());
+    }
+
+    /// <summary>
+    /// DEBUG: Just show the completion UI without scene transition
+    /// </summary>
+    [ContextMenu("DEBUG: Show Completion UI Only")]
+    public void DebugShowCompletionUIOnly()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("Must be in Play Mode to test UI!");
+            return;
+        }
+
+        Debug.Log("<color=cyan>DEBUG: Showing completion UI...</color>");
+        
+        if (CrystalCompleteUI.Instance != null)
+        {
+            CrystalCompleteUI.Instance.ShowCompletion();
+        }
+        else
+        {
+            Debug.LogError("CrystalCompleteUI.Instance not found!");
+        }
+    }
 }*/
 
 using UnityEngine;
@@ -154,6 +213,11 @@ public class CrystalManager : MonoBehaviour
     public FadeScreen fadeScreen;
     public string nextSceneName = "CampfireHub";
     public float delayAfterDialogue = 1.5f;
+
+    [Header("Completion UI")]
+    [Tooltip("How long to display the completion UI before transitioning")]
+    public float completionDisplayTime = 8f;
+
 
     [Header("Debug")]
     public bool showDebugMessages = true;
@@ -212,20 +276,32 @@ public class CrystalManager : MonoBehaviour
         if (showDebugMessages)
             Debug.Log("ALL CRYSTALS COLLECTED – FINAL SEQUENCE");
 
+        // Show completion UI with animation
+        if (CrystalCompleteUI.Instance != null)
+        {
+            CrystalCompleteUI.Instance.ShowCompletion();
+        }
+
+
         // Show subtitle
         if (subtitleText)
             subtitleText.text = finalDialogueLine;
 
-        float waitTime = delayAfterDialogue;
-
-        // Play dialogue
+        // Play dialogue audio if available
         if (dialogueSource && finalDialogueClip)
         {
             dialogueSource.PlayOneShot(finalDialogueClip);
-            waitTime = finalDialogueClip.length;
         }
 
-        yield return new WaitForSeconds(waitTime);
+        // Wait for completion display time (allows player to enjoy the moment)
+        yield return new WaitForSeconds(completionDisplayTime);
+
+        // Hide completion UI before fade
+        if (CrystalCompleteUI.Instance != null)
+        {
+            CrystalCompleteUI.Instance.Hide();
+        }
+
 
         // Fade out
         if (fadeScreen)
