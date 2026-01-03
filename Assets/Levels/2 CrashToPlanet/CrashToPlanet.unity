@@ -1468,9 +1468,17 @@ PrefabInstance:
       value: SubtitleCanvas
       objectReference: {fileID: 0}
     - target: {fileID: 5485724590079133578, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
+      propertyPath: m_fontSize
+      value: 0.03
+      objectReference: {fileID: 0}
+    - target: {fileID: 5485724590079133578, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_fontAsset
       value: 
       objectReference: {fileID: 11400000, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
+    - target: {fileID: 5485724590079133578, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
+      propertyPath: m_fontSizeBase
+      value: 0.03
+      objectReference: {fileID: 0}
     - target: {fileID: 5485724590079133578, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_sharedMaterial
       value: 
@@ -1521,7 +1529,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8100535789411367179, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 1.2
+      value: 0.521
       objectReference: {fileID: 0}
     - target: {fileID: 8100535789411367179, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_LocalRotation.w
@@ -1545,7 +1553,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8100535789411367179, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -0.6
+      value: -0.201
       objectReference: {fileID: 0}
     - target: {fileID: 8100535789411367179, guid: 0a63ebecb926a7646aa7ed12c81f4c7d, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
