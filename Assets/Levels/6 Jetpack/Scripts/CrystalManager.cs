@@ -57,11 +57,17 @@ public class CrystalManager : MonoBehaviour
     /// <summary>
     /// Called when a crystal is collected
     /// </summary>
-    public void OnCrystalCollected(CrystalCollectible crystal)
+public void OnCrystalCollected(CrystalCollectible crystal)
     {
         if (allCrystals.Contains(crystal))
         {
             collectedCount++;
+            
+            // Haptic feedback for crystal collection
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.PulseCrystalCollect();
+            }
             
             if (showDebugMessages)
             {
@@ -79,19 +85,18 @@ public class CrystalManager : MonoBehaviour
     /// <summary>
     /// Called when all crystals have been collected
     /// </summary>
-    void OnAllCrystalsCollected()
+void OnAllCrystalsCollected()
     {
         if (showDebugMessages)
         {
             Debug.Log("🎉 ALL CRYSTALS COLLECTED! Mission Complete!");
         }
         
-        // TODO: Add your completion logic here
-        // Examples:
-        // - Show victory UI
-        // - Play completion sound
-        // - Enable spaceship repair
-        // - Unlock next level
+        // Victory haptic feedback
+        if (HapticsManager.Instance != null)
+        {
+            HapticsManager.Instance.PulseVictory();
+        }
     }
     
     /// <summary>
