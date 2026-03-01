@@ -124,32 +124,32 @@ void SetupImpactParticle()
         impactParticle = pfxGO.AddComponent<ParticleSystem>();
 
         var main = impactParticle.main;
-        main.loop         = false;
-        main.playOnAwake  = false;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.4f);
-        main.startSpeed    = new ParticleSystem.MinMaxCurve(4f, 10f);
-        main.startSize     = new ParticleSystem.MinMaxCurve(0.08f, 0.22f);
-        main.maxParticles  = 80;
-        main.startColor    = new ParticleSystem.MinMaxGradient(Color.yellow, new Color(1f, 0.3f, 0f));
-        main.gravityModifier = 0.4f;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.loop             = false;
+        main.playOnAwake      = false;
+        main.startLifetime    = new ParticleSystem.MinMaxCurve(0.3f, 0.6f);
+        main.startSpeed       = new ParticleSystem.MinMaxCurve(6f, 16f);
+        main.startSize        = new ParticleSystem.MinMaxCurve(0.25f, 0.55f);
+        main.maxParticles     = 150;
+        main.startColor       = new ParticleSystem.MinMaxGradient(Color.yellow, new Color(1f, 0.3f, 0f));
+        main.gravityModifier  = 0.5f;
+        main.simulationSpace  = ParticleSystemSimulationSpace.World;
 
         var emission = impactParticle.emission;
-        emission.enabled = true;
+        emission.enabled      = true;
         emission.rateOverTime = 0f;
-        emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 30) });
+        emission.SetBursts(new ParticleSystem.Burst[] { new ParticleSystem.Burst(0f, 60) });
 
         var shape = impactParticle.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
-        shape.radius    = 0.05f;
+        shape.radius    = 0.15f;
 
-        // Fade out over lifetime
+        // Fade out
         var col = impactParticle.colorOverLifetime;
         col.enabled = true;
         Gradient grad = new Gradient();
         grad.SetKeys(
-            new GradientColorKey[] { new GradientColorKey(Color.yellow, 0f), new GradientColorKey(new Color(1f,0.2f,0f), 1f) },
-            new GradientAlphaKey[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) }
+            new GradientColorKey[] { new GradientColorKey(Color.yellow, 0f), new GradientColorKey(new Color(1f, 0.15f, 0f), 0.5f), new GradientColorKey(new Color(0.3f, 0.3f, 0.3f), 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) }
         );
         col.color = new ParticleSystem.MinMaxGradient(grad);
 
@@ -158,8 +158,13 @@ void SetupImpactParticle()
         sizeLife.enabled = true;
         AnimationCurve sizeCurve = new AnimationCurve();
         sizeCurve.AddKey(0f, 1f);
+        sizeCurve.AddKey(0.3f, 1.3f);
         sizeCurve.AddKey(1f, 0f);
         sizeLife.size = new ParticleSystem.MinMaxCurve(1f, sizeCurve);
+
+        // Continuous sparks while hitting
+        var subEmitter = impactParticle.subEmitters;
+        subEmitter.enabled = false;
 
         var pfxRenderer = impactParticle.GetComponent<ParticleSystemRenderer>();
         pfxRenderer.renderMode = ParticleSystemRenderMode.Billboard;
