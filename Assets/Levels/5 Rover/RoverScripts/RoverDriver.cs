@@ -57,6 +57,7 @@ public class RoverDriver : MonoBehaviour
     private float smoothedSteer     = 0f;
     private float dismountCooldown  = 0f;
     private float rumbleTimer       = 0f;
+    private float dismountHoldTimer = 0f;   // how long both grips held for dismount
 
     void Start()
     {
@@ -105,11 +106,15 @@ public class RoverDriver : MonoBehaviour
             wheelMeshes = found.ToArray();
         }
 
+        // Force Rigidbody to kinematic — rover must never fall or be pushed by physics
+        var rb = GetComponent<Rigidbody>();
+        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
+
         if (seatAnchor == null)
         {
             var go = new GameObject("SeatAnchor");
             go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(-0.23f, 0.55f, 0.1f);
+            go.transform.localPosition = new Vector3(-0.55f, 0.55f, -0.25f);
             seatAnchor = go.transform;
         }
     }
@@ -122,7 +127,6 @@ public class RoverDriver : MonoBehaviour
         bool leftGrip  = GetGrip(leftDevice);
         bool rightGrip = GetGrip(rightDevice);
         bool bothGrips = leftGrip && rightGrip;
-        bool bButton   = GetButton(rightDevice, CommonUsages.secondaryButton);
 
         if (!isMounted)
         {
@@ -134,11 +138,21 @@ public class RoverDriver : MonoBehaviour
         }
         else
         {
-            if (bButton && dismountCooldown <= 0f)
+            // Dismount: hold both grips for 1.5s (deliberate, won't fire by accident)
+            if (bothGrips && dismountCooldown <= 0f)
             {
-                Dismount();
-                gripsLastFrame = bothGrips;
-                return;
+                dismountHoldTimer += Time.deltaTime;
+                if (dismountHoldTimer >= 0.5f)
+                {
+                    dismountHoldTimer = 0f;
+                    Dismount();
+                    gripsLastFrame = bothGrips;
+                    return;
+                }
+            }
+            else
+            {
+                dismountHoldTimer = 0f;
             }
 
             float throttle = 0f;
@@ -253,7 +267,7 @@ public class RoverDriver : MonoBehaviour
     void Mount()
     {
         isMounted        = true;
-        dismountCooldown = 1f;
+        dismountCooldown = 2f;
         currentSpeed     = 0f;
         Debug.Log("[RoverDriver] Mounted!");
 
@@ -280,8 +294,9 @@ public class RoverDriver : MonoBehaviour
 
     void Dismount()
     {
-        isMounted    = false;
-        currentSpeed = 0f;
+        isMounted         = false;
+        currentSpeed      = 0f;
+        dismountHoldTimer = 0f;
         Debug.Log("[RoverDriver] Dismounted!");
 
         SendHaptic(leftDevice,  0f, 0f);

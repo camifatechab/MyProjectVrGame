@@ -1,8 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-/// Dragon combat AI — survival mode.
-/// All 4 dragons attack simultaneously. Short rests. Spread fire when enraged.
+/// Dragon combat AI — gradual aggression.
+/// Aggression ramps from 0→1 over aggressionRampTime seconds (shared across all dragons).
+/// At 0: 1 attacker, slow, long rests, no spread.
+/// At 1: 4 attackers, fast, short rests, spread fire on rage.
 public class DragonAttack : MonoBehaviour
 {
     [Header("Detection")]
@@ -11,12 +13,14 @@ public class DragonAttack : MonoBehaviour
     public float minDistance    = 7f;
 
     [Header("Attack")]
-    public float      attackCooldown = 1.5f;
+    public float      attackCooldownMin = 1.5f;   // at full aggression
+    public float      attackCooldownMax = 4.5f;   // at zero aggression
     public GameObject projectilePrefab;
     public Transform  firePoint;
 
     [Header("Normal Movement")]
-    public float moveSpeed           = 10f;
+    public float moveSpeedMin        = 5f;    // at zero aggression
+    public float moveSpeedMax        = 10f;   // at full aggression
     public float turnSpeed           = 3.5f;
     public float bobAmplitude        = 1f;
     public float bobSpeed            = 1.2f;
@@ -33,10 +37,8 @@ public class DragonAttack : MonoBehaviour
     public float rageDuration    = 10f;
     public int   rageExtraSwoops = 3;
 
-    [Header("Spread Fire (rage only)")]
-    [Tooltip("Number of projectiles fired in a spread when enraged")]
+    [Header("Spread Fire (rage only, high aggression)")]
     public int   spreadCount = 3;
-    [Tooltip("Angle between spread projectiles in degrees")]
     public float spreadAngle = 15f;
 
     [Header("Sky Sector")]
@@ -47,14 +49,36 @@ public class DragonAttack : MonoBehaviour
     public float separationRadius = 12f;
     public float separationWeight = 4f;
 
-    [Header("Balance")]
-    [Tooltip("Max dragons in Attack/Swoop at the same time (4 = all)")]
-    public int maxSimultaneousAttackers = 4;
+    [Header("Aggression Ramp")]
+    [Tooltip("Seconds to reach full aggression from zero")]
+    public float aggressionRampTime = 120f;
 
-    [Header("Audio")]
-    public AudioSource audioSource;
-    public AudioClip   roarSound;
-    public AudioClip   fireSound;
+    // --- shared aggression timer (all dragons read from same static clock) ---
+    private static float s_aggressionTimer = 0f;
+    private static float s_rampTime        = 120f;
+
+    // Aggression 0..1
+    private static float Aggression => Mathf.Clamp01(s_aggressionTimer / s_rampTime);
+
+    // Max simultaneous attackers: 1 at 0 aggression → 4 at full
+    private static int MaxAttackers => Mathf.RoundToInt(Mathf.Lerp(1f, 4f, Aggression));
+
+    // Rest time: long at low aggression → short at high
+    private float RestTimeMin => Mathf.Lerp(6f, 1f,  Aggression);
+    private float RestTimeMax => Mathf.Lerp(12f, 3f, Aggression);
+
+    // First patrol delay before first swoop: long at low aggression
+    private float FirstPatrolMin => Mathf.Lerp(8f,  1f, Aggression);
+    private float FirstPatrolMax => Mathf.Lerp(18f, 3f, Aggression);
+
+    // Current attack cooldown
+    private float AttackCooldown => Mathf.Lerp(attackCooldownMax, attackCooldownMin, Aggression);
+
+    // Current move speed
+    private float MoveSpeed => Mathf.Lerp(moveSpeedMin, moveSpeedMax, Aggression);
+
+    // Spread fire only above 70% aggression
+    private bool CanSpread => IsRaged && Aggression > 0.7f && spreadCount > 1;
 
     // --- shared ---
     private static readonly List<DragonAttack> all = new List<DragonAttack>();
@@ -90,6 +114,7 @@ public class DragonAttack : MonoBehaviour
 
     void Start()
     {
+        s_rampTime  = aggressionRampTime;
         patrol      = GetComponent<FlyingCreaturePatrol>();
         bobOffset   = Random.Range(0f, Mathf.PI * 2f);
         sectorIndex = all.IndexOf(this) % 4;
@@ -110,7 +135,8 @@ public class DragonAttack : MonoBehaviour
         }
 
         mode      = Mode.SkyPatrol;
-        modeTimer = Random.Range(0.5f, 2f) + sectorIndex * 1f;
+        // Stagger first attack: each dragon waits longer at start
+        modeTimer = Random.Range(FirstPatrolMin, FirstPatrolMax) + sectorIndex * 3f;
     }
 
     public void OnHit()
@@ -120,7 +146,7 @@ public class DragonAttack : MonoBehaviour
 
         if (mode == Mode.SkyPatrol || mode == Mode.Rest)
         {
-            if (AttackerCount() < maxSimultaneousAttackers)
+            if (AttackerCount() < MaxAttackers)
             {
                 mode      = Mode.Swoop;
                 modeTimer = 0f;
@@ -130,6 +156,10 @@ public class DragonAttack : MonoBehaviour
 
     void Update()
     {
+        // Advance shared aggression timer (any dragon can tick it — idempotent per frame via static)
+        s_aggressionTimer += Time.deltaTime;
+        s_aggressionTimer  = Mathf.Min(s_aggressionTimer, aggressionRampTime);
+
         if (player == null) { if (Camera.main != null) player = Camera.main.transform; return; }
 
         float dist = Vector3.Distance(transform.position, player.position);
@@ -144,7 +174,7 @@ public class DragonAttack : MonoBehaviour
         {
             case Mode.SkyPatrol:
             case Mode.Rest:
-                if (modeTimer <= 0f && AttackerCount() < maxSimultaneousAttackers)
+                if (modeTimer <= 0f && AttackerCount() < MaxAttackers)
                 {
                     mode      = Mode.Swoop;
                     modeTimer = 0f;
@@ -155,7 +185,9 @@ public class DragonAttack : MonoBehaviour
                 if (dist <= attackRange)
                 {
                     mode      = Mode.Attack;
-                    modeTimer = IsRaged ? Random.Range(6f, 10f) : Random.Range(8f, 14f);
+                    modeTimer = IsRaged
+                        ? Random.Range(6f, 10f)
+                        : Mathf.Lerp(12f, 8f, Aggression);
                 }
                 else if (modeTimer < -10f)
                 {
@@ -172,10 +204,7 @@ public class DragonAttack : MonoBehaviour
                         mode      = Mode.Swoop;
                         modeTimer = 0f;
                     }
-                    else
-                    {
-                        GoRetreat();
-                    }
+                    else GoRetreat();
                 }
                 break;
 
@@ -184,7 +213,7 @@ public class DragonAttack : MonoBehaviour
                 if (heightDiff < 5f || modeTimer <= 0f)
                 {
                     mode      = Mode.Rest;
-                    modeTimer = Random.Range(1f, 3f);
+                    modeTimer = Random.Range(RestTimeMin, RestTimeMax);
                 }
                 break;
         }
@@ -212,7 +241,7 @@ public class DragonAttack : MonoBehaviour
         goal += sep;
 
         // --- Move ---
-        float spd  = IsRaged ? rageMoveSpeed : moveSpeed;
+        float spd  = IsRaged ? rageMoveSpeed : MoveSpeed;
         float tSpd = IsRaged ? rageTurnSpeed : turnSpeed;
         if (smoothedDir.y < 0f) spd *= 1f + Mathf.Abs(smoothedDir.y) * (diveSpeedMultiplier - 1f);
 
@@ -228,17 +257,17 @@ public class DragonAttack : MonoBehaviour
         // --- Rotation ---
         if (smoothedDir.sqrMagnitude > 0.001f)
         {
-            Quaternion tRot    = Quaternion.LookRotation(smoothedDir, Vector3.up);
-            Vector3    cross   = Vector3.Cross(transform.forward, rawDir);
-            float      tBank   = Mathf.Clamp(-cross.y * maxBankAngle * 10f, -maxBankAngle, maxBankAngle);
-            currentBank        = Mathf.Lerp(currentBank, tBank, bankSmoothing * Time.deltaTime);
-            float      dive    = Mathf.Clamp01(-smoothedDir.y);
+            Quaternion tRot  = Quaternion.LookRotation(smoothedDir, Vector3.up);
+            Vector3    cross = Vector3.Cross(transform.forward, rawDir);
+            float      tBank = Mathf.Clamp(-cross.y * maxBankAngle * 10f, -maxBankAngle, maxBankAngle);
+            currentBank      = Mathf.Lerp(currentBank, tBank, bankSmoothing * Time.deltaTime);
+            float      dive  = Mathf.Clamp01(-smoothedDir.y);
             Quaternion normRot = tRot * Quaternion.Euler(0f, 0f, currentBank) * Quaternion.Euler(forwardRotationOffset);
             transform.rotation = Quaternion.Slerp(normRot, Quaternion.Euler(diveRotationOffset), dive);
         }
 
         // --- Fire ---
-        if (mode == Mode.Attack && dist <= attackRange && Time.time >= lastAttackTime + attackCooldown)
+        if (mode == Mode.Attack && dist <= attackRange && Time.time >= lastAttackTime + AttackCooldown)
             Fire();
     }
 
@@ -285,7 +314,6 @@ public class DragonAttack : MonoBehaviour
                 return pos;
             }
             case Mode.Swoop:
-                // Dive directly at player
                 return new Vector3(player.position.x, player.position.y + preferredHeight * 0.3f, player.position.z);
 
             case Mode.Attack:
@@ -316,9 +344,8 @@ public class DragonAttack : MonoBehaviour
         if (audioSource && fireSound)  audioSource.PlayOneShot(fireSound);
         if (projectilePrefab == null || firePoint == null) return;
 
-        if (IsRaged && spreadCount > 1)
+        if (CanSpread)
         {
-            // Spread fire: fan of projectiles centered on player
             float halfSpread = spreadAngle * (spreadCount - 1) / 2f;
             for (int i = 0; i < spreadCount; i++)
             {
@@ -336,6 +363,11 @@ public class DragonAttack : MonoBehaviour
             if (dp != null) dp.SetTarget(player);
         }
     }
+
+    [Header("Audio")]
+    public AudioSource audioSource;
+    public AudioClip   roarSound;
+    public AudioClip   fireSound;
 
     void OnDrawGizmosSelected()
     {

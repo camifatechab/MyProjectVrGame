@@ -1325,7 +1325,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 192892, guid: 1e08b0b952addb2498b7a6fc4c7e86a7, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 194120, guid: 1e08b0b952addb2498b7a6fc4c7e86a7, type: 3}
       propertyPath: m_Layer
@@ -1475,10 +1475,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldown: 3
+  attackCooldownMin: 1.5
+  attackCooldownMax: 4.5
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 1201624025}
-  moveSpeed: 4
+  moveSpeedMin: 5
+  moveSpeedMax: 10
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -1498,7 +1500,7 @@ MonoBehaviour:
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  maxSimultaneousAttackers: 2
+  aggressionRampTime: 120
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -1799,7 +1801,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 198082, guid: c2f65c62a5c98f445ad478a1bc2cb670, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 430276, guid: c2f65c62a5c98f445ad478a1bc2cb670, type: 3}
       propertyPath: m_LocalScale.x
@@ -1945,10 +1947,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldown: 3
+  attackCooldownMin: 1.5
+  attackCooldownMax: 4.5
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 523985371}
-  moveSpeed: 4
+  moveSpeedMin: 5
+  moveSpeedMax: 10
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -1968,7 +1972,7 @@ MonoBehaviour:
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  maxSimultaneousAttackers: 2
+  aggressionRampTime: 120
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -4323,7 +4327,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 136624, guid: 6c1d10e52d56f68448ae4e58056492af, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 136722, guid: 6c1d10e52d56f68448ae4e58056492af, type: 3}
       propertyPath: m_Layer
@@ -4485,10 +4489,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldown: 3
+  attackCooldownMin: 1.5
+  attackCooldownMax: 4.5
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 142101185}
-  moveSpeed: 4
+  moveSpeedMin: 5
+  moveSpeedMax: 10
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -4508,7 +4514,7 @@ MonoBehaviour:
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  maxSimultaneousAttackers: 2
+  aggressionRampTime: 120
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -5206,7 +5212,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 192892, guid: 1e08b0b952addb2498b7a6fc4c7e86a7, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 194120, guid: 1e08b0b952addb2498b7a6fc4c7e86a7, type: 3}
       propertyPath: m_Layer
@@ -5356,10 +5362,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldown: 3
+  attackCooldownMin: 1.5
+  attackCooldownMax: 4.5
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 90920399}
-  moveSpeed: 4
+  moveSpeedMin: 5
+  moveSpeedMax: 10
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -5379,7 +5387,7 @@ MonoBehaviour:
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  maxSimultaneousAttackers: 2
+  aggressionRampTime: 120
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -5591,9 +5599,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 6780582847689495969, guid: 25b5f7520192ead448356b9203bc4de3, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4063642624690259211}
-    - targetCorrespondingSourceObject: {fileID: 6780582847689495969, guid: 25b5f7520192ead448356b9203bc4de3, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 4063642624690259214}
   m_SourcePrefab: {fileID: 100100000, guid: 25b5f7520192ead448356b9203bc4de3, type: 3}
 --- !u!1 &4063642624690259208 stripped
 GameObject:
@@ -5675,21 +5680,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.6, y: 0.9, z: 2.2}
   m_Center: {x: 0, y: 0.45, z: 0.1}
---- !u!114 &4063642624690259214
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4063642624690259208}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2f59cabfbd34d0a4e8237e70bcbe79e0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  showRadius: 5
-  floatHeight: 2.5
-  promptText: "\u270B  Grip to Ride"
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
