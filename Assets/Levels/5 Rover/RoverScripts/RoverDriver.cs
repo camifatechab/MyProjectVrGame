@@ -3,10 +3,8 @@ using UnityEngine.XR;
 using Unity.XR.CoreUtils;
 using System.Collections.Generic;
 
-/// VR Rover — Mario Kart style controls.
-/// Right grip = gas. Left grip = brake/reverse.
-/// Tilt both controllers left/right = steer.
-/// B button = dismount.
+/// VR Rover — hand-vector steering wheel controls.
+/// Right grip = gas. Left grip = brake/reverse. B = dismount.
 public class RoverDriver : MonoBehaviour
 {
     [Header("Seat")]
@@ -24,27 +22,20 @@ public class RoverDriver : MonoBehaviour
     [Header("Movement")]
     public float maxForwardSpeed = 10f;
     public float maxReverseSpeed = 4f;
-    public float acceleration    = 3f;   // slow build-up = heavy feel
-    public float brakingForce    = 4f;   // slow to stop
+    public float acceleration    = 3f;
+    public float brakingForce    = 4f;
     public float turnRate        = 55f;
 
-    [Header("Steering (tilt)")]
-    [Tooltip("Controller roll degrees before steering starts")]
-    public float tiltDeadzone  = 10f;
-    public float tiltMaxAngle  = 40f;
+    [Header("Steering")]
+    public float steerDeadzone = 10f;
+    public float steerMaxAngle = 80f;
 
     [Header("Mount")]
     public float mountRadius = 4f;
 
-    [Header("Arms Extended Check")]
-    [Tooltip("How far forward (meters) controllers must be from the headset to count as extended")]
-    public float armsForwardMin = 0.15f;
-    [Tooltip("Show debug gizmos for arm check")]
-    public bool  debugArms = false;
-
     [Header("Haptics")]
-    public float idleRumble  = 0.05f;
-    public float maxRumble   = 0.25f;
+    public float idleRumble = 0.05f;
+    public float maxRumble  = 0.25f;
 
     // --- runtime refs ---
     private XROrigin              xrOrigin;
@@ -57,15 +48,15 @@ public class RoverDriver : MonoBehaviour
     private MonoBehaviour[]       locomotionProviders;
 
     // --- state ---
-    private bool  isMounted        = false;
-    private bool  gripsLastFrame   = false;
-    private float currentSpeed     = 0f;
-    private float visualSteer      = 0f;
-    private float smoothedSteer    = 0f;   // lerped steer for heavy feel
-    private float dismountCooldown = 0f;
-    private float rumbleTimer      = 0f;
-
-    // ─────────────────────────────────────────────────────────────────────────
+    public  bool  IsMounted         => isMounted;
+    private bool  isMounted         = false;
+    private bool  gripsLastFrame    = false;
+    private float currentSpeed      = 0f;
+    private float neutralAngle      = 0f;
+    private float currentWheelAngle = 0f;
+    private float smoothedSteer     = 0f;
+    private float dismountCooldown  = 0f;
+    private float rumbleTimer       = 0f;
 
     void Start()
     {
@@ -94,7 +85,6 @@ public class RoverDriver : MonoBehaviour
             locomotionProviders = providers.ToArray();
         }
 
-        // Auto-find steering wheel
         if (steeringWheelMesh == null)
             foreach (Transform t in GetComponentsInChildren<Transform>(true))
                 if (t.name.ToLower().Contains("steering"))
@@ -103,7 +93,6 @@ public class RoverDriver : MonoBehaviour
         if (steeringWheelMesh != null)
             wheelBaseRotation = steeringWheelMesh.localRotation;
 
-        // Auto-find wheels: cylinder_ + dot suffix + offset from center
         if (wheelMeshes == null || wheelMeshes.Length == 0)
         {
             var found = new List<Transform>();
@@ -114,7 +103,6 @@ public class RoverDriver : MonoBehaviour
                     found.Add(t);
             }
             wheelMeshes = found.ToArray();
-            Debug.Log($"[RoverDriver] Wheels: {string.Join(", ", System.Array.ConvertAll(wheelMeshes, w => w.name))}");
         }
 
         if (seatAnchor == null)
@@ -153,18 +141,11 @@ public class RoverDriver : MonoBehaviour
                 return;
             }
 
-            // Gas = right grip, Brake/reverse = left grip
-            bool  armed    = ArmsExtended();
-
             float throttle = 0f;
-            if (armed)
-            {
-                if (rightGrip && !leftGrip)      throttle =  1f;
-                else if (leftGrip && !rightGrip) throttle = -1f;
-                // both grips = coast (throttle stays 0)
-            }
+            if (rightGrip && !leftGrip)      throttle =  1f;
+            else if (leftGrip && !rightGrip) throttle = -1f;
 
-            float steer = armed ? ComputeTiltSteering() : 0f;
+            float steer = ComputeWheelSteering();
             Drive(throttle, steer);
             SpinWheels();
             UpdateHaptics(rightGrip);
@@ -173,78 +154,51 @@ public class RoverDriver : MonoBehaviour
         gripsLastFrame = bothGrips;
     }
 
-    // ── Arms extended check ─────────────────────────────────────────────────
-    // Returns true when BOTH controllers are in front of the headset by armsForwardMin.
-    // "In front" = positive dot product with head's forward direction.
+    // ── Hand-vector steering ──────────────────────────────────────────────────
+    // Measures signed angle of (rightCtrl - leftCtrl) vector in rover XZ plane.
+    // Delta from neutral on mount = wheel rotation = steer input.
 
-    bool ArmsExtended()
+    float ComputeWheelSteering()
     {
-        if (Camera.main == null || leftCtrl == null || rightCtrl == null) return false;
+        if (leftCtrl == null || rightCtrl == null)
+        {
+            currentWheelAngle = Mathf.Lerp(currentWheelAngle, 0f, 4f * Time.deltaTime);
+            UpdateWheelVisual(currentWheelAngle);
+            return 0f;
+        }
 
-        Transform head    = Camera.main.transform;
-        Vector3   headPos = head.position;
-        Vector3   fwd     = head.forward;
-        fwd.y = 0f;
-        if (fwd.sqrMagnitude < 0.001f) fwd = transform.forward;
-        fwd.Normalize();
+        float delta = Mathf.DeltaAngle(neutralAngle, GetHandAngle());
+        currentWheelAngle = Mathf.Lerp(currentWheelAngle, delta, 15f * Time.deltaTime);
+        UpdateWheelVisual(currentWheelAngle);
 
-        float leftDot  = Vector3.Dot(leftCtrl.position  - headPos, fwd);
-        float rightDot = Vector3.Dot(rightCtrl.position - headPos, fwd);
-
-        if (debugArms)
-            Debug.Log($"[RoverDriver] Arms fwd — L:{leftDot:F2} R:{rightDot:F2} (need >{armsForwardMin})");
-
-        return leftDot > armsForwardMin && rightDot > armsForwardMin;
+        float abs = Mathf.Abs(delta);
+        if (abs < steerDeadzone) return 0f;
+        float effective = delta > 0f ? abs - steerDeadzone : -(abs - steerDeadzone);
+        return Mathf.Clamp(effective / (steerMaxAngle - steerDeadzone), -1f, 1f);
     }
 
-    // ── Tilt steering ─────────────────────────────────────────────────────────
-    // Average roll of both controllers in world space → steer value -1..1
-
-    float ComputeTiltSteering()
+    float GetHandAngle()
     {
-        if (leftCtrl == null || rightCtrl == null) return 0f;
-
-        float leftRoll  = GetControllerRoll(leftCtrl);
-        float rightRoll = GetControllerRoll(rightCtrl);
-        float avgRoll   = (leftRoll + rightRoll) * 0.5f;
-
-        // Visual wheel follows tilt
-        visualSteer = Mathf.Lerp(visualSteer, avgRoll, 8f * Time.deltaTime);
-        if (steeringWheelMesh != null)
-            steeringWheelMesh.localRotation = wheelBaseRotation *
-                Quaternion.AngleAxis(visualSteer * (90f / tiltMaxAngle), Vector3.up);
-
-        float abs = Mathf.Abs(avgRoll);
-        if (abs < tiltDeadzone) return 0f;
-        float effective = avgRoll > 0f ? abs - tiltDeadzone : -(abs - tiltDeadzone);
-        return Mathf.Clamp(effective / (tiltMaxAngle - tiltDeadzone), -1f, 1f);
+        Vector3 dir   = rightCtrl.position - leftCtrl.position;
+        Vector3 local = transform.InverseTransformDirection(dir);
+        local.y = 0f;
+        if (local.sqrMagnitude < 0.0001f) return neutralAngle;
+        return Mathf.Atan2(local.z, local.x) * Mathf.Rad2Deg;
     }
 
-    // Roll = rotation around the controller's forward axis (Z in world XZ plane)
-    float GetControllerRoll(Transform ctrl)
+    void UpdateWheelVisual(float angleDeg)
     {
-        // Project controller's local right vector onto world XZ plane, measure tilt
-        Vector3 right = ctrl.right;
-        right.y = 0f;
-        if (right.sqrMagnitude < 0.001f) return 0f;
-        right.Normalize();
-
-        // Compare against rover's right vector to get signed roll
-        float dot   = Vector3.Dot(ctrl.up, Vector3.up);
-        float cross = ctrl.up.x * transform.forward.z - ctrl.up.z * transform.forward.x;
-        // Use controller's up.y drop as tilt signal
-        float tilt  = ctrl.forward.y * 90f; // -90..90 degrees
-        return tilt;
+        if (steeringWheelMesh == null) return;
+        steeringWheelMesh.localRotation = wheelBaseRotation *
+            Quaternion.AngleAxis(angleDeg, Vector3.up);
     }
 
     // ── Driving ──────────────────────────────────────────────────────────────
 
-void Drive(float throttle, float steer)
+    void Drive(float throttle, float steer)
     {
-        // Smooth steer input — heavy vehicle responds slowly
         smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 3f * Time.deltaTime);
 
-        // Speed
         if (throttle > 0.05f)
             currentSpeed = Mathf.MoveTowards(currentSpeed,  maxForwardSpeed, acceleration * Time.deltaTime);
         else if (throttle < -0.05f)
@@ -252,7 +206,6 @@ void Drive(float throttle, float steer)
         else
             currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, brakingForce * Time.deltaTime);
 
-        // Turn rate drops at high speed (wide turns) — heavy vehicle behaviour
         float speedFactor   = 1f - (Mathf.Abs(currentSpeed) / maxForwardSpeed) * 0.5f;
         float effectiveTurn = turnRate * speedFactor;
 
@@ -270,13 +223,11 @@ void Drive(float throttle, float steer)
     }
 
     // ── Haptics ──────────────────────────────────────────────────────────────
-    // Continuous low rumble while driving, scales with speed
 
     void UpdateHaptics(bool gasHeld)
     {
         if (!gasHeld || Mathf.Abs(currentSpeed) < 0.2f)
         {
-            // Stop rumble
             SendHaptic(leftDevice,  0f, 0f);
             SendHaptic(rightDevice, 0f, 0f);
             rumbleTimer = 0f;
@@ -285,7 +236,7 @@ void Drive(float throttle, float steer)
 
         rumbleTimer -= Time.deltaTime;
         if (rumbleTimer > 0f) return;
-        rumbleTimer = 0.08f; // pulse every 80ms
+        rumbleTimer = 0.08f;
 
         float intensity = Mathf.Lerp(idleRumble, maxRumble, Mathf.Abs(currentSpeed) / maxForwardSpeed);
         SendHaptic(leftDevice,  intensity, 0.08f);
@@ -294,8 +245,7 @@ void Drive(float throttle, float steer)
 
     void SendHaptic(InputDevice d, float amplitude, float duration)
     {
-        if (d.isValid)
-            d.SendHapticImpulse(0, amplitude, duration);
+        if (d.isValid) d.SendHapticImpulse(0, amplitude, duration);
     }
 
     // ── Mount / Dismount ─────────────────────────────────────────────────────
@@ -315,6 +265,12 @@ void Drive(float throttle, float steer)
             xrOrigin.transform.SetParent(transform, worldPositionStays: true);
         }
 
+        if (leftCtrl != null && rightCtrl != null)
+        {
+            neutralAngle      = GetHandAngle();
+            currentWheelAngle = 0f;
+        }
+
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = false;
 
@@ -328,7 +284,6 @@ void Drive(float throttle, float steer)
         currentSpeed = 0f;
         Debug.Log("[RoverDriver] Dismounted!");
 
-        // Kill haptics on exit
         SendHaptic(leftDevice,  0f, 0f);
         SendHaptic(rightDevice, 0f, 0f);
 
