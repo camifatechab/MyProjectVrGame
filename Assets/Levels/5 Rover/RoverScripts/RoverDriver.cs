@@ -3,13 +3,12 @@ using UnityEngine.XR;
 using Unity.XR.CoreUtils;
 using System.Collections.Generic;
 
-/// VR Rover — hand-vector steering wheel controls.
-/// Right grip = gas. Left grip = brake/reverse. B = dismount.
+/// VR Rover — kinematic movement + ComputePenetration wall correction.
 public class RoverDriver : MonoBehaviour
 {
     [Header("Seat")]
     public Transform seatAnchor;
-    public float seatHeightBoost = 0.6f;
+    public float seatHeightBoost = 0.8f;
 
     [Header("Steering Wheel Visual")]
     public Transform steeringWheelMesh;
@@ -22,13 +21,13 @@ public class RoverDriver : MonoBehaviour
     [Header("Movement")]
     public float maxForwardSpeed = 10f;
     public float maxReverseSpeed = 4f;
-    public float acceleration    = 3f;
-    public float brakingForce    = 4f;
-    public float turnRate        = 55f;
+    public float acceleration    = 6f;
+    public float brakingForce    = 8f;
+    public float turnRate        = 35f;
 
     [Header("Steering")]
-    public float steerDeadzone = 10f;
-    public float steerMaxAngle = 80f;
+    public float steerDeadzone = 8f;
+    public float steerMaxAngle = 150f;
 
     [Header("Mount")]
     public float mountRadius = 4f;
@@ -38,6 +37,8 @@ public class RoverDriver : MonoBehaviour
     public float maxRumble  = 0.25f;
 
     // --- runtime refs ---
+    private Rigidbody             rb;
+    private BoxCollider           boxCol;
     private XROrigin              xrOrigin;
     private AutoJetpackController jetpack;
     private CharacterController   charController;
@@ -57,23 +58,52 @@ public class RoverDriver : MonoBehaviour
     private float smoothedSteer     = 0f;
     private float dismountCooldown  = 0f;
     private float rumbleTimer       = 0f;
-    private float dismountHoldTimer = 0f;   // how long both grips held for dismount
+    private float dismountHoldTimer = 0f;
+
+    // --- collision ---
+    // FIX 4: exclude dragon layer (13) AND XR layer (2) from wall checks
+    // FIX 2/3: use fixed local half-extents computed once, not world-space renderer bounds
+    private int     wallMask;
+    private Vector3 castHalfExt;   // local-space half-extents for BoxCast
+    private Vector3 castCenter;    // local offset from pivot to collider center
 
     void Start()
     {
+        rb     = GetComponent<Rigidbody>();
+        boxCol = GetComponent<BoxCollider>();
+
+        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
+
+        // FIX 4: exclude dragons (13) and XR/IgnoreRaycast (2) — neither should block rover
+        wallMask = ~((1 << 13) | (1 << 2));
+
+        // FIX 2: compute half-extents in LOCAL space from collider, not world renderer bounds
+        // These stay correct regardless of rover rotation
+        if (boxCol != null)
+        {
+            castHalfExt = new Vector3(
+                boxCol.size.x * transform.lossyScale.x * 0.5f,
+                boxCol.size.y * transform.lossyScale.y * 0.5f,
+                boxCol.size.z * transform.lossyScale.z * 0.5f);
+            castCenter = boxCol.center; // local offset
+        }
+        else
+        {
+            castHalfExt = new Vector3(0.96f, 0.54f, 1.32f);
+            castCenter  = new Vector3(0f, 0.45f, 0.1f);
+        }
+
         xrOrigin = FindAnyObjectByType<XROrigin>();
         jetpack  = FindAnyObjectByType<AutoJetpackController>();
 
         if (xrOrigin != null)
         {
             charController = xrOrigin.GetComponent<CharacterController>();
-
             foreach (Transform t in xrOrigin.GetComponentsInChildren<Transform>(true))
             {
                 if (t.name == "Left Controller")  leftCtrl  = t;
                 if (t.name == "Right Controller") rightCtrl = t;
             }
-
             var providers = new List<MonoBehaviour>();
             foreach (var comp in xrOrigin.GetComponentsInChildren<MonoBehaviour>(true))
             {
@@ -106,15 +136,11 @@ public class RoverDriver : MonoBehaviour
             wheelMeshes = found.ToArray();
         }
 
-        // Force Rigidbody to kinematic — rover must never fall or be pushed by physics
-        var rb = GetComponent<Rigidbody>();
-        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
-
         if (seatAnchor == null)
         {
             var go = new GameObject("SeatAnchor");
             go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(-0.55f, 0.55f, -0.25f);
+            go.transform.localPosition = new Vector3(-0.2f, 0.55f, 0.1f);
             seatAnchor = go.transform;
         }
     }
@@ -138,7 +164,6 @@ public class RoverDriver : MonoBehaviour
         }
         else
         {
-            // Dismount: hold both grips for 1.5s (deliberate, won't fire by accident)
             if (bothGrips && dismountCooldown <= 0f)
             {
                 dismountHoldTimer += Time.deltaTime;
@@ -150,17 +175,16 @@ public class RoverDriver : MonoBehaviour
                     return;
                 }
             }
-            else
-            {
-                dismountHoldTimer = 0f;
-            }
+            else { dismountHoldTimer = 0f; }
 
             float throttle = 0f;
             if (rightGrip && !leftGrip)      throttle =  1f;
             else if (leftGrip && !rightGrip) throttle = -1f;
 
-            float steer = ComputeWheelSteering();
-            Drive(throttle, steer);
+            // FIX 6: pass Time.deltaTime explicitly so smoothing is frame-rate independent
+            float steer = ComputeWheelSteering(Time.deltaTime);
+            Drive(throttle, steer, Time.deltaTime);
+            Depenetrate();
             SpinWheels();
             UpdateHaptics(rightGrip);
         }
@@ -168,27 +192,26 @@ public class RoverDriver : MonoBehaviour
         gripsLastFrame = bothGrips;
     }
 
-    // ── Hand-vector steering ──────────────────────────────────────────────────
-    // Measures signed angle of (rightCtrl - leftCtrl) vector in rover XZ plane.
-    // Delta from neutral on mount = wheel rotation = steer input.
+    // ── Steering ─────────────────────────────────────────────────────────────
 
-    float ComputeWheelSteering()
+    float ComputeWheelSteering(float dt)
     {
         if (leftCtrl == null || rightCtrl == null)
         {
-            currentWheelAngle = Mathf.Lerp(currentWheelAngle, 0f, 4f * Time.deltaTime);
+            currentWheelAngle = Mathf.Lerp(currentWheelAngle, 0f, 4f * dt);
             UpdateWheelVisual(currentWheelAngle);
             return 0f;
         }
 
         float delta = Mathf.DeltaAngle(neutralAngle, GetHandAngle());
-        currentWheelAngle = Mathf.Lerp(currentWheelAngle, delta, 15f * Time.deltaTime);
+        currentWheelAngle = Mathf.Lerp(currentWheelAngle, delta, 15f * dt);
         UpdateWheelVisual(currentWheelAngle);
 
         float abs = Mathf.Abs(delta);
         if (abs < steerDeadzone) return 0f;
-        float effective = delta > 0f ? abs - steerDeadzone : -(abs - steerDeadzone);
-        return Mathf.Clamp(effective / (steerMaxAngle - steerDeadzone), -1f, 1f);
+        float effective  = delta > 0f ? abs - steerDeadzone : -(abs - steerDeadzone);
+        float normalized = Mathf.Clamp(effective / (steerMaxAngle - steerDeadzone), -1f, 1f);
+        return Mathf.Sign(normalized) * Mathf.Sqrt(Mathf.Abs(normalized));
     }
 
     float GetHandAngle()
@@ -207,27 +230,79 @@ public class RoverDriver : MonoBehaviour
             Quaternion.AngleAxis(angleDeg, Vector3.up);
     }
 
-    // ── Driving ──────────────────────────────────────────────────────────────
+    // ── Driving ───────────────────────────────────────────────────────────────
 
-    void Drive(float throttle, float steer)
+    void Drive(float throttle, float steer, float dt)
     {
-        smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 3f * Time.deltaTime);
+        smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 2f * dt);
 
         if (throttle > 0.05f)
-            currentSpeed = Mathf.MoveTowards(currentSpeed,  maxForwardSpeed, acceleration * Time.deltaTime);
+            currentSpeed = Mathf.MoveTowards(currentSpeed,  maxForwardSpeed, acceleration * dt);
         else if (throttle < -0.05f)
-            currentSpeed = Mathf.MoveTowards(currentSpeed, -maxReverseSpeed, acceleration * Time.deltaTime);
+            currentSpeed = Mathf.MoveTowards(currentSpeed, -maxReverseSpeed, acceleration * dt);
         else
-            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, brakingForce * Time.deltaTime);
+            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, brakingForce * dt);
 
         float speedFactor   = 1f - (Mathf.Abs(currentSpeed) / maxForwardSpeed) * 0.5f;
         float effectiveTurn = turnRate * speedFactor;
+        if (Mathf.Abs(currentSpeed) > 0.1f && Mathf.Abs(smoothedSteer) > 0.02f)
+            transform.Rotate(0f, smoothedSteer * effectiveTurn * Mathf.Sign(currentSpeed) * dt, 0f, Space.World);
 
-        if (Mathf.Abs(currentSpeed) > 0.1f && Mathf.Abs(smoothedSteer) > 0.05f)
-            transform.Rotate(0f, smoothedSteer * effectiveTurn * Mathf.Sign(currentSpeed) * Time.deltaTime, 0f, Space.World);
+        if (Mathf.Abs(currentSpeed) < 0.001f) return;
 
-        transform.position += transform.forward * currentSpeed * Time.deltaTime;
+        // FIX 2: BoxCast from COLLIDER CENTER in world space with LOCAL half-extents
+        // These are correct regardless of rover rotation
+        Vector3 worldCenter = transform.TransformPoint(castCenter);
+        Vector3 moveDir     = transform.forward * Mathf.Sign(currentSpeed);
+        float   moveDist    = Mathf.Abs(currentSpeed) * dt;
+
+        if (Physics.BoxCast(worldCenter, castHalfExt, moveDir,
+                out RaycastHit hit, transform.rotation,
+                moveDist, wallMask, QueryTriggerInteraction.Ignore)
+            && hit.transform != null
+            && hit.transform != transform
+            && !hit.transform.IsChildOf(transform))
+        {
+            float safe = Mathf.Max(0f, hit.distance - 0.02f);
+            moveDist     = safe;
+            currentSpeed = 0f;
+        }
+
+        transform.position += moveDir * moveDist;
     }
+
+    // ── Depenetration ─────────────────────────────────────────────────────────
+    // FIX 3: no more renderer bounds — uses boxCol directly, no per-frame allocation
+    void Depenetrate()
+    {
+        if (boxCol == null) return;
+
+        Vector3 worldCenter = transform.TransformPoint(castCenter);
+
+        // FIX 5: reuse castHalfExt — no GetComponentsInChildren allocation every frame
+        Collider[] hits = Physics.OverlapBox(
+            worldCenter, castHalfExt, transform.rotation,
+            wallMask, QueryTriggerInteraction.Ignore);
+
+        foreach (var col in hits)
+        {
+            if (col == boxCol) continue;
+            if (col.transform == transform) continue;
+            if (col.transform.IsChildOf(transform)) continue;
+
+            if (Physics.ComputePenetration(
+                    boxCol, transform.position, transform.rotation,
+                    col,    col.transform.position, col.transform.rotation,
+                    out Vector3 dir, out float dist))
+            {
+                transform.position += dir * (dist + 0.001f);
+                float into = Vector3.Dot(transform.forward * currentSpeed, -dir);
+                if (into > 0f) currentSpeed = 0f;
+            }
+        }
+    }
+
+    // ── Wheels ────────────────────────────────────────────────────────────────
 
     void SpinWheels()
     {
@@ -236,7 +311,7 @@ public class RoverDriver : MonoBehaviour
             if (w != null) w.Rotate(Vector3.right, spin, Space.Self);
     }
 
-    // ── Haptics ──────────────────────────────────────────────────────────────
+    // ── Haptics ───────────────────────────────────────────────────────────────
 
     void UpdateHaptics(bool gasHeld)
     {
@@ -247,11 +322,9 @@ public class RoverDriver : MonoBehaviour
             rumbleTimer = 0f;
             return;
         }
-
         rumbleTimer -= Time.deltaTime;
         if (rumbleTimer > 0f) return;
         rumbleTimer = 0.08f;
-
         float intensity = Mathf.Lerp(idleRumble, maxRumble, Mathf.Abs(currentSpeed) / maxForwardSpeed);
         SendHaptic(leftDevice,  intensity, 0.08f);
         SendHaptic(rightDevice, intensity, 0.08f);
@@ -262,7 +335,7 @@ public class RoverDriver : MonoBehaviour
         if (d.isValid) d.SendHapticImpulse(0, amplitude, duration);
     }
 
-    // ── Mount / Dismount ─────────────────────────────────────────────────────
+    // ── Mount / Dismount ──────────────────────────────────────────────────────
 
     void Mount()
     {
@@ -287,7 +360,6 @@ public class RoverDriver : MonoBehaviour
 
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = false;
-
         if (charController != null) charController.enabled = false;
         if (jetpack        != null) jetpack.enabled        = false;
     }
@@ -312,12 +384,11 @@ public class RoverDriver : MonoBehaviour
 
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = true;
-
         if (charController != null) charController.enabled = true;
         if (jetpack        != null) jetpack.enabled        = true;
     }
 
-    // ── XR helpers ───────────────────────────────────────────────────────────
+    // ── XR helpers ────────────────────────────────────────────────────────────
 
     void RefreshDevices()
     {

@@ -104,6 +104,7 @@ public class DragonAttack : MonoBehaviour
     // --- movement ---
     private Transform            player;
     private FlyingCreaturePatrol patrol;
+    private Collider             cachedCollider;   // FIX 7: cached once in Start
     private float                lastAttackTime = -999f;
     private float                bobOffset;
     private Vector3              smoothedDir;
@@ -114,7 +115,8 @@ public class DragonAttack : MonoBehaviour
 
     void Start()
     {
-        s_rampTime  = aggressionRampTime;
+        s_rampTime     = aggressionRampTime;
+        cachedCollider = GetComponent<Collider>();
         patrol      = GetComponent<FlyingCreaturePatrol>();
         bobOffset   = Random.Range(0f, Mathf.PI * 2f);
         sectorIndex = all.IndexOf(this) % 4;
@@ -156,9 +158,13 @@ public class DragonAttack : MonoBehaviour
 
     void Update()
     {
-        // Advance shared aggression timer (any dragon can tick it — idempotent per frame via static)
-        s_aggressionTimer += Time.deltaTime;
-        s_aggressionTimer  = Mathf.Min(s_aggressionTimer, aggressionRampTime);
+        // FIX 1: only sectorIndex 0 ticks the timer — prevents 4x speed with 4 dragons
+        if (sectorIndex == 0)
+        {
+            s_aggressionTimer += Time.deltaTime;
+            s_aggressionTimer  = Mathf.Min(s_aggressionTimer, aggressionRampTime);
+        }
+
 
         if (player == null) { if (Camera.main != null) player = Camera.main.transform; return; }
 
@@ -248,6 +254,20 @@ public class DragonAttack : MonoBehaviour
         Vector3 rawDir = (goal - transform.position).normalized;
         smoothedDir    = Vector3.Lerp(smoothedDir, rawDir, tSpd * Time.deltaTime);
         transform.position += smoothedDir * spd * Time.deltaTime;
+
+        // Wall depenetration — FIX 7: use cachedCollider instead of GetComponent every frame — push dragon out of any solid it overlaps
+        Collider[] overlaps = Physics.OverlapSphere(transform.position, 3f, ~(1 << 13), QueryTriggerInteraction.Ignore);
+        foreach (var col in overlaps)
+        {
+            if (col.transform == transform || col.transform.IsChildOf(transform)) continue;
+            if (Physics.ComputePenetration(
+                    cachedCollider, transform.position, transform.rotation,
+                    col, col.transform.position, col.transform.rotation,
+                    out Vector3 pushDir, out float pushDist))
+            {
+                transform.position += pushDir * (pushDist + 0.05f);
+            }
+        }
 
         // Bob
         Vector3 p = transform.position;

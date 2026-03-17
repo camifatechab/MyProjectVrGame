@@ -10,7 +10,7 @@ public class TestTrackBuilder : MonoBehaviour
     public float laneWidth   = 8f;    // width of each lane
     public float trackLength = 50f;   // total length (Z axis)
     public float wallHeight  = 2.5f;  // how tall the barrier walls are
-    public float wallThick   = 0.5f;
+    public float wallThick   = 1.5f;
 
     void Awake()
     {
