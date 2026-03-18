@@ -21,7 +21,7 @@ public class CloudWispsEffect : MonoBehaviour
     
     [Header("=== SKYBOX TRANSITION ===")]
     [Tooltip("Height at which to trigger cloud burst (matches SkyboxByHeight threshold)")]
-    public float transitionHeight = 100f;
+    public float transitionHeight = 15f;
     public int transitionBurstCount = 100;
     public float transitionBurstDuration = 3f;
 
@@ -183,21 +183,31 @@ void CreateWispParticles()
         renderer.material = CreateWispMaterial();
     }
     
-    Material CreateWispMaterial()
+Material CreateWispMaterial()
     {
-        // Try additive shader for glow effect
-        Shader shader = Shader.Find("Legacy Shaders/Particles/Additive");
-        if (shader == null)
-            shader = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
-        if (shader == null)
-            shader = Shader.Find("Particles/Standard Unlit");
-        if (shader == null)
-            shader = Shader.Find("Sprites/Default");
-        
-        Material mat = new Material(shader);
-        mat.mainTexture = CreateSoftCircleTexture();
-        
-        return mat;
+        // Use existing JetpackTrail material asset — correct URP shader, no lookup needed
+        Material mat = null;
+#if UNITY_EDITOR
+        mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/Levels/6 Jetpack/Materials/JetpackTrail.mat");
+#endif
+        if (mat != null) return mat;
+
+        // Runtime fallback
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                     ?? Shader.Find("Sprites/Default");
+        Material fallback = new Material(shader);
+        fallback.SetTexture("_BaseMap", CreateSoftCircleTexture());
+        fallback.SetTexture("_MainTex",  CreateSoftCircleTexture());
+        fallback.SetColor("_BaseColor", wispColor);
+        fallback.SetColor("_Color",     wispColor);
+        fallback.SetFloat("_Surface", 1f);
+        fallback.SetFloat("_ZWrite", 0f);
+        fallback.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        fallback.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        fallback.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        fallback.renderQueue = 3000;
+        return fallback;
     }
     
     Texture2D CreateSoftCircleTexture()

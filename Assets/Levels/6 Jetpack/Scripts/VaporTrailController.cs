@@ -196,30 +196,29 @@ public class VaporTrailController : MonoBehaviour
     
 Material CreateVaporMaterial()
     {
-        // Use Unity's built-in soft particle shader for smooth, round particles
-        Material vaporMat = new Material(Shader.Find("Particles/Standard Unlit"));
-        
-        // Create a soft circular gradient texture procedurally
-        Texture2D softCircle = CreateSoftCircleTexture(128);
-        vaporMat.SetTexture("_MainTex", softCircle);
-        
-        // Set color
-        vaporMat.SetColor("_Color", vaporColor);
-        
-        // Enable transparency
-        vaporMat.EnableKeyword("_ALPHABLEND_ON");
-        vaporMat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-        vaporMat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-        vaporMat.SetInt("_ZWrite", 0);
-        vaporMat.renderQueue = 3000;
-        
-        // Enable soft particles (fades near geometry)
-        vaporMat.EnableKeyword("SOFTPARTICLES_ON");
-        
-        return vaporMat;
+        // Use the existing project material asset — avoids shader lookup issues in URP
+        Material mat = UnityEditor.AssetDatabase.LoadAssetAtPath<Material>(
+            "Assets/Levels/6 Jetpack/Materials/JetpackTrail.mat");
+        if (mat != null) return mat;
+
+        // Runtime fallback if editor asset not found
+        Shader shader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                     ?? Shader.Find("Sprites/Default");
+        Material fallback = new Material(shader);
+        fallback.SetTexture("_BaseMap", CreateSoftCircleTexture(128));
+        fallback.SetTexture("_MainTex",  CreateSoftCircleTexture(128));
+        fallback.SetColor("_BaseColor", vaporColor);
+        fallback.SetColor("_Color",     vaporColor);
+        fallback.SetFloat("_Surface", 1f);
+        fallback.SetFloat("_ZWrite", 0f);
+        fallback.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        fallback.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        fallback.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        fallback.renderQueue = 3000;
+        return fallback;
     }
     
-    Texture2D CreateSoftCircleTexture(int size)
+Texture2D CreateSoftCircleTexture(int size)
     {
         Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
         texture.wrapMode = TextureWrapMode.Clamp;
@@ -246,6 +245,7 @@ Material CreateVaporMaterial()
         texture.Apply();
         return texture;
     }
+
     
     void Update()
     {

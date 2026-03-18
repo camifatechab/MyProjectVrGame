@@ -15,7 +15,7 @@ public class AutoJetpackController : MonoBehaviour
     [Header("Flight Settings")]
     [SerializeField] private float thrustForce = 15f;
     [SerializeField] private float maxUpwardVelocity = 10f;
-    [SerializeField] private float armDownAngleThreshold = 90f;
+    [SerializeField] private float armDownAngleThreshold = 120f;
     
     
     [Header("Fuel System")]
@@ -696,7 +696,7 @@ void UpdateGroundMovementState()
     }
 
     
-    void ApplyMovement()
+void ApplyMovement()
     {
         if (isFlying)
         {
@@ -709,39 +709,32 @@ void UpdateGroundMovementState()
             // Smoothly accelerate towards target velocity
             velocity = Vector3.MoveTowards(velocity, targetVelocity, thrustForce * Time.deltaTime);
             
-            // Debug output when flying
-            if (Time.frameCount % 30 == 0)
-            {
-                Debug.Log($"<color=green>FLYING! Speed: {velocity.magnitude:F2} m/s, Direction: {thrustDirection}, Height: {transform.position.y:F2} m</color>");
-            }
+            // Move the character in 3D!
+            characterController.Move(velocity * Time.deltaTime);
         }
         else
         {
             // MOMENTUM PRESERVATION - Keep moving but slow down!
-            // Horizontal air resistance (drag)
             Vector3 horizontalVelocity = new Vector3(velocity.x, 0, velocity.z);
             horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, airDrag * Time.deltaTime);
             
-            // Apply horizontal velocity back
             velocity.x = horizontalVelocity.x;
             velocity.z = horizontalVelocity.z;
             
-            // Apply gravity to vertical movement
             if (!characterController.isGrounded)
             {
+                // Only apply gravity when actually in the air (not on ground)
                 velocity.y -= gravity * Time.deltaTime;
+                characterController.Move(velocity * Time.deltaTime);
             }
             else
             {
-                velocity.y = -2f;
-                // Also stop horizontal movement when grounded
-                velocity.x = Mathf.MoveTowards(velocity.x, 0, groundDrag * Time.deltaTime);
-                velocity.z = Mathf.MoveTowards(velocity.z, 0, groundDrag * Time.deltaTime);
+                // Grounded and not flying — let XR system handle height naturally
+                velocity.y = 0f;
+                velocity.x = 0f;
+                velocity.z = 0f;
             }
         }
-        
-        // Move the character in 3D!
-        characterController.Move(velocity * Time.deltaTime);
     }
 }
 
