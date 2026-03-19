@@ -197,6 +197,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mountainb_Lava (2)
       objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.46967
@@ -7138,6 +7142,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mountainb_Lava (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.46966988
@@ -10888,6 +10896,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_platformB (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 171676, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 443732, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
       propertyPath: m_LocalScale.y
       value: 0.68971
@@ -11429,6 +11441,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.6339135
@@ -11708,6 +11724,10 @@ PrefabInstance:
     - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_Name
       value: Mountainc_Lava (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 458390, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_LocalScale.x
@@ -12324,6 +12344,10 @@ PrefabInstance:
     - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_Name
       value: Lava_flat_rock (10)
+      objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
@@ -14394,6 +14418,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mountainb_Lava
       objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.46967
@@ -16054,6 +16082,10 @@ PrefabInstance:
     - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_Name
       value: Lava_flat_rock (9)
+      objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
@@ -17903,6 +17935,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (8)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 8.078157
@@ -19316,6 +19352,10 @@ PrefabInstance:
     - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_Name
       value: Lava_rock_B (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 421610, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_LocalPosition.x
@@ -21433,6 +21473,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (13)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 2.526449
@@ -21844,6 +21888,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (5)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.633914
@@ -22073,6 +22121,10 @@ PrefabInstance:
     - target: {fileID: 171676, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
       propertyPath: m_Name
       value: Lava_platformB (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 171676, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 443732, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
       propertyPath: m_LocalScale.y
@@ -22761,6 +22813,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (7)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.6339135
@@ -23191,6 +23247,10 @@ PrefabInstance:
     - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_Name
       value: Lava_rock_B
+      objectReference: {fileID: 0}
+    - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 421610, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_LocalPosition.x
@@ -24151,6 +24211,10 @@ PrefabInstance:
     - target: {fileID: 171676, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
       propertyPath: m_Name
       value: Lava_platformB
+      objectReference: {fileID: 0}
+    - target: {fileID: 171676, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 443732, guid: 661255d0ae28560488ce0b37ff2db742, type: 3}
       propertyPath: m_LocalPosition.x
@@ -26640,6 +26704,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (12)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.8650703
@@ -26852,6 +26920,10 @@ PrefabInstance:
     - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_Name
       value: Lava_flat_rock (3)
+      objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
@@ -27664,6 +27736,10 @@ PrefabInstance:
     - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_Name
       value: Mountainb_Lava (4)
+      objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
@@ -29655,6 +29731,10 @@ PrefabInstance:
     - target: {fileID: 116230, guid: d823d5377401b8c47b9507af2067bf98, type: 3}
       propertyPath: m_Name
       value: Lava_rock_A (1)
+      objectReference: {fileID: 0}
+    - target: {fileID: 116230, guid: d823d5377401b8c47b9507af2067bf98, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 116230, guid: d823d5377401b8c47b9507af2067bf98, type: 3}
       propertyPath: m_StaticEditorFlags
@@ -31837,6 +31917,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Mountainb_Lava (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
       value: 0.46967
@@ -33707,6 +33791,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (11)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.8650703
@@ -34073,6 +34161,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_rock_B (1)
       objectReference: {fileID: 0}
+    - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 421610, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_LocalPosition.x
       value: 10.5
@@ -34310,6 +34402,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (6)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 3.1638973
@@ -34521,6 +34617,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 768218663}
     m_Modifications:
+    - target: {fileID: 154390, guid: 6a38088178518224c973e19cb946a30b, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 154390, guid: 6a38088178518224c973e19cb946a30b, type: 3}
       propertyPath: m_StaticEditorFlags
       value: 4294967295
@@ -37808,6 +37908,10 @@ PrefabInstance:
     - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_Name
       value: Mountainc_Lava
+      objectReference: {fileID: 0}
+    - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 458390, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_LocalScale.x
@@ -45310,6 +45414,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_rock_B (3)
       objectReference: {fileID: 0}
+    - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 421610, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_LocalPosition.x
       value: 28.14
@@ -48544,6 +48652,10 @@ PrefabInstance:
     - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_Name
       value: Mountainc_Lava (2)
+      objectReference: {fileID: 0}
+    - target: {fileID: 120906, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 458390, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
       propertyPath: m_LocalScale.x
@@ -55953,6 +56065,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_rock_B (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 109478, guid: bb01296250a208941bac71d492501152, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 421610, guid: bb01296250a208941bac71d492501152, type: 3}
       propertyPath: m_LocalPosition.x
       value: 24.21
@@ -61893,6 +62009,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Lava_flat_rock (4)
       objectReference: {fileID: 0}
+    - target: {fileID: 108928, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 482208, guid: 27f06966515fc8f429f3e8f76576d28a, type: 3}
       propertyPath: m_LocalScale.x
       value: 4.6339135
@@ -62934,6 +63054,10 @@ PrefabInstance:
     - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_Name
       value: Mountainb_Lava (5)
+      objectReference: {fileID: 0}
+    - target: {fileID: 194320, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 479862, guid: 3e249fe9ea0d3534f8caa2dbd32857b5, type: 3}
       propertyPath: m_LocalScale.x
