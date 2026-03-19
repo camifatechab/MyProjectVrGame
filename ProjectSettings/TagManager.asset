@@ -12,6 +12,7 @@ TagManager:
   - Platform
   - LandingPlatform
   - Crystal
+  - StartZone
   layers:
   - Default
   - TransparentFX
@@ -26,8 +27,13 @@ TagManager:
   - Suimono_Screen
   - Obstacles
   - Cloud Layer
+<<<<<<< HEAD
   - Dragon
   - 
+=======
+  - Vehicle
+  - Wheel
+>>>>>>> main
   - 
   - 
   - 

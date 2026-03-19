@@ -2048,7 +2048,7 @@
                     "initialStateCheck": true
                 },
                 {
-                    "name": "Boost",
+                    "name": "Enter/Exit",
                     "type": "Button",
                     "id": "cfb71620-33d5-430b-a732-965178123dc4",
                     "expectedControlType": "",
@@ -2351,7 +2351,7 @@
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Boost",
+                    "action": "Enter/Exit",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

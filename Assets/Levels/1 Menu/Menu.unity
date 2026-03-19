@@ -473,6 +473,10 @@ PrefabInstance:
       propertyPath: m_Name
       value: Push Button Quit
       objectReference: {fileID: 0}
+    - target: {fileID: 4922582553321831162, guid: 76f3439a0ae796e4b81bee3f91f888ee, type: 3}
+      propertyPath: m_IsActive
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5419331889293473514, guid: 76f3439a0ae796e4b81bee3f91f888ee, type: 3}
       propertyPath: m_SelectEntered.m_PersistentCalls.m_Calls.Array.size
       value: 1
@@ -3651,12 +3655,12 @@ GameObject:
   - component: {fileID: 1297429601}
   - component: {fileID: 1297429600}
   m_Layer: 5
-  m_Name: Start (1)
+  m_Name: Quit
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &1297429599
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4042,7 +4046,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: -180, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -0.0009491144, y: 13.1}
+  m_AnchoredPosition: {x: -0.0009491144, y: 22.2}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1359800330
@@ -4065,9 +4069,9 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Nexus
+  m_text: 'Nexus Station
 
-    Odyssey VR'
+    Odyssey'
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
   m_sharedMaterial: {fileID: 4924455296522437806, guid: f39a340af74327a40a68e53db8cffb60, type: 2}
