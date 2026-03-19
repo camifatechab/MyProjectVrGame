@@ -103,6 +103,7 @@ public class AutoJetpackController : MonoBehaviour
     
     // Landing detection
     private float previousVerticalVelocity = 0f;
+    private RoverDriver roverDriver;
     
     
 // Track previous grounded state
@@ -159,6 +160,7 @@ void Start()
             }
         }
         
+        roverDriver = FindAnyObjectByType<RoverDriver>();
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
         
         // Audio setup confirmation
@@ -349,7 +351,9 @@ void CheckJetpackActivation()
         }
         
         // Can't fly if out of fuel!
-        bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel;
+        // Can't fly if out of fuel or if player is mounted in the rover
+        bool inRover = roverDriver != null && roverDriver.IsMounted;
+        bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel && !inRover;
         
         if (shouldFly != isFlying)
         {
