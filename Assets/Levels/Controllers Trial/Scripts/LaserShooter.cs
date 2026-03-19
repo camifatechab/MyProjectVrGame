@@ -36,6 +36,15 @@ public class LaserShooter : MonoBehaviour
     [Tooltip("Uncheck to fire without needing to activate the jetpack first.")]
     [SerializeField] private bool requireFlying = true;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip fireSound;
+    [SerializeField] private AudioClip hitSound;
+    [SerializeField] private AudioClip emptyClickSound;
+    [SerializeField] private AudioClip travelWhooshSound;
+    private AudioSource gunAudio;
+    private float hitSoundCooldown = 0f;
+    private bool  emptyClickedLastFrame = false;
+
     // --- Private ---
     private LineRenderer    lineRenderer;
     private InputDevice     rightDevice;
@@ -55,17 +64,29 @@ public class LaserShooter : MonoBehaviour
         SetupLineRenderer();
         SetupImpactParticle();
         SetupReadyIndicator();
+        SetupAudio();
         InitializeXRDevice();
         AutoFindReferences();
     }
 
-    void Update()
+void Update()
     {
         if (!rightDevice.isValid)
             InitializeXRDevice();
 
         bool armed      = IsArmed();
-        bool shouldFire = armed && IsTriggerHeld();
+        bool triggerHeld = IsTriggerHeld();
+        bool shouldFire = armed && triggerHeld;
+
+        // Empty click when not armed but trigger pressed
+        if (triggerHeld && !armed && !emptyClickedLastFrame)
+        {
+            if (gunAudio != null && emptyClickSound != null)
+                gunAudio.PlayOneShot(emptyClickSound, 0.8f);
+        }
+        emptyClickedLastFrame = triggerHeld && !armed;
+
+        hitSoundCooldown -= Time.deltaTime;
 
         if (readyDot != null)
             readyDot.SetActive(armed && !shouldFire);
@@ -102,7 +123,7 @@ public class LaserShooter : MonoBehaviour
     // LASER
     // ─────────────────────────────────────────────
 
-    void FireLaser()
+void FireLaser()
     {
         if (!isLaserActive)
         {
@@ -110,6 +131,17 @@ public class LaserShooter : MonoBehaviour
             lineRenderer.enabled = true;
             rhythmTimer          = 0f;
             rhythmInBurst        = true;
+            // Fire sound on activation
+            if (gunAudio != null && fireSound != null)
+                gunAudio.PlayOneShot(fireSound, 1f);
+            // Start looping whoosh
+            if (gunAudio != null && travelWhooshSound != null)
+            {
+                gunAudio.clip   = travelWhooshSound;
+                gunAudio.loop   = true;
+                gunAudio.volume = 0.5f;
+                gunAudio.Play();
+            }
         }
 
         if (vignetteEffect != null)
@@ -126,17 +158,14 @@ public class LaserShooter : MonoBehaviour
                 HapticsManager.Instance.PulseRight(rhythmBurstIntensity, rhythmBurstDuration);
         }
 
-        // Raycast from controller
         Vector3 origin    = laserOrigin.position;
         Vector3 direction = laserOrigin.forward;
-
         lineRenderer.SetPosition(0, origin);
 
         RaycastHit hit;
         if (Physics.Raycast(origin, direction, out hit, laserRange))
         {
             lineRenderer.SetPosition(1, hit.point);
-
             impactParticle.transform.position = hit.point;
             if (!impactParticle.gameObject.activeSelf)
                 impactParticle.gameObject.SetActive(true);
@@ -147,6 +176,12 @@ public class LaserShooter : MonoBehaviour
                               ?? hit.collider.GetComponentInParent<LaserTarget>();
             if (target != null)
             {
+                // Hit sound (throttled so it doesn't spam every frame)
+                if (hitSoundCooldown <= 0f && gunAudio != null && hitSound != null)
+                {
+                    gunAudio.PlayOneShot(hitSound, 0.7f);
+                    hitSoundCooldown = 0.15f;
+                }
                 bool wasAlive = !target.IsDead();
                 target.OnLaserHit();
                 if (wasAlive && target.IsDead() && HapticsManager.Instance != null)
@@ -161,14 +196,15 @@ public class LaserShooter : MonoBehaviour
         }
     }
 
-    void StopLaser()
+void StopLaser()
     {
         if (!isLaserActive) return;
-
         isLaserActive        = false;
         lineRenderer.enabled = false;
         impactParticle.Stop();
-
+        // Stop whoosh loop
+        if (gunAudio != null && gunAudio.isPlaying)
+            gunAudio.Stop();
         if (vignetteEffect != null)
             vignetteEffect.SetActive(false);
     }
@@ -322,4 +358,14 @@ public class LaserShooter : MonoBehaviour
             }
         }
     }
+
+void SetupAudio()
+    {
+        gunAudio = GetComponent<AudioSource>();
+        if (gunAudio == null)
+            gunAudio = gameObject.AddComponent<AudioSource>();
+        gunAudio.spatialBlend = 0f; // 2D
+        gunAudio.playOnAwake  = false;
+    }
+
 }

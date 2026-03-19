@@ -1357,6 +1357,7 @@ MonoBehaviour:
   flashDuration: 0.1
   knockbackForce: 3
   staggerDuration: 0.18
+  deathSound: {fileID: 8300000, guid: 9f3686735cbf8bc4ba7baea4601fc219, type: 3}
 --- !u!114 &383696455
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6950,6 +6951,7 @@ MonoBehaviour:
   flashDuration: 0.1
   knockbackForce: 3
   staggerDuration: 0.18
+  deathSound: {fileID: 8300000, guid: 9f3686735cbf8bc4ba7baea4601fc219, type: 3}
 --- !u!114 &663803506
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18021,6 +18023,10 @@ MonoBehaviour:
   killHapticDuration: 0.3
   vignetteEffect: {fileID: 0}
   requireFlying: 0
+  fireSound: {fileID: 8300000, guid: 89e59dda9de03134ea73e2a2a403f327, type: 3}
+  hitSound: {fileID: 0}
+  emptyClickSound: {fileID: 0}
+  travelWhooshSound: {fileID: 0}
 --- !u!4 &1158611281 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1767192434, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
@@ -18971,6 +18977,7 @@ MonoBehaviour:
   flashDuration: 0.1
   knockbackForce: 3
   staggerDuration: 0.18
+  deathSound: {fileID: 8300000, guid: 9f3686735cbf8bc4ba7baea4601fc219, type: 3}
 --- !u!114 &1615286692
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20101,6 +20108,7 @@ MonoBehaviour:
   flashDuration: 0.1
   knockbackForce: 3
   staggerDuration: 0.18
+  deathSound: {fileID: 8300000, guid: 9f3686735cbf8bc4ba7baea4601fc219, type: 3}
 --- !u!114 &1984995082
 MonoBehaviour:
   m_ObjectHideFlags: 0

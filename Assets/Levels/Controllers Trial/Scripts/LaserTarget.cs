@@ -17,6 +17,10 @@ public class LaserTarget : MonoBehaviour
     public float knockbackForce  = 3f;
     public float staggerDuration = 0.18f;
 
+    [Header("Audio")]
+    [SerializeField] public AudioClip deathSound;
+    private AudioSource targetAudio;
+
     private float      currentHP;
     private bool       isDead;
     private float      flashTimer;
@@ -34,6 +38,11 @@ public class LaserTarget : MonoBehaviour
     void Start()
     {
         currentHP    = maxHP;
+        targetAudio  = GetComponent<AudioSource>();
+        if (targetAudio == null)
+            targetAudio = gameObject.AddComponent<AudioSource>();
+        targetAudio.spatialBlend = 1f; // 3D — comes from dragon position
+        targetAudio.playOnAwake  = false;
         urpUnlit     = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
         bodyRenderers  = GetComponentsInChildren<Renderer>();
         originalColors = new Color[bodyRenderers.Length];
@@ -112,6 +121,8 @@ IEnumerator Stagger()
     {
         isDead = true;
         StopAllCoroutines();
+        if (targetAudio != null && deathSound != null)
+            targetAudio.PlayOneShot(deathSound, 1f);
         if (barRoot != null) barRoot.SetActive(false);
         if (bloodSplatter != null) bloodSplatter.Stop();
         FlashColor(new Color(0.08f, 0.04f, 0.02f));
