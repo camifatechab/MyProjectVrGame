@@ -3,16 +3,7 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 3
-  tags:
-  - Anchor
-  - SpaceshipPart
-  - Rover
-  - SlowTerrain
-  - Ground
-  - Platform
-  - LandingPlatform
-  - Crystal
-  - StartZone
+  tags: []
   layers:
   - Default
   - TransparentFX
@@ -20,20 +11,15 @@ TagManager:
   - 
   - Water
   - UI
-  - UI_Subtitles
   - 
-  - Suimono_Water
-  - Suimono_Depth
-  - Suimono_Screen
-  - Obstacles
-  - Cloud Layer
-<<<<<<< HEAD
-  - Dragon
   - 
-=======
-  - Vehicle
-  - Wheel
->>>>>>> main
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
+  - 
   - 
   - 
   - 
@@ -57,10 +43,3 @@ TagManager:
     locked: 0
   m_RenderingLayers:
   - Default
-  - Light Layer 1
-  - Light Layer 2
-  - Light Layer 3
-  - Light Layer 4
-  - Light Layer 5
-  - Light Layer 6
-  - Light Layer 7

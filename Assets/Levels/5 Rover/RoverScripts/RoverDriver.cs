@@ -37,7 +37,7 @@ public class RoverDriver : MonoBehaviour
     public float maxRumble  = 0.25f;
 
     // --- runtime refs ---
-    private Rigidbody             rb;
+    // Rigidbody removed — GroundSnap handles vertical movement
     private BoxCollider           boxCol;
     private XROrigin              xrOrigin;
     private AutoJetpackController jetpack;
@@ -59,6 +59,7 @@ public class RoverDriver : MonoBehaviour
     private float dismountCooldown  = 0f;
     private float rumbleTimer       = 0f;
     private float dismountHoldTimer = 0f;
+    private float verticalVelocity  = 0f;
 
     // --- collision ---
     // FIX 4: exclude dragon layer (13) AND XR layer (2) from wall checks
@@ -67,25 +68,19 @@ public class RoverDriver : MonoBehaviour
     private Vector3 castHalfExt;   // local-space half-extents for BoxCast
     private Vector3 castCenter;    // local offset from pivot to collider center
 
-    void Start()
+void Start()
     {
-        rb     = GetComponent<Rigidbody>();
         boxCol = GetComponent<BoxCollider>();
 
-        if (rb != null) { rb.isKinematic = true; rb.useGravity = false; }
-
-        // FIX 4: exclude dragons (13) and XR/IgnoreRaycast (2) — neither should block rover
         wallMask = ~((1 << 13) | (1 << 2));
 
-        // FIX 2: compute half-extents in LOCAL space from collider, not world renderer bounds
-        // These stay correct regardless of rover rotation
         if (boxCol != null)
         {
             castHalfExt = new Vector3(
                 boxCol.size.x * transform.lossyScale.x * 0.5f,
                 boxCol.size.y * transform.lossyScale.y * 0.5f,
                 boxCol.size.z * transform.lossyScale.z * 0.5f);
-            castCenter = boxCol.center; // local offset
+            castCenter = boxCol.center;
         }
         else
         {
@@ -140,9 +135,12 @@ public class RoverDriver : MonoBehaviour
         {
             var go = new GameObject("SeatAnchor");
             go.transform.SetParent(transform, false);
-            go.transform.localPosition = new Vector3(-0.2f, 0.55f, 0.1f);
+            go.transform.localPosition = new Vector3(-0.3f, 0.1f, 0.1f);
             seatAnchor = go.transform;
         }
+
+        // Snap to ground immediately on start
+        GroundSnap();
     }
 
     void Update()
@@ -156,6 +154,7 @@ public class RoverDriver : MonoBehaviour
 
         if (!isMounted)
         {
+            GroundSnap();
             if (bothGrips && !gripsLastFrame && xrOrigin != null)
             {
                 float dist = Vector3.Distance(xrOrigin.transform.position, transform.position);
@@ -184,6 +183,7 @@ public class RoverDriver : MonoBehaviour
             // FIX 6: pass Time.deltaTime explicitly so smoothing is frame-rate independent
             float steer = ComputeWheelSteering(Time.deltaTime);
             Drive(throttle, steer, Time.deltaTime);
+            GroundSnap();
             Depenetrate();
             SpinWheels();
             UpdateHaptics(rightGrip);
@@ -337,17 +337,25 @@ public class RoverDriver : MonoBehaviour
 
     // ── Mount / Dismount ──────────────────────────────────────────────────────
 
-    void Mount()
+void Mount()
     {
         isMounted        = true;
         dismountCooldown = 2f;
         currentSpeed     = 0f;
         Debug.Log("[RoverDriver] Mounted!");
 
-        if (xrOrigin != null && Camera.main != null)
+        // Disable jetpack and force isFlying = false so effects stop immediately
+        if (jetpack != null)
         {
-            Vector3 headOffset          = Camera.main.transform.position - xrOrigin.transform.position;
-            xrOrigin.transform.position = seatAnchor.position - headOffset + Vector3.up * seatHeightBoost;
+            jetpack.enabled = false;
+            var flyingField = typeof(AutoJetpackController).GetField("isFlying",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (flyingField != null) flyingField.SetValue(jetpack, false);
+        }
+
+        if (xrOrigin != null)
+        {
+            xrOrigin.transform.position = seatAnchor.position;
             xrOrigin.transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
             xrOrigin.transform.SetParent(transform, worldPositionStays: true);
         }
@@ -361,10 +369,9 @@ public class RoverDriver : MonoBehaviour
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = false;
         if (charController != null) charController.enabled = false;
-        if (jetpack        != null) jetpack.enabled        = false;
     }
 
-    void Dismount()
+void Dismount()
     {
         isMounted         = false;
         currentSpeed      = 0f;
@@ -385,7 +392,15 @@ public class RoverDriver : MonoBehaviour
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = true;
         if (charController != null) charController.enabled = true;
-        if (jetpack        != null) jetpack.enabled        = true;
+
+        // Give jetpack a 1-second cooldown so dismount grips don't trigger flight
+        if (jetpack != null)
+        {
+            jetpack.enabled = true;
+            var field = typeof(AutoJetpackController).GetField("postDismountCooldown",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            if (field != null) field.SetValue(jetpack, 1.0f);
+        }
     }
 
     // ── XR helpers ────────────────────────────────────────────────────────────
@@ -428,6 +443,71 @@ public class RoverDriver : MonoBehaviour
         {
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireCube(seatAnchor.position, Vector3.one * 0.3f);
+        }
+    }
+
+
+void GroundSnap()
+    {
+        int groundMask = ~((1 << 13) | (1 << 2));
+        Vector3 origin  = transform.position + Vector3.up * 3f;
+
+        // RaycastAll so we skip our own BoxCollider and find the actual ground
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 10f,
+            groundMask, QueryTriggerInteraction.Ignore);
+
+        // Find closest hit that is NOT this rover or its children
+        RaycastHit best = default;
+        float bestDist  = float.MaxValue;
+        bool  found     = false;
+
+        foreach (var h in hits)
+        {
+            if (h.transform == transform) continue;
+            if (h.transform.IsChildOf(transform)) continue;
+            if (h.distance < bestDist)
+            {
+                bestDist = h.distance;
+                best     = h;
+                found    = true;
+            }
+        }
+
+        if (found)
+        {
+            float targetY = best.point.y;
+            float diff    = targetY - transform.position.y;
+
+            if (diff > -0.05f)
+            {
+                // On ground or uphill — snap directly
+                transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
+                verticalVelocity   = 0f;
+            }
+            else
+            {
+                // Falling — apply gravity, clamp when we reach surface
+                verticalVelocity += Physics.gravity.y * Time.deltaTime;
+                float newY = transform.position.y + verticalVelocity * Time.deltaTime;
+                if (newY <= targetY) { newY = targetY; verticalVelocity = 0f; }
+                transform.position = new Vector3(transform.position.x, newY, transform.position.z);
+            }
+
+            // Tilt to terrain normal, preserve yaw
+            float   yaw = transform.eulerAngles.y;
+            Vector3 fwd = Vector3.ProjectOnPlane(
+                Quaternion.Euler(0f, yaw, 0f) * Vector3.forward, best.normal).normalized;
+            if (fwd.sqrMagnitude > 0.01f)
+            {
+                Quaternion target  = Quaternion.LookRotation(fwd, best.normal);
+                transform.rotation = Quaternion.Slerp(transform.rotation, target, 12f * Time.deltaTime);
+            }
+        }
+        else
+        {
+            // No ground found — fall with terminal velocity cap
+            verticalVelocity    = Mathf.Max(verticalVelocity + Physics.gravity.y * Time.deltaTime, -20f);
+            transform.position += Vector3.up * verticalVelocity * Time.deltaTime;
         }
     }
 }

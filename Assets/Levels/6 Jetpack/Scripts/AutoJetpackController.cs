@@ -90,6 +90,9 @@ public class AutoJetpackController : MonoBehaviour
     private CharacterController characterController;
     private Vector3 velocity;
     private bool isFlying = false;
+    private bool gripsWerePressedLastFrame = false;
+    private float postDismountCooldown = 0f;
+    private RoverDriver roverDriver;
     
     private Transform leftControllerTransform;
     private Transform rightControllerTransform;
@@ -135,6 +138,7 @@ void Start()
         
         // Auto-find controllers
         AutoFindControllers();
+        roverDriver = FindAnyObjectByType<RoverDriver>();
         
         // Initialize XR devices
         InitializeXRDevices();
@@ -333,103 +337,34 @@ void Update()
     
 void CheckJetpackActivation()
     {
-        // Try multiple button types to maximize compatibility
-        bool leftGripPressed = IsGripPressed(leftDevice);
+        bool leftGripPressed  = IsGripPressed(leftDevice);
         bool rightGripPressed = IsGripPressed(rightDevice);
-        
         bool bothGripsPressed = leftGripPressed && rightGripPressed;
-        
-        // Check arm angles
+
+        // Rising-edge: grips must be freshly pressed, not held from a previous action
+        bool gripsJustPressed = bothGripsPressed && !gripsWerePressedLastFrame;
+
+        // Tick down post-dismount cooldown
+        if (postDismountCooldown > 0f)
+            postDismountCooldown -= Time.deltaTime;
+
         bool armsDown = AreArmsDown();
-        
-        // Debug output every second
-        if (Time.frameCount % 60 == 0)
-        {
-            Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}, Fuel: {GetFuelPercentage():F1}%");
-        }
-        
-        // Can't fly if out of fuel!
-        bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel;
-        
-        if (shouldFly != isFlying)
-        {
-            isFlying = shouldFly;
-            
-            if (isFlying)
-            {
-                Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
-                
-                // Start jetpack haptic vibration
-                if (HapticsManager.Instance != null)
-                {
-                    HapticsManager.Instance.StartJetpackVibration();
-                }
-                
-                // Start flying sound via AudioManager (new system)
-                if (audioManager != null)
-                {
-                    audioManager.StartThrust();
-                }
-                // Legacy audio fallback
-                else if (jetpackAudioSource != null && flyingSound != null)
-                {
-                    if (isFadingOut)
-                    {
-                        isFadingOut = false;
-                        jetpackAudioSource.volume = flyingSoundVolume;
-                    }
-                    if (!jetpackAudioSource.isPlaying)
-                    {
-                        jetpackAudioSource.Play();
-                    }
-                }
-            }
-            else
-            {
-                string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
-                Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
-                
-                // Stop jetpack haptic vibration
-                if (HapticsManager.Instance != null)
-                {
-                    HapticsManager.Instance.StopJetpackVibration();
-                }
-                
-                // Stop thrust sound via AudioManager (new system)
-                if (audioManager != null)
-                {
-                    audioManager.StopThrust();
-                }
-                // Legacy audio fallback
-                else
-                {
-                    StartAudioFadeOut();
-                }
-            }
-        }
-        
-        // Auto-deactivate if fuel runs out mid-flight
-        if (isFlying && isOutOfFuel)
-        {
+
+        // Prevent jetpack if rover is mounted
+        bool inRover = roverDriver != null && roverDriver.IsMounted;
+
+        // Jetpack STARTS only on a fresh grip press, not while grips are already held
+        if (gripsJustPressed && armsDown && !isOutOfFuel && !inRover && postDismountCooldown <= 0f)
+            isFlying = true;
+
+        // Jetpack STOPS when grips release or rover mounts
+        if (!bothGripsPressed || inRover)
             isFlying = false;
-            Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
-            
-            // Stop jetpack haptics
-            if (HapticsManager.Instance != null)
-            {
-                HapticsManager.Instance.StopJetpackVibration();
-            }
-            
-            // Stop thrust sound via AudioManager
-            if (audioManager != null)
-            {
-                audioManager.StopThrust();
-            }
-            else
-            {
-                StartAudioFadeOut();
-            }
-        }
+
+        if (Time.frameCount % 60 == 0)
+            Debug.Log($"[AutoJetpack] Left: {leftGripPressed}, Right: {rightGripPressed}, ArmsDown: {armsDown}, Flying: {isFlying}, InRover: {inRover}");
+
+        gripsWerePressedLastFrame = bothGripsPressed;
     }
 
 
