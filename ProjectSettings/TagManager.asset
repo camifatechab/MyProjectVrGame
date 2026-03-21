@@ -3,7 +3,12 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 3
-  tags: []
+  tags:
+  - Anchor
+  - StartZone
+  - SlowTerrain
+  - LandingPlatform
+  - Rover
   layers:
   - Default
   - TransparentFX
@@ -13,7 +18,7 @@ TagManager:
   - UI
   - 
   - 
-  - 
+  - Rover
   - 
   - 
   - 

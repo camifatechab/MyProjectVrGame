@@ -30,7 +30,12 @@ public class RoverDriver : MonoBehaviour
     public float steerDeadzone = 8f;
     public float steerMaxAngle = 150f;
 
-    [Header("Mount")]
+    [Header("Slope Climbing")]
+    [Tooltip("Max height the rover can step over (to climb ramps)")]
+    public float stepHeight = 0.6f;
+
+    
+[Header("Mount")]
     public float mountRadius = 4f;
 
     [Header("Haptics")]
@@ -73,7 +78,7 @@ void Start()
     {
         boxCol = GetComponent<BoxCollider>();
 
-        wallMask = ~((1 << 13) | (1 << 2));
+        wallMask = ~((1 << 13) | (1 << 2) | (1 << 8)); // exclude dragons, XR, Rover
 
         if (boxCol != null)
         {
@@ -233,7 +238,7 @@ void Start()
 
     // ── Driving ───────────────────────────────────────────────────────────────
 
-    void Drive(float throttle, float steer, float dt)
+void Drive(float throttle, float steer, float dt)
     {
         smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 2f * dt);
 
@@ -251,36 +256,20 @@ void Start()
 
         if (Mathf.Abs(currentSpeed) < 0.001f) return;
 
-        // FIX 2: BoxCast from COLLIDER CENTER in world space with LOCAL half-extents
-        // These are correct regardless of rover rotation
-        Vector3 worldCenter = transform.TransformPoint(castCenter);
-        Vector3 moveDir     = transform.forward * Mathf.Sign(currentSpeed);
-        float   moveDist    = Mathf.Abs(currentSpeed) * dt;
-
-        if (Physics.BoxCast(worldCenter, castHalfExt, moveDir,
-                out RaycastHit hit, transform.rotation,
-                moveDist, wallMask, QueryTriggerInteraction.Ignore)
-            && hit.transform != null
-            && hit.transform != transform
-            && !hit.transform.IsChildOf(transform))
-        {
-            float safe = Mathf.Max(0f, hit.distance - 0.02f);
-            moveDist     = safe;
-            currentSpeed = 0f;
-        }
-
+        // Move freely — Depenetrate() handles real walls, GroundSnap handles slopes/ramps
+        Vector3 moveDir = transform.forward * Mathf.Sign(currentSpeed);
+        float   moveDist = Mathf.Abs(currentSpeed) * dt;
         transform.position += moveDir * moveDist;
     }
 
     // ── Depenetration ─────────────────────────────────────────────────────────
     // FIX 3: no more renderer bounds — uses boxCol directly, no per-frame allocation
-    void Depenetrate()
+void Depenetrate()
     {
         if (boxCol == null) return;
 
         Vector3 worldCenter = transform.TransformPoint(castCenter);
 
-        // FIX 5: reuse castHalfExt — no GetComponentsInChildren allocation every frame
         Collider[] hits = Physics.OverlapBox(
             worldCenter, castHalfExt, transform.rotation,
             wallMask, QueryTriggerInteraction.Ignore);
@@ -296,6 +285,9 @@ void Start()
                     col,    col.transform.position, col.transform.rotation,
                     out Vector3 dir, out float dist))
             {
+                // If the push direction is mostly upward it's a ramp — let GroundSnap handle it
+                if (dir.y > 0.3f) continue;
+
                 transform.position += dir * (dist + 0.001f);
                 float into = Vector3.Dot(transform.forward * currentSpeed, -dir);
                 if (into > 0f) currentSpeed = 0f;
@@ -455,22 +447,20 @@ void Dismount()
 void GroundSnap()
     {
         int groundMask = ~((1 << 13) | (1 << 2));
-        Vector3 origin  = transform.position + Vector3.up * 3f;
+        Vector3 origin = transform.position + Vector3.up * 8f;
 
-        // RaycastAll so we skip our own BoxCollider and find the actual ground
-        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 10f,
+        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 20f,
             groundMask, QueryTriggerInteraction.Ignore);
 
-        // Find closest hit that is NOT this rover or its children
-        RaycastHit best = default;
-        float bestDist  = float.MaxValue;
-        bool  found     = false;
+        RaycastHit best  = default;
+        float bestDist   = float.MaxValue;
+        bool  found      = false;
 
         foreach (var h in hits)
         {
             if (h.transform == transform) continue;
-if (h.transform.IsChildOf(transform)) continue;
-            if (h.normal.y < 0.4f) continue; continue;
+            if (h.transform.IsChildOf(transform)) continue;
+            if (h.normal.y < 0.4f) continue;
             if (h.distance < bestDist)
             {
                 bestDist = h.distance;
@@ -484,36 +474,48 @@ if (h.transform.IsChildOf(transform)) continue;
             float targetY = best.point.y;
             float diff    = targetY - transform.position.y;
 
-            if (diff > -0.05f)
+            if (diff > -2f)
             {
-                // On ground or uphill — snap directly
                 transform.position = new Vector3(transform.position.x, targetY, transform.position.z);
                 verticalVelocity   = 0f;
             }
             else
             {
-                // Falling — apply gravity, clamp when we reach surface
-                verticalVelocity += Physics.gravity.y * Time.deltaTime;
+                verticalVelocity = Mathf.Max(verticalVelocity + Physics.gravity.y * Time.deltaTime, -20f);
                 float newY = transform.position.y + verticalVelocity * Time.deltaTime;
                 if (newY <= targetY) { newY = targetY; verticalVelocity = 0f; }
                 transform.position = new Vector3(transform.position.x, newY, transform.position.z);
             }
 
-            // Tilt to terrain normal, preserve yaw
-            float   yaw = transform.eulerAngles.y;
-            Vector3 fwd = Vector3.ProjectOnPlane(
-                Quaternion.Euler(0f, yaw, 0f) * Vector3.forward, best.normal).normalized;
-            if (fwd.sqrMagnitude > 0.01f)
+            // Only tilt to terrain normal when unmounted — tilting while mounted makes the player dizzy
+            if (!isMounted)
             {
-                Quaternion target  = Quaternion.LookRotation(fwd, best.normal);
-                transform.rotation = Quaternion.Slerp(transform.rotation, target, 12f * Time.deltaTime);
+                float   yaw = transform.eulerAngles.y;
+                Vector3 fwd = Vector3.ProjectOnPlane(
+                    Quaternion.Euler(0f, yaw, 0f) * Vector3.forward, best.normal).normalized;
+                if (fwd.sqrMagnitude > 0.01f)
+                {
+                    Quaternion target  = Quaternion.LookRotation(fwd, best.normal);
+                    transform.rotation = Quaternion.Slerp(transform.rotation, target, 12f * Time.deltaTime);
+                }
+            }
+            else
+            {
+                // Mounted: keep rover upright, only preserve yaw
+                float yaw = transform.eulerAngles.y;
+                transform.rotation = Quaternion.Slerp(
+                    transform.rotation,
+                    Quaternion.Euler(0f, yaw, 0f),
+                    8f * Time.deltaTime);
             }
         }
         else
         {
-            // No ground found — fall with terminal velocity cap
             verticalVelocity    = Mathf.Max(verticalVelocity + Physics.gravity.y * Time.deltaTime, -20f);
             transform.position += Vector3.up * verticalVelocity * Time.deltaTime;
         }
     }
+
+    // Helper: shoot a downward ray, return Y of best ground hit or -999 if none
+
 }
