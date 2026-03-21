@@ -4,6 +4,7 @@ using Unity.XR.CoreUtils;
 using System.Collections.Generic;
 
 /// VR Rover — kinematic movement + ComputePenetration wall correction.
+[DefaultExecutionOrder(-50)] // Run before AutoJetpackController
 public class RoverDriver : MonoBehaviour
 {
     [Header("Seat")]
@@ -339,6 +340,10 @@ void Start()
 
 void Mount()
     {
+        // Disable jetpack FIRST before anything else
+        // so it can't activate from the same grip press that mounts the rover
+        if (jetpack != null) jetpack.enabled = false;
+
         isMounted        = true;
         dismountCooldown = 2f;
         currentSpeed     = 0f;
