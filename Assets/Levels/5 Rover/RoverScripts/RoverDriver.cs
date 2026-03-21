@@ -469,7 +469,8 @@ void GroundSnap()
         foreach (var h in hits)
         {
             if (h.transform == transform) continue;
-            if (h.transform.IsChildOf(transform)) continue;
+if (h.transform.IsChildOf(transform)) continue;
+            if (h.normal.y < 0.4f) continue; continue;
             if (h.distance < bestDist)
             {
                 bestDist = h.distance;

@@ -7,7 +7,11 @@ using System.Collections.Generic;
 /// At 1: 4 attackers, fast, short rests, spread fire on rage.
 public class DragonAttack : MonoBehaviour
 {
-    [Header("Detection")]
+    [Header("Debug Gizmos")]
+    public bool showGizmos = false;
+
+    
+[Header("Detection")]
     public float detectionRange = 80f;
     public float attackRange    = 15f;
     public float minDistance    = 7f;
@@ -391,6 +395,8 @@ public class DragonAttack : MonoBehaviour
 
     void OnDrawGizmosSelected()
     {
+        if (!showGizmos) return;
+        
         Gizmos.color = Color.yellow; Gizmos.DrawWireSphere(transform.position, detectionRange);
         Gizmos.color = Color.red;    Gizmos.DrawWireSphere(transform.position, attackRange);
         Gizmos.color = Color.green;  Gizmos.DrawWireSphere(transform.position, minDistance);
