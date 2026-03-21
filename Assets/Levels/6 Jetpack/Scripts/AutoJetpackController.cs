@@ -5,7 +5,10 @@ using InputDevice = UnityEngine.XR.InputDevice;
 
 /// <summary>
 /// FULLY AUTOMATIC VR Jetpack Controller
+/// No setup required - just attach and fly!
 /// Hold BOTH grip buttons with arms down to fly upward!
+/// Automatically disables left joystick movement during flight AND when in air!
+/// NOW WITH CRYSTAL COLLECTION SUPPORT!
 /// </summary>
 public class AutoJetpackController : MonoBehaviour
 {
@@ -13,68 +16,102 @@ public class AutoJetpackController : MonoBehaviour
     [SerializeField] private float thrustForce = 15f;
     [SerializeField] private float maxUpwardVelocity = 10f;
     [SerializeField] private float armDownAngleThreshold = 120f;
-
+    
+    
     [Header("Fuel System")]
+    [Tooltip("Maximum fuel capacity")]
     [SerializeField] private float maxFuel = 100f;
+    
+    [Tooltip("Current fuel amount")]
     [SerializeField] private float currentFuel = 100f;
+    
+    [Tooltip("Fuel consumed per second while flying")]
     [SerializeField] private float fuelConsumptionRate = 10f;
+    
+    [Tooltip("Fuel percentage when low fuel warning starts")]
     [SerializeField] private float lowFuelThreshold = 25f;
+    
+    [Tooltip("Bonus fuel efficiency when gliding (multiplier)")]
     [SerializeField] private float glidingEfficiency = 0.5f;
-
+    
+    // Fuel system state
     private bool isOutOfFuel = false;
     private bool hasShownLowFuelWarning = false;
     private bool isRecharging = false;
-
+    
+    
     [Header("Fuel Recharge System")]
+    [Tooltip("Fuel recharged per second while grounded")]
     [SerializeField] private float fuelRechargeRate = 25f;
+    
+    [Tooltip("Enable fuel recharge when grounded")]
     [SerializeField] private bool enableRecharge = true;
-
-    [Header("Air Resistance / Momentum")]
+[Header("Air Resistance / Momentum")]
+    [Tooltip("How quickly you slow down when not thrusting (lower = glide longer)")]
     [SerializeField] private float airDrag = 2f;
+    
+    [Tooltip("How quickly you slow down on the ground")]
     [SerializeField] private float groundDrag = 4f;
-
+    
     [Header("Movement Integration")]
+    [Tooltip("Reference to the ground movement controller - will be found automatically if not assigned")]
     [SerializeField] private MonoBehaviour moveProvider;
-
+    
+    
     [Header("Audio Manager")]
+    [Tooltip("Reference to JetpackAudioManager - will be auto-created if not assigned")]
     [SerializeField] private JetpackAudioManager audioManager;
-
-    [Header("Legacy Audio Settings")]
+    
+    [Header("Legacy Audio Settings (Deprecated - Use AudioManager)")]
+    [Tooltip("Audio source for jetpack sound effects")]
     [SerializeField] private AudioSource jetpackAudioSource;
+    
+    [Tooltip("Sound to play while flying")]
     [SerializeField] private AudioClip flyingSound;
+    
+    [Tooltip("Volume of the flying sound (0-1)")]
     [SerializeField] private float flyingSoundVolume = 0.7f;
+    
+    [Tooltip("Time in seconds for sound to fade out when stopping")]
     [SerializeField] private float fadeOutDuration = 0.5f;
-
+    
+    // Audio state tracking
     private bool isFadingOut = false;
     private float fadeTimer = 0f;
-
-    [Header("Collection Settings")]
+    
+    
+[Header("Collection Settings")]
+    [Tooltip("Radius for crystal collection trigger")]
     [SerializeField] private float collectionRadius = 0.5f;
-
-    // Physics
+    
+    [Header("Physics")]
     private float gravity = 9.81f;
+    
     private CharacterController characterController;
     private Vector3 velocity;
-
-    // State
     private bool isFlying = false;
-    private bool gripsWerePressedLastFrame = false;
-    private float postDismountCooldown = 0f;
-    private RoverDriver roverDriver;
-
+    
     private Transform leftControllerTransform;
     private Transform rightControllerTransform;
-
+    
+    // Input devices
     private InputDevice leftDevice;
     private InputDevice rightDevice;
-
+    
+    // Collection trigger
     private GameObject collectionTrigger;
-
+    
+    // Landing detection
     private float previousVerticalVelocity = 0f;
+    private RoverDriver roverDriver;
+    
+    
+// Track previous grounded state
     private bool wasGrounded = true;
-
-    void Start()
+    
+void Start()
     {
+        // Get or add CharacterController
         characterController = GetComponent<CharacterController>();
         if (characterController == null)
         {
@@ -83,267 +120,635 @@ public class AutoJetpackController : MonoBehaviour
             characterController.radius = 0.3f;
             characterController.center = new Vector3(0, 0.9f, 0);
         }
-
+        
+        
+        // Setup audio manager (new system)
         SetupAudioManager();
+        
+        // Setup legacy audio source (deprecated but kept for compatibility)
         SetupAudioSource();
-
+        
+// Initialize fuel
         currentFuel = maxFuel;
-
+        
+        // Create collection trigger
         SetupCollectionTrigger();
+        
+        // Auto-find controllers
         AutoFindControllers();
+        
+        // Initialize XR devices
         InitializeXRDevices();
-
-        roverDriver = FindAnyObjectByType<RoverDriver>();
-
+        
+        // Auto-find movement provider if not assigned
         if (moveProvider == null)
         {
             GameObject moveObject = GameObject.Find("Move");
             if (moveObject != null)
+            {
                 moveProvider = moveObject.GetComponent<MonoBehaviour>();
+                
+                if (moveProvider != null && moveProvider.GetType().Name.Contains("Move"))
+                {
+                    Debug.Log($"<color=cyan>✓ Found Movement Provider: {moveProvider.GetType().Name} on {moveObject.name}</color>");
+                }
+            }
+            
+            if (moveProvider == null)
+            {
+                Debug.LogWarning("No Movement Provider found. Ground movement won't be disabled during flight.");
+            }
         }
-
-        Debug.Log($"AutoJetpack Ready! Controllers: L={leftControllerTransform != null} R={rightControllerTransform != null}");
+        
+        roverDriver = FindAnyObjectByType<RoverDriver>();
+        Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
+        
+        // Audio setup confirmation
+        if (jetpackAudioSource != null && flyingSound != null)
+        {
+            Debug.Log("<color=green>✓ Jetpack Audio System Ready!</color>");
+        }
+        else if (flyingSound == null)
+        {
+            Debug.LogWarning("⚠ No flying sound assigned! Please assign an AudioClip in the Inspector.");
+        }
+        Debug.Log($"<color=green>✓ Fuel System Initialized: {currentFuel}/{maxFuel}</color>");
     }
-
+    
     void SetupAudioManager()
     {
+        // Auto-create JetpackAudioManager if not assigned
         if (audioManager == null)
         {
             audioManager = GetComponent<JetpackAudioManager>();
             if (audioManager == null)
+            {
                 audioManager = gameObject.AddComponent<JetpackAudioManager>();
+                Debug.Log("<color=cyan>✓ Created JetpackAudioManager component</color>");
+            }
         }
+        
+        Debug.Log("<color=green>✓ JetpackAudioManager Ready!</color>");
     }
-
-    void SetupCollectionTrigger()
+    
+    
+void SetupCollectionTrigger()
     {
+        // Create a child GameObject for collection detection
         collectionTrigger = new GameObject("CollectionTrigger");
         collectionTrigger.transform.SetParent(transform);
         collectionTrigger.transform.localPosition = Vector3.zero;
+        
+        // Add sphere collider for collection
         SphereCollider trigger = collectionTrigger.AddComponent<SphereCollider>();
         trigger.isTrigger = true;
         trigger.radius = collectionRadius;
+        
+        // Add the collection component
         collectionTrigger.AddComponent<PlayerCollectionTrigger>();
+        
+        // Set the MainCamera tag so crystals can detect it
         collectionTrigger.tag = "MainCamera";
+        
+        Debug.Log($"<color=green>✓ Collection trigger created with radius: {collectionRadius}m</color>");
     }
+
 
     void SetupAudioSource()
     {
+        // Get or create audio source
         jetpackAudioSource = GetComponent<AudioSource>();
         if (jetpackAudioSource == null)
+        {
             jetpackAudioSource = gameObject.AddComponent<AudioSource>();
+            Debug.Log("<color=cyan>✓ Created AudioSource component</color>");
+        }
+        
+        // Configure audio source for jetpack
         jetpackAudioSource.loop = true;
         jetpackAudioSource.playOnAwake = false;
         jetpackAudioSource.volume = flyingSoundVolume;
         jetpackAudioSource.clip = flyingSound;
-        jetpackAudioSource.spatialBlend = 0f;
+        
+        // Spatial audio settings for VR immersion
+        jetpackAudioSource.spatialBlend = 0f; // 0 = 2D (follows player)
     }
 
+
+    void UpdateAudioFade()
+    {
+        if (isFadingOut && jetpackAudioSource != null)
+        {
+            fadeTimer += Time.deltaTime;
+            float fadeProgress = fadeTimer / fadeOutDuration;
+            
+            // Smoothly reduce volume
+            jetpackAudioSource.volume = Mathf.Lerp(flyingSoundVolume, 0f, fadeProgress);
+            
+            // Stop completely when fade is done
+            if (fadeProgress >= 1f)
+            {
+                jetpackAudioSource.Stop();
+                jetpackAudioSource.volume = flyingSoundVolume; // Reset for next time
+                isFadingOut = false;
+                Debug.Log("<color=green>🔇 Flying sound faded out</color>");
+            }
+        }
+    }
+    
+    void StartAudioFadeOut()
+    {
+        if (jetpackAudioSource != null && jetpackAudioSource.isPlaying)
+        {
+            isFadingOut = true;
+            fadeTimer = 0f;
+            Debug.Log("<color=yellow>🔊 Starting audio fade out...</color>");
+        }
+    }
+
+
+    
     void AutoFindControllers()
     {
         Transform cameraOffset = transform.Find("Camera Offset");
         if (cameraOffset != null)
         {
-            leftControllerTransform  = cameraOffset.Find("Left Controller");
+            leftControllerTransform = cameraOffset.Find("Left Controller");
             rightControllerTransform = cameraOffset.Find("Right Controller");
+            
+            if (leftControllerTransform != null)
+                Debug.Log($"Found Left Controller: {leftControllerTransform.name}");
+            else
+                Debug.LogWarning("Could not find Left Controller!");
+                
+            if (rightControllerTransform != null)
+                Debug.Log($"Found Right Controller: {rightControllerTransform.name}");
+            else
+                Debug.LogWarning("Could not find Right Controller!");
+        }
+        else
+        {
+            Debug.LogError("AutoJetpack: Could not find Camera Offset!");
         }
     }
-
+    
     void InitializeXRDevices()
     {
-        var left  = new System.Collections.Generic.List<InputDevice>();
-        var right = new System.Collections.Generic.List<InputDevice>();
-        InputDevices.GetDevicesAtXRNode(XRNode.LeftHand,  left);
-        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, right);
-        if (left.Count  > 0) leftDevice  = left[0];
-        if (right.Count > 0) rightDevice = right[0];
+        // Get XR input devices
+        var leftHandDevices = new System.Collections.Generic.List<InputDevice>();
+        var rightHandDevices = new System.Collections.Generic.List<InputDevice>();
+        
+        InputDevices.GetDevicesAtXRNode(XRNode.LeftHand, leftHandDevices);
+        InputDevices.GetDevicesAtXRNode(XRNode.RightHand, rightHandDevices);
+        
+        if (leftHandDevices.Count > 0)
+        {
+            leftDevice = leftHandDevices[0];
+            Debug.Log($"Left Hand Device: {leftDevice.name}");
+        }
+        
+        if (rightHandDevices.Count > 0)
+        {
+            rightDevice = rightHandDevices[0];
+            Debug.Log($"Right Hand Device: {rightDevice.name}");
+        }
     }
-
-    void Update()
+    
+void Update()
     {
+        // Re-initialize devices if they become invalid
         if (!leftDevice.isValid || !rightDevice.isValid)
+        {
             InitializeXRDevices();
-
+        }
+        
         CheckJetpackActivation();
         UpdateFuelSystem();
         UpdateFuelRecharge();
         UpdateAudioFade();
         UpdateAudioManagerState();
+
         ApplyMovement();
         CheckLanding();
         UpdateGroundMovementState();
     }
-
-    void CheckJetpackActivation()
+    
+void CheckJetpackActivation()
     {
-        bool leftGripPressed  = IsGripPressed(leftDevice);
+        // Try multiple button types to maximize compatibility
+        bool leftGripPressed = IsGripPressed(leftDevice);
         bool rightGripPressed = IsGripPressed(rightDevice);
+        
         bool bothGripsPressed = leftGripPressed && rightGripPressed;
-        bool gripsJustPressed = bothGripsPressed && !gripsWerePressedLastFrame;
-
-        if (postDismountCooldown > 0f)
-            postDismountCooldown -= Time.deltaTime;
-
+        
+        // Check arm angles
         bool armsDown = AreArmsDown();
-        bool inRover  = roverDriver != null && roverDriver.IsMounted;
-
-        // Only start on a fresh grip press
-        if (gripsJustPressed && armsDown && !isOutOfFuel && !inRover && postDismountCooldown <= 0f)
-            isFlying = true;
-
-        // Stop when grips release or in rover
-        if (!bothGripsPressed || inRover)
+        
+        // Debug output every second
+        if (Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}, Fuel: {GetFuelPercentage():F1}%");
+        }
+        
+        // Can't fly if out of fuel!
+        // Can't fly if out of fuel or if player is mounted in the rover
+        bool inRover = roverDriver != null && roverDriver.IsMounted;
+        bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel && !inRover;
+        
+        if (shouldFly != isFlying)
+        {
+            isFlying = shouldFly;
+            
+            if (isFlying)
+            {
+                Debug.Log($"<color=cyan>★★★ Jetpack ACTIVATED ★★★ Fuel: {GetFuelPercentage():F1}%</color>");
+                
+                // Start jetpack haptic vibration
+                if (HapticsManager.Instance != null)
+                {
+                    HapticsManager.Instance.StartJetpackVibration();
+                }
+                
+                // Start flying sound via AudioManager (new system)
+                if (audioManager != null)
+                {
+                    audioManager.StartThrust();
+                }
+                // Legacy audio fallback
+                else if (jetpackAudioSource != null && flyingSound != null)
+                {
+                    if (isFadingOut)
+                    {
+                        isFadingOut = false;
+                        jetpackAudioSource.volume = flyingSoundVolume;
+                    }
+                    if (!jetpackAudioSource.isPlaying)
+                    {
+                        jetpackAudioSource.Play();
+                    }
+                }
+            }
+            else
+            {
+                string reason = isOutOfFuel ? "(OUT OF FUEL)" : "";
+                Debug.Log($"<color=cyan>★★★ Jetpack DEACTIVATED ★★★ {reason}</color>");
+                
+                // Stop jetpack haptic vibration
+                if (HapticsManager.Instance != null)
+                {
+                    HapticsManager.Instance.StopJetpackVibration();
+                }
+                
+                // Stop thrust sound via AudioManager (new system)
+                if (audioManager != null)
+                {
+                    audioManager.StopThrust();
+                }
+                // Legacy audio fallback
+                else
+                {
+                    StartAudioFadeOut();
+                }
+            }
+        }
+        
+        // Auto-deactivate if fuel runs out mid-flight
+        if (isFlying && isOutOfFuel)
+        {
             isFlying = false;
-
-        gripsWerePressedLastFrame = bothGripsPressed;
+            Debug.Log("<color=red>★★★ EMERGENCY SHUTDOWN - NO FUEL! ★★★</color>");
+            
+            // Stop jetpack haptics
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.StopJetpackVibration();
+            }
+            
+            // Stop thrust sound via AudioManager
+            if (audioManager != null)
+            {
+                audioManager.StopThrust();
+            }
+            else
+            {
+                StartAudioFadeOut();
+            }
+        }
     }
+
 
     void UpdateFuelSystem()
     {
-        if (!isFlying)
+        if (isFlying)
         {
-            if (currentFuel > (maxFuel * lowFuelThreshold / 100f))
-                hasShownLowFuelWarning = false;
-            return;
-        }
-
-        float consumption = fuelConsumptionRate * Time.deltaTime;
-        if (Vector3.Dot(GetThrustDirection(), Vector3.up) < 0.7f)
-            consumption *= glidingEfficiency;
-
-        currentFuel -= consumption;
-        if (currentFuel <= 0)
-        {
-            currentFuel = 0;
-            if (!isOutOfFuel)
+            // Calculate fuel consumption
+            float consumption = fuelConsumptionRate * Time.deltaTime;
+            
+            // Bonus efficiency when mostly gliding (not thrusting straight up)
+            Vector3 thrustDirection = GetThrustDirection();
+            float upwardness = Vector3.Dot(thrustDirection, Vector3.up);
+            if (upwardness < 0.7f) // Not thrusting directly upward
             {
-                isOutOfFuel = true;
-                if (audioManager != null) audioManager.StopLowFuelWarning();
+                consumption *= glidingEfficiency;
+            }
+            
+            // Consume fuel
+            currentFuel -= consumption;
+            
+            // Check if out of fuel
+            if (currentFuel <= 0)
+            {
+                currentFuel = 0;
+                if (!isOutOfFuel)
+                {
+                    isOutOfFuel = true;
+                    Debug.Log("<color=red>⚠ OUT OF FUEL! ⚠</color>");
+                    
+                    // Stop the low fuel warning - we're past that now!
+                    if (audioManager != null)
+                    {
+                        audioManager.StopLowFuelWarning();
+                    }
+                }
+            }
+            
+            // Low fuel warning
+            float fuelPercentage = (currentFuel / maxFuel) * 100f;
+            if (fuelPercentage <= lowFuelThreshold && !hasShownLowFuelWarning)
+            {
+                hasShownLowFuelWarning = true;
+                Debug.Log($"<color=orange>⚠ LOW FUEL WARNING: {fuelPercentage:F1}% remaining! ⚠</color>");
+                
+                // Play low fuel warning sound
+                if (audioManager != null)
+                {
+                    audioManager.PlayLowFuelWarning();
+                }
             }
         }
-
-        float pct = (currentFuel / maxFuel) * 100f;
-        if (pct <= lowFuelThreshold && !hasShownLowFuelWarning)
+        else
         {
-            hasShownLowFuelWarning = true;
-            if (audioManager != null) audioManager.PlayLowFuelWarning();
+            // Reset warning when not flying and fuel is above threshold
+            if (!isFlying && currentFuel > (maxFuel * lowFuelThreshold / 100f))
+            {
+                hasShownLowFuelWarning = false;
+            }
         }
     }
 
-    void UpdateFuelRecharge()
+    /// <summary>
+    /// Recharges fuel gradually when grounded and not flying
+    /// </summary>
+void UpdateFuelRecharge()
     {
-        bool should = characterController.isGrounded && !isFlying && enableRecharge && currentFuel < maxFuel;
-        if (should)
+        // Check if conditions for recharging are met
+        bool shouldRecharge = characterController.isGrounded && !isFlying && enableRecharge && currentFuel < maxFuel;
+        
+        if (shouldRecharge)
         {
-            isRecharging = true;
-            currentFuel  = Mathf.Min(currentFuel + fuelRechargeRate * Time.deltaTime, maxFuel);
-            if (currentFuel > 0 && isOutOfFuel) isOutOfFuel = false;
+            // Start recharging message (only once when starting)
+            if (!isRecharging)
+            {
+                isRecharging = true;
+                Debug.Log("<color=cyan>⚡ FUEL RECHARGING...</color>");
+            }
+            
+            // Recharge fuel
+            float rechargeAmount = fuelRechargeRate * Time.deltaTime;
+            currentFuel = Mathf.Min(currentFuel + rechargeAmount, maxFuel);
+            
+            // Clear out of fuel flag if recharged above 0
+            if (currentFuel > 0 && isOutOfFuel)
+            {
+                isOutOfFuel = false;
+                Debug.Log("<color=green>✓ FUEL RESTORED - Ready to fly!</color>");
+            }
+            
+            // Reset low fuel warning when recharged above threshold
             if (hasShownLowFuelWarning && (currentFuel / maxFuel * 100f) > lowFuelThreshold)
             {
                 hasShownLowFuelWarning = false;
-                if (audioManager != null) audioManager.ResetLowFuelWarning();
+                
+                // Reset audio manager warning state
+                if (audioManager != null)
+                {
+                    audioManager.ResetLowFuelWarning();
+                }
+            }
+            
+            // Recharge complete message
+            if (currentFuel >= maxFuel && isRecharging)
+            {
+                Debug.Log("<color=green>✓ FUEL TANK FULL!</color>");
             }
         }
-        else { isRecharging = false; }
-    }
-
-    void UpdateAudioFade()
-    {
-        if (!isFadingOut || jetpackAudioSource == null) return;
-        fadeTimer += Time.deltaTime;
-        jetpackAudioSource.volume = Mathf.Lerp(flyingSoundVolume, 0f, fadeTimer / fadeOutDuration);
-        if (fadeTimer >= fadeOutDuration)
+        else
         {
-            jetpackAudioSource.Stop();
-            jetpackAudioSource.volume = flyingSoundVolume;
-            isFadingOut = false;
+            // Stop recharging
+            if (isRecharging)
+            {
+                isRecharging = false;
+            }
         }
     }
+    
+    public void RefillFuel(float amount)
+    {
+        currentFuel = Mathf.Min(currentFuel + amount, maxFuel);
+        isOutOfFuel = false;
+        Debug.Log($"<color=cyan>✓ Fuel Refilled! Current: {currentFuel:F1}/{maxFuel}</color>");
+    }
+    
+    public void RefillFuelFull()
+    {
+        currentFuel = maxFuel;
+        isOutOfFuel = false;
+        hasShownLowFuelWarning = false;
+        Debug.Log("<color=green>✓ FUEL TANK FULL!</color>");
+    }
+    
+    // Public getters for UI
+    public float GetCurrentFuel() => currentFuel;
+    public float GetMaxFuel() => maxFuel;
+    public float GetFuelPercentage() => (currentFuel / maxFuel) * 100f;
+    public bool IsLowOnFuel() => GetFuelPercentage() <= lowFuelThreshold;
+    public bool IsOutOfFuel() => isOutOfFuel;
+    public bool IsFlying() => isFlying;
 
+    
     void UpdateAudioManagerState()
     {
-        if (audioManager != null)
-            audioManager.UpdatePlayerState(transform.position.y, velocity.magnitude);
+        if (audioManager == null) return;
+        
+        // Update wind audio based on altitude and speed
+        audioManager.UpdatePlayerState(transform.position.y, velocity.magnitude);
     }
-
-    void CheckLanding()
+    
+void CheckLanding()
     {
+        // Detect landing (was in air, now grounded)
         if (characterController.isGrounded && !wasGrounded)
         {
-            if (HapticsManager.Instance != null) HapticsManager.Instance.PulseLanding(previousVerticalVelocity);
-            if (audioManager != null) audioManager.PlayLanding(previousVerticalVelocity);
+            // Haptic feedback for landing
+            if (HapticsManager.Instance != null)
+            {
+                HapticsManager.Instance.PulseLanding(previousVerticalVelocity);
+            }
+            
+            // Audio feedback for landing
+            if (audioManager != null)
+            {
+                audioManager.PlayLanding(previousVerticalVelocity);
+            }
         }
+        
+        // Store velocity for next frame
         previousVerticalVelocity = velocity.y;
     }
-
-    void UpdateGroundMovementState()
+    
+    
+void UpdateGroundMovementState()
     {
         if (moveProvider == null) return;
-        bool shouldEnable = characterController.isGrounded && !isFlying;
-        if (moveProvider.enabled != shouldEnable) moveProvider.enabled = shouldEnable;
-        if (characterController.isGrounded != wasGrounded) wasGrounded = characterController.isGrounded;
+        
+        // CRITICAL FIX: Only enable ground movement when ACTUALLY GROUNDED
+        // Disable it when flying OR in the air (falling/gliding)
+        bool shouldEnableGroundMovement = characterController.isGrounded && !isFlying;
+        
+        // Only update if state changed (avoid spam)
+        if (moveProvider.enabled != shouldEnableGroundMovement)
+        {
+            moveProvider.enabled = shouldEnableGroundMovement;
+            
+            string reason = "";
+            if (isFlying)
+                reason = "FLYING";
+            else if (!characterController.isGrounded)
+                reason = "IN AIR";
+            else
+                reason = "GROUNDED";
+            
+            Debug.Log($"<color=yellow>Ground Movement {(shouldEnableGroundMovement ? "ENABLED" : "DISABLED")} - {reason}</color>");
+        }
+        
+        // Track grounded state changes
+        if (characterController.isGrounded != wasGrounded)
+        {
+            wasGrounded = characterController.isGrounded;
+            Debug.Log($"<color=orange>Ground State: {(wasGrounded ? "LANDED" : "AIRBORNE")}</color>");
+        }
+    }
+    
+    bool IsGripPressed(InputDevice device)
+    {
+        if (!device.isValid)
+            return false;
+        
+        // Try grip button (binary)
+        bool gripButton = false;
+        if (device.TryGetFeatureValue(CommonUsages.gripButton, out gripButton) && gripButton)
+            return true;
+        
+        // Try grip (analog)
+        float grip = 0f;
+        if (device.TryGetFeatureValue(CommonUsages.grip, out grip) && grip > 0.5f)
+            return true;
+        
+        // Try trigger as fallback
+        float trigger = 0f;
+        if (device.TryGetFeatureValue(CommonUsages.trigger, out trigger) && trigger > 0.5f)
+            return true;
+        
+        return false;
+    }
+    
+    bool AreArmsDown()
+    {
+        if (leftControllerTransform == null || rightControllerTransform == null)
+            return false;
+        
+        // Check if controllers are pointing down
+        float leftAngle = Vector3.Angle(leftControllerTransform.forward, Vector3.down);
+        float rightAngle = Vector3.Angle(rightControllerTransform.forward, Vector3.down);
+        
+        // Debug output every second
+        if (Time.frameCount % 60 == 0)
+        {
+            Debug.Log($"[AutoJetpack] Arm Angles - Left: {leftAngle:F1}, Right: {rightAngle:F1} (Threshold: {armDownAngleThreshold})");
+        }
+        
+        return leftAngle < armDownAngleThreshold && rightAngle < armDownAngleThreshold;
     }
 
-    void ApplyMovement()
+    Vector3 GetThrustDirection()
+    {
+        if (leftControllerTransform == null || rightControllerTransform == null)
+            return Vector3.up; // Default to up if controllers not found
+        
+        // Get the forward direction of both controllers
+        Vector3 leftDirection = leftControllerTransform.forward;
+        Vector3 rightDirection = rightControllerTransform.forward;
+        
+        // Average the two directions (Iron Man uses both hands!)
+        Vector3 averageDirection = (leftDirection + rightDirection).normalized;
+        
+        // Negate because controller forward points away from palm
+        // When palms point down (arms down), we want to go UP
+        Vector3 thrustDirection = -averageDirection;
+        
+        return thrustDirection;
+    }
+
+    
+void ApplyMovement()
     {
         if (isFlying)
         {
-            Vector3 target = GetThrustDirection() * maxUpwardVelocity;
-            velocity = Vector3.MoveTowards(velocity, target, thrustForce * Time.deltaTime);
+            // Get the direction from both hands (Iron Man style!)
+            Vector3 thrustDirection = GetThrustDirection();
+            
+            // Apply thrust in the direction hands are pointing
+            Vector3 targetVelocity = thrustDirection * maxUpwardVelocity;
+            
+            // Smoothly accelerate towards target velocity
+            velocity = Vector3.MoveTowards(velocity, targetVelocity, thrustForce * Time.deltaTime);
+            
+            // Move the character in 3D!
             characterController.Move(velocity * Time.deltaTime);
         }
         else
         {
-            Vector3 horiz = new Vector3(velocity.x, 0, velocity.z);
-            horiz = Vector3.MoveTowards(horiz, Vector3.zero, airDrag * Time.deltaTime);
-            velocity.x = horiz.x;
-            velocity.z = horiz.z;
-
+            // MOMENTUM PRESERVATION - Keep moving but slow down!
+            Vector3 horizontalVelocity = new Vector3(velocity.x, 0, velocity.z);
+            horizontalVelocity = Vector3.MoveTowards(horizontalVelocity, Vector3.zero, airDrag * Time.deltaTime);
+            
+            velocity.x = horizontalVelocity.x;
+            velocity.z = horizontalVelocity.z;
+            
             if (!characterController.isGrounded)
             {
+                // Only apply gravity when actually in the air (not on ground)
                 velocity.y -= gravity * Time.deltaTime;
                 characterController.Move(velocity * Time.deltaTime);
             }
             else
             {
-                velocity = Vector3.zero;
+                // Grounded and not flying — let XR system handle height naturally
+                velocity.y = 0f;
+                velocity.x = 0f;
+                velocity.z = 0f;
             }
         }
     }
-
-    bool IsGripPressed(InputDevice device)
-    {
-        if (!device.isValid) return false;
-        if (device.TryGetFeatureValue(CommonUsages.gripButton, out bool btn) && btn) return true;
-        if (device.TryGetFeatureValue(CommonUsages.grip, out float grip) && grip > 0.5f) return true;
-        return false;
-    }
-
-    bool AreArmsDown()
-    {
-        if (leftControllerTransform == null || rightControllerTransform == null) return false;
-        float l = Vector3.Angle(leftControllerTransform.forward,  Vector3.down);
-        float r = Vector3.Angle(rightControllerTransform.forward, Vector3.down);
-        return l < armDownAngleThreshold && r < armDownAngleThreshold;
-    }
-
-    Vector3 GetThrustDirection()
-    {
-        if (leftControllerTransform == null || rightControllerTransform == null) return Vector3.up;
-        return -(leftControllerTransform.forward + rightControllerTransform.forward).normalized;
-    }
-
-    // Public API
-    public bool IsFlying()           => isFlying;
-    public float GetCurrentFuel()    => currentFuel;
-    public float GetMaxFuel()        => maxFuel;
-    public float GetFuelPercentage() => (currentFuel / maxFuel) * 100f;
-    public bool IsLowOnFuel()        => GetFuelPercentage() <= lowFuelThreshold;
-    public bool IsOutOfFuel()        => isOutOfFuel;
-
-    public void RefillFuel(float amount) { currentFuel = Mathf.Min(currentFuel + amount, maxFuel); isOutOfFuel = false; }
-    public void RefillFuelFull()         { currentFuel = maxFuel; isOutOfFuel = false; hasShownLowFuelWarning = false; }
 }
 
-/// <summary>Exists so crystals can detect the collection trigger.</summary>
-public class PlayerCollectionTrigger : MonoBehaviour { }
+/// <summary>
+/// Simple component to make the collection trigger work with CrystalCollectible
+/// This just needs to exist on the trigger object
+/// </summary>
+public class PlayerCollectionTrigger : MonoBehaviour
+{
+    // This component doesn't need any code!
+    // It just exists so the trigger can detect crystals
+    // The actual collection is handled by CrystalCollectible.OnTriggerEnter()
+}
