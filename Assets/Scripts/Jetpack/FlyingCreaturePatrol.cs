@@ -66,7 +66,18 @@ public class FlyingCreaturePatrol : MonoBehaviour
     [Tooltip("Rotation offset to make model face forward")]
     public Vector3 forwardRotationOffset = new Vector3(75f, 0f, 0f);
     
-    [Header("Idle Behavior")]
+    [Header("Debug Gizmos")]
+    public bool showGizmos = false;
+
+    
+[Header("Cave Bounds Clamp")]
+    [Tooltip("If true, clamps position every frame to boundsMin/boundsMax (world space).")]
+    public bool useBoundsClamp = false;
+    public Vector3 boundsMin;
+    public Vector3 boundsMax;
+
+    
+[Header("Idle Behavior")]
     [Tooltip("Pause at each waypoint")]
     public bool pauseAtWaypoints = false;
     public float pauseDuration = 2f;
@@ -286,8 +297,21 @@ private void MoveToNextWaypoint()
         currentWaypointIndex = 0;
     }
     
-    private void OnDrawGizmosSelected()
+    private void LateUpdate()
     {
+        if (!useBoundsClamp) return;
+        Vector3 p = transform.position;
+        p.x = Mathf.Clamp(p.x, boundsMin.x, boundsMax.x);
+        p.y = Mathf.Clamp(p.y, boundsMin.y, boundsMax.y);
+        p.z = Mathf.Clamp(p.z, boundsMin.z, boundsMax.z);
+        transform.position = p;
+    }
+
+    
+private void OnDrawGizmosSelected()
+    {
+        if (!showGizmos) return;
+        
         // Draw patrol area
         Gizmos.color = new Color(0f, 1f, 1f, 0.2f);
         Vector3 center = patrolAreaCenter != Vector3.zero ? patrolAreaCenter : transform.position;

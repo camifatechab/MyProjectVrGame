@@ -12,7 +12,7 @@ public class LaserVignetteEffect : MonoBehaviour
     [Range(0f, 1f)] public float minAlpha = 0f;
     public float fadeInSpeed  = 8f;
     public float fadeOutSpeed = 5f;
-    public Color vignetteColor = new Color(1f, 0.05f, 0.05f, 1f);
+    public Color vignetteColor = new Color(0.05f, 0.05f, 1f, 1f);
 
     // Runtime
     private Image  vignetteImage;
