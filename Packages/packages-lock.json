@@ -5,9 +5,10 @@
       "depth": 0,
       "source": "git",
       "dependencies": {
-        "com.unity.nuget.newtonsoft-json": "3.0.2"
+        "com.unity.nuget.newtonsoft-json": "3.0.2",
+        "com.unity.test-framework": "1.1.31"
       },
-      "hash": "8f227ff5be77e3b0e4ec9cf8851a884565c78a1c"
+      "hash": "6907badefdea468892329ccee89402d7a989ae62"
     },
     "com.unity.bindings.openimageio": {
       "version": "1.0.2",

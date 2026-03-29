@@ -4,7 +4,7 @@ using Unity.XR.CoreUtils;
 using System.Collections.Generic;
 
 /// VR Rover — kinematic movement + ComputePenetration wall correction.
-[DefaultExecutionOrder(-50)] // Run before AutoJetpackController
+[DefaultExecutionOrder(-50)]
 public class RoverDriver : MonoBehaviour
 {
     [Header("Seat")]
@@ -14,6 +14,12 @@ public class RoverDriver : MonoBehaviour
     [Header("Steering Wheel Visual")]
     public Transform steeringWheelMesh;
     private Quaternion wheelBaseRotation;
+
+    [Header("Front Wheel Steering Visual")]
+    public Transform frontWheelLeft;
+    public Transform frontWheelRight;
+    public Transform frontAxle; // Axle_Front — used as rotation reference for steeringght;
+    public float maxSteerVisualAngle = 30f;
 
     [Header("Wheel Meshes (visual spin)")]
     public Transform[] wheelMeshes;
@@ -31,11 +37,9 @@ public class RoverDriver : MonoBehaviour
     public float steerMaxAngle = 150f;
 
     [Header("Slope Climbing")]
-    [Tooltip("Max height the rover can step over (to climb ramps)")]
     public float stepHeight = 0.6f;
 
-    
-[Header("Mount")]
+    [Header("Mount")]
     public float mountRadius = 4f;
 
     [Header("Haptics")]
@@ -43,7 +47,6 @@ public class RoverDriver : MonoBehaviour
     public float maxRumble  = 0.25f;
 
     // --- runtime refs ---
-    // Rigidbody removed — GroundSnap handles vertical movement
     private BoxCollider           boxCol;
     private XROrigin              xrOrigin;
     private AutoJetpackController jetpack;
@@ -67,18 +70,28 @@ public class RoverDriver : MonoBehaviour
     private float dismountHoldTimer = 0f;
     private float verticalVelocity  = 0f;
 
-    // --- collision ---
-    // FIX 4: exclude dragon layer (13) AND XR layer (2) from wall checks
-    // FIX 2/3: use fixed local half-extents computed once, not world-space renderer bounds
-    private int     wallMask;
-    private Vector3 castHalfExt;   // local-space half-extents for BoxCast
-    private Vector3 castCenter;    // local offset from pivot to collider center
+    // Cached pivot offsets from rover root (set at mount time)
+    private Vector3 pivotLeftLocalPos;
+    private Vector3 pivotRightLocalPos;
+    private bool    pivotOffsetsSet = false;
+    private Transform frontLeftSteerTarget;
+    private Transform frontRightSteerTarget;
+    private Transform frontSteerGroup;
+    private Quaternion frontLeftSteerBaseRotation = Quaternion.identity;
+    private Quaternion frontRightSteerBaseRotation = Quaternion.identity;
+    private Quaternion frontSteerGroupBaseRotation = Quaternion.identity;
+    private Vector3 frontLeftSteerBaseEuler;
+    private Vector3 frontRightSteerBaseEuler;
 
-void Start()
+    // --- collision ---
+    private int     wallMask;
+    private Vector3 castHalfExt;
+    private Vector3 castCenter;
+
+    void Start()
     {
         boxCol = GetComponent<BoxCollider>();
-
-        wallMask = ~((1 << 13) | (1 << 2) | (1 << 8)); // exclude dragons, XR, Rover
+        wallMask = ~((1 << 13) | (1 << 2) | (1 << 8));
 
         if (boxCol != null)
         {
@@ -145,8 +158,214 @@ void Start()
             seatAnchor = go.transform;
         }
 
-        // Snap to ground immediately on start
+        InitializeFrontSteeringTargets();
+
+        // Cache pivot local positions relative to rover root at start
+        CachePivotOffsets();
+
         GroundSnap();
+    }
+
+    void CachePivotOffsets()
+    {
+        if (frontWheelLeft != null)
+        {
+            // Get bounds center of the wheel mesh in local space of rover root
+            Renderer rL = frontWheelLeft.GetComponentInChildren<Renderer>();
+            if (rL != null)
+                pivotLeftLocalPos = transform.InverseTransformPoint(rL.bounds.center);
+            else
+                pivotLeftLocalPos = transform.InverseTransformPoint(frontWheelLeft.position);
+        }
+        if (frontWheelRight != null)
+        {
+            Renderer rR = frontWheelRight.GetComponentInChildren<Renderer>();
+            if (rR != null)
+                pivotRightLocalPos = transform.InverseTransformPoint(rR.bounds.center);
+            else
+                pivotRightLocalPos = transform.InverseTransformPoint(frontWheelRight.position);
+        }
+        pivotOffsetsSet = true;
+    }
+
+    void InitializeFrontSteeringTargets()
+    {
+        frontSteerGroup = null;
+        frontSteerGroupBaseRotation = Quaternion.identity;
+
+        frontLeftSteerTarget = PrepareSteeringTarget(frontWheelLeft, "FrontLeft");
+        frontRightSteerTarget = PrepareSteeringTarget(frontWheelRight, "FrontRight");
+
+        if (frontLeftSteerTarget != null)
+        {
+            frontLeftSteerBaseRotation = frontLeftSteerTarget.localRotation;
+            frontLeftSteerBaseEuler = frontLeftSteerTarget.localEulerAngles;
+        }
+        if (frontRightSteerTarget != null)
+        {
+            frontRightSteerBaseRotation = frontRightSteerTarget.localRotation;
+            frontRightSteerBaseEuler = frontRightSteerTarget.localEulerAngles;
+        }
+    }
+
+    void AttachSteerTargetToAxle(Transform steerTarget)
+    {
+        if (steerTarget == null || frontAxle == null) return;
+        if (steerTarget.parent == frontAxle) return;
+
+        steerTarget.SetParent(frontAxle, true);
+    }
+
+    Transform TryCreateSharedFrontSteerGroup()
+    {
+        if (frontWheelLeft == null || frontWheelRight == null) return null;
+        if (frontWheelLeft.parent == null || frontWheelLeft.parent != frontWheelRight.parent) return null;
+
+        Transform commonParent = frontWheelLeft.parent;
+        if ((frontWheelLeft.localPosition - frontWheelRight.localPosition).sqrMagnitude > 0.000001f)
+            return null;
+
+        foreach (Transform child in commonParent)
+        {
+            if (child != null && child.name == "FrontSteerGroupRuntime")
+                return child;
+        }
+
+        var steerGroup = new GameObject("FrontSteerGroupRuntime").transform;
+        steerGroup.SetParent(commonParent, false);
+        steerGroup.localPosition = frontAxle != null
+            ? commonParent.InverseTransformPoint(frontAxle.position)
+            : frontWheelLeft.localPosition;
+        steerGroup.localRotation = Quaternion.identity;
+        steerGroup.localScale = Vector3.one;
+
+        ReparentToSteerGroup(frontWheelLeft, steerGroup);
+        ReparentToSteerGroup(frontWheelRight, steerGroup);
+
+        return steerGroup;
+    }
+
+    void ReparentToSteerGroup(Transform source, Transform steerGroup)
+    {
+        if (source == null || steerGroup == null) return;
+        source.SetParent(steerGroup, true);
+    }
+
+    Transform PrepareSteeringTarget(Transform assignedTarget, string sideLabel)
+    {
+        if (assignedTarget == null) return null;
+
+        Transform existingRuntimePivot = FindExistingRuntimeSteeringPivot(sideLabel);
+        if (existingRuntimePivot != null)
+            return existingRuntimePivot;
+
+        return CreateRuntimeSteeringPivot(assignedTarget, sideLabel);
+    }
+
+    Transform FindExistingRuntimeSteeringPivot(string sideLabel)
+    {
+        Transform searchRoot = frontAxle != null ? frontAxle : transform;
+        if (searchRoot == null) return null;
+
+        string runtimePivotName = sideLabel + "_SteerPivotRuntime";
+        foreach (Transform child in searchRoot)
+        {
+            if (child != null && child.name == runtimePivotName)
+                return child;
+        }
+
+        return null;
+    }
+
+    bool IsTrackedWheelMesh(Transform candidate)
+    {
+        if (candidate == null || wheelMeshes == null) return false;
+
+        foreach (Transform wheel in wheelMeshes)
+        {
+            if (wheel == candidate)
+                return true;
+        }
+
+        return false;
+    }
+
+    Transform CreateRuntimeSteeringPivot(Transform wheelVisual, string sideLabel)
+    {
+        if (wheelVisual == null) return null;
+        if (wheelVisual.parent != null && wheelVisual.parent.name == sideLabel + "_SteerPivotRuntime")
+            return wheelVisual.parent;
+
+        Transform originalParent = wheelVisual.parent;
+        Transform pivotParent = frontAxle != null ? frontAxle : originalParent;
+        if (pivotParent == null)
+            return wheelVisual;
+
+        Vector3 pivotWorldPosition = GetSteeringPivotWorldPosition(wheelVisual);
+
+        var pivot = new GameObject(sideLabel + "_SteerPivotRuntime").transform;
+        pivot.SetParent(pivotParent, false);
+        pivot.position = pivotWorldPosition;
+        pivot.rotation = pivotParent.rotation;
+        pivot.localScale = Vector3.one;
+
+        if (!IsTrackedWheelMesh(wheelVisual) && wheelVisual.childCount > 0)
+        {
+            var children = new List<Transform>();
+            foreach (Transform child in wheelVisual)
+                children.Add(child);
+
+            foreach (Transform child in children)
+                child.SetParent(pivot, true);
+        }
+        else
+        {
+            wheelVisual.SetParent(pivot, true);
+        }
+
+        return pivot;
+    }
+
+    Vector3 GetSteeringPivotWorldPosition(Transform steerRoot)
+    {
+        Transform wheelVisual = FindWheelVisualForSteerRoot(steerRoot);
+        if (wheelVisual != null)
+        {
+            Renderer wheelRenderer = wheelVisual.GetComponent<Renderer>();
+            if (wheelRenderer != null)
+                return wheelRenderer.bounds.center;
+
+            return wheelVisual.position;
+        }
+
+        Renderer anyRenderer = steerRoot.GetComponentInChildren<Renderer>();
+        if (anyRenderer != null)
+            return anyRenderer.bounds.center;
+
+        return steerRoot.position;
+    }
+
+    Transform FindWheelVisualForSteerRoot(Transform steerRoot)
+    {
+        if (steerRoot == null) return null;
+        if (IsTrackedWheelMesh(steerRoot)) return steerRoot;
+
+        if (wheelMeshes != null)
+        {
+            foreach (Transform wheel in wheelMeshes)
+            {
+                if (wheel != null && wheel.IsChildOf(steerRoot))
+                    return wheel;
+            }
+        }
+
+        foreach (Transform child in steerRoot.GetComponentsInChildren<Transform>(true))
+        {
+            if (child != null && child.name.ToLowerInvariant().Contains("wheel"))
+                return child;
+        }
+
+        return null;
     }
 
     void Update()
@@ -169,10 +388,11 @@ void Start()
         }
         else
         {
-            if (bothGrips && dismountCooldown <= 0f)
+            // Dismount: must release both grips then re-hold for 1.5s
+            if (bothGrips && !gripsLastFrame && dismountCooldown <= 0f)
             {
                 dismountHoldTimer += Time.deltaTime;
-                if (dismountHoldTimer >= 0.5f)
+                if (dismountHoldTimer >= 1.5f)
                 {
                     dismountHoldTimer = 0f;
                     Dismount();
@@ -180,15 +400,15 @@ void Start()
                     return;
                 }
             }
-            else { dismountHoldTimer = 0f; }
+            else if (!bothGrips) { dismountHoldTimer = 0f; }
 
             float throttle = 0f;
             if (rightGrip && !leftGrip)      throttle =  1f;
             else if (leftGrip && !rightGrip) throttle = -1f;
 
-            // FIX 6: pass Time.deltaTime explicitly so smoothing is frame-rate independent
             float steer = ComputeWheelSteering(Time.deltaTime);
             Drive(throttle, steer, Time.deltaTime);
+            ClimbStep();
             GroundSnap();
             Depenetrate();
             SpinWheels();
@@ -238,7 +458,7 @@ void Start()
 
     // ── Driving ───────────────────────────────────────────────────────────────
 
-void Drive(float throttle, float steer, float dt)
+    void Drive(float throttle, float steer, float dt)
     {
         smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 2f * dt);
 
@@ -256,15 +476,35 @@ void Drive(float throttle, float steer, float dt)
 
         if (Mathf.Abs(currentSpeed) < 0.001f) return;
 
-        // Move freely — Depenetrate() handles real walls, GroundSnap handles slopes/ramps
-        Vector3 moveDir = transform.forward * Mathf.Sign(currentSpeed);
+        Vector3 moveDir  = transform.forward * Mathf.Sign(currentSpeed);
         float   moveDist = Mathf.Abs(currentSpeed) * dt;
         transform.position += moveDir * moveDist;
     }
 
+    // ── Step Climbing ─────────────────────────────────────────────────────────
+
+    void ClimbStep()
+    {
+        if (Mathf.Abs(currentSpeed) < 0.01f) return;
+
+        Vector3 moveDir    = transform.forward * Mathf.Sign(currentSpeed);
+        float   checkDist  = 0.6f;
+        int     groundMask = ~((1 << 13) | (1 << 2));
+
+        Vector3 lowOrigin  = transform.position + Vector3.up * (stepHeight * 0.5f);
+        bool    hitLow     = Physics.Raycast(lowOrigin, moveDir, checkDist, groundMask, QueryTriggerInteraction.Ignore);
+        if (!hitLow) return;
+
+        Vector3 highOrigin = transform.position + Vector3.up * (stepHeight * 1.8f);
+        bool    hitHigh    = Physics.Raycast(highOrigin, moveDir, checkDist, groundMask, QueryTriggerInteraction.Ignore);
+        if (hitHigh) return;
+
+        transform.position += Vector3.up * stepHeight * 0.4f * Time.deltaTime * 60f;
+    }
+
     // ── Depenetration ─────────────────────────────────────────────────────────
-    // FIX 3: no more renderer bounds — uses boxCol directly, no per-frame allocation
-void Depenetrate()
+
+    void Depenetrate()
     {
         if (boxCol == null) return;
 
@@ -285,12 +525,10 @@ void Depenetrate()
                     col,    col.transform.position, col.transform.rotation,
                     out Vector3 dir, out float dist))
             {
-                // If the push direction is mostly upward it's a ramp — let GroundSnap handle it
-                if (dir.y > 0.3f) continue;
-
+                if (dir.y > 0.15f) continue;
                 transform.position += dir * (dist + 0.001f);
                 float into = Vector3.Dot(transform.forward * currentSpeed, -dir);
-                if (into > 0f) currentSpeed = 0f;
+                if (into > 0f && dir.y < 0.1f) currentSpeed = 0f;
             }
         }
     }
@@ -299,9 +537,21 @@ void Depenetrate()
 
     void SpinWheels()
     {
+        // Spin wheel meshes on X axis
         float spin = (currentSpeed / Mathf.Max(wheelRadius, 0.01f)) * Mathf.Rad2Deg * Time.deltaTime;
         foreach (Transform w in wheelMeshes)
             if (w != null) w.Rotate(Vector3.right, spin, Space.Self);
+        // Pivot X and Y stay at 0 (pivot itself has no baked rotation)
+        // Only Z changes with steering — wheel mesh children have the baked -89.98 X
+        float targetAngle = smoothedSteer * maxSteerVisualAngle;
+        ApplySteerVisual(frontLeftSteerTarget, frontLeftSteerBaseEuler, targetAngle);
+        ApplySteerVisual(frontRightSteerTarget, frontRightSteerBaseEuler, targetAngle);
+    }
+
+    void ApplySteerVisual(Transform steerTarget, Vector3 baseEuler, float targetAngle)
+    {
+        if (steerTarget == null) return;
+        steerTarget.localEulerAngles = new Vector3(baseEuler.x, baseEuler.y, baseEuler.z + targetAngle);
     }
 
     // ── Haptics ───────────────────────────────────────────────────────────────
@@ -330,10 +580,8 @@ void Depenetrate()
 
     // ── Mount / Dismount ──────────────────────────────────────────────────────
 
-void Mount()
+    void Mount()
     {
-        // Disable jetpack FIRST before anything else
-        // so it can't activate from the same grip press that mounts the rover
         if (jetpack != null) jetpack.enabled = false;
 
         isMounted        = true;
@@ -341,7 +589,6 @@ void Mount()
         currentSpeed     = 0f;
         Debug.Log("[RoverDriver] Mounted!");
 
-        // Disable jetpack and force isFlying = false so effects stop immediately
         if (jetpack != null)
         {
             jetpack.enabled = false;
@@ -368,7 +615,7 @@ void Mount()
         if (charController != null) charController.enabled = false;
     }
 
-void Dismount()
+    void Dismount()
     {
         isMounted         = false;
         currentSpeed      = 0f;
@@ -390,7 +637,6 @@ void Dismount()
             foreach (var p in locomotionProviders) if (p != null) p.enabled = true;
         if (charController != null) charController.enabled = true;
 
-        // Give jetpack a 1-second cooldown so dismount grips don't trigger flight
         if (jetpack != null)
         {
             jetpack.enabled = true;
@@ -441,10 +687,16 @@ void Dismount()
             Gizmos.color = Color.yellow;
             Gizmos.DrawWireCube(seatAnchor.position, Vector3.one * 0.3f);
         }
+        // Draw cached pivot positions
+        if (Application.isPlaying && pivotOffsetsSet)
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawWireSphere(transform.TransformPoint(pivotLeftLocalPos),  0.1f);
+            Gizmos.DrawWireSphere(transform.TransformPoint(pivotRightLocalPos), 0.1f);
+        }
     }
 
-
-void GroundSnap()
+    void GroundSnap()
     {
         int groundMask = ~((1 << 13) | (1 << 2));
         Vector3 origin = transform.position + Vector3.up * 8f;
@@ -487,27 +739,9 @@ void GroundSnap()
                 transform.position = new Vector3(transform.position.x, newY, transform.position.z);
             }
 
-            // Only tilt to terrain normal when unmounted — tilting while mounted makes the player dizzy
-            if (!isMounted)
-            {
-                float   yaw = transform.eulerAngles.y;
-                Vector3 fwd = Vector3.ProjectOnPlane(
-                    Quaternion.Euler(0f, yaw, 0f) * Vector3.forward, best.normal).normalized;
-                if (fwd.sqrMagnitude > 0.01f)
-                {
-                    Quaternion target  = Quaternion.LookRotation(fwd, best.normal);
-                    transform.rotation = Quaternion.Slerp(transform.rotation, target, 12f * Time.deltaTime);
-                }
-            }
-            else
-            {
-                // Mounted: keep rover upright, only preserve yaw
-                float yaw = transform.eulerAngles.y;
-                transform.rotation = Quaternion.Slerp(
-                    transform.rotation,
-                    Quaternion.Euler(0f, yaw, 0f),
-                    8f * Time.deltaTime);
-            }
+            // Keep rover upright — baked 270deg mesh rotation makes any tilt catastrophic
+            float yaw = transform.eulerAngles.y;
+            transform.rotation = Quaternion.Euler(0f, yaw, 0f);
         }
         else
         {
@@ -515,7 +749,4 @@ void GroundSnap()
             transform.position += Vector3.up * verticalVelocity * Time.deltaTime;
         }
     }
-
-    // Helper: shoot a downward ray, return Y of best ground hit or -999 if none
-
 }
