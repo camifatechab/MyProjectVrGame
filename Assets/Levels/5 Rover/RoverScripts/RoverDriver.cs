@@ -69,10 +69,13 @@ public class RoverDriver : MonoBehaviour
     private float rumbleTimer       = 0f;
     private float dismountHoldTimer = 0f;
     private float verticalVelocity  = 0f;
+    private Vector3 currentGroundNormal = Vector3.up;
 
     // Cached pivot offsets from rover root (set at mount time)
     private Vector3 pivotLeftLocalPos;
     private Vector3 pivotRightLocalPos;
+    private Vector3 rearLeftLocalPos;
+    private Vector3 rearRightLocalPos;
     private bool    pivotOffsetsSet = false;
     private Transform frontLeftSteerTarget;
     private Transform frontRightSteerTarget;
@@ -88,24 +91,37 @@ public class RoverDriver : MonoBehaviour
     private Vector3 castHalfExt;
     private Vector3 castCenter;
 
+    void ConfigureCollisionBody()
+    {
+        if (boxCol == null)
+        {
+            castHalfExt = new Vector3(0.96f, 0.54f, 1.32f);
+            castCenter  = new Vector3(0f, 0.45f, 0.1f);
+            return;
+        }
+
+        Vector3 originalSize = boxCol.size;
+        Vector3 originalCenter = boxCol.center;
+
+        // Use a shallower chassis collider so ramps contact the wheel probes before the body acts like a wall.
+        boxCol.center = originalCenter + new Vector3(0f, originalSize.y * 0.22f, 0f);
+        boxCol.size = new Vector3(
+            originalSize.x * 0.92f,
+            originalSize.y * 0.58f,
+            originalSize.z * 0.82f);
+
+        castHalfExt = new Vector3(
+            boxCol.size.x * transform.lossyScale.x * 0.5f,
+            boxCol.size.y * transform.lossyScale.y * 0.5f,
+            boxCol.size.z * transform.lossyScale.z * 0.5f);
+        castCenter = boxCol.center;
+    }
+
     void Start()
     {
         boxCol = GetComponent<BoxCollider>();
         wallMask = ~((1 << 13) | (1 << 2) | (1 << 8));
-
-        if (boxCol != null)
-        {
-            castHalfExt = new Vector3(
-                boxCol.size.x * transform.lossyScale.x * 0.5f,
-                boxCol.size.y * transform.lossyScale.y * 0.5f,
-                boxCol.size.z * transform.lossyScale.z * 0.5f);
-            castCenter = boxCol.center;
-        }
-        else
-        {
-            castHalfExt = new Vector3(0.96f, 0.54f, 1.32f);
-            castCenter  = new Vector3(0f, 0.45f, 0.1f);
-        }
+        ConfigureCollisionBody();
 
         xrOrigin = FindAnyObjectByType<XROrigin>();
         jetpack  = FindAnyObjectByType<AutoJetpackController>();
@@ -170,22 +186,51 @@ public class RoverDriver : MonoBehaviour
     {
         if (frontWheelLeft != null)
         {
-            // Get bounds center of the wheel mesh in local space of rover root
-            Renderer rL = frontWheelLeft.GetComponentInChildren<Renderer>();
-            if (rL != null)
-                pivotLeftLocalPos = transform.InverseTransformPoint(rL.bounds.center);
-            else
-                pivotLeftLocalPos = transform.InverseTransformPoint(frontWheelLeft.position);
+            pivotLeftLocalPos = GetProbeLocalPosition(frontWheelLeft);
         }
         if (frontWheelRight != null)
         {
-            Renderer rR = frontWheelRight.GetComponentInChildren<Renderer>();
-            if (rR != null)
-                pivotRightLocalPos = transform.InverseTransformPoint(rR.bounds.center);
-            else
-                pivotRightLocalPos = transform.InverseTransformPoint(frontWheelRight.position);
+            pivotRightLocalPos = GetProbeLocalPosition(frontWheelRight);
         }
         pivotOffsetsSet = true;
+
+        Transform rearLeft = FindWheelMesh("rearleft");
+        if (rearLeft != null)
+            rearLeftLocalPos = GetProbeLocalPosition(rearLeft);
+
+        Transform rearRight = FindWheelMesh("rearright");
+        if (rearRight != null)
+            rearRightLocalPos = GetProbeLocalPosition(rearRight);
+    }
+
+    Vector3 GetProbeLocalPosition(Transform target)
+    {
+        if (target == null)
+            return Vector3.zero;
+
+        Renderer targetRenderer = target.GetComponentInChildren<Renderer>();
+        if (targetRenderer != null)
+            return transform.InverseTransformPoint(targetRenderer.bounds.center);
+
+        return transform.InverseTransformPoint(target.position);
+    }
+
+    Transform FindWheelMesh(string compactName)
+    {
+        if (wheelMeshes == null)
+            return null;
+
+        foreach (Transform wheel in wheelMeshes)
+        {
+            if (wheel == null)
+                continue;
+
+            string normalizedName = wheel.name.ToLower().Replace("_", "").Replace(" ", "");
+            if (normalizedName.Contains(compactName))
+                return wheel;
+        }
+
+        return null;
     }
 
     void InitializeFrontSteeringTargets()
@@ -476,9 +521,107 @@ public class RoverDriver : MonoBehaviour
 
         if (Mathf.Abs(currentSpeed) < 0.001f) return;
 
-        Vector3 moveDir  = transform.forward * Mathf.Sign(currentSpeed);
-        float   moveDist = Mathf.Abs(currentSpeed) * dt;
-        transform.position += moveDir * moveDist;
+        Vector3 moveDir = transform.forward * Mathf.Sign(currentSpeed);
+        Vector3 slopeProbeDir = Vector3.ProjectOnPlane(moveDir, currentGroundNormal);
+        if (slopeProbeDir.sqrMagnitude < 0.0001f)
+            slopeProbeDir = moveDir;
+        else
+            slopeProbeDir.Normalize();
+
+        float moveDist = Mathf.Abs(currentSpeed) * dt;
+        float climbLift = 0f;
+
+        if (TryGetFrontGroundTargetY(slopeProbeDir, castHalfExt.z + moveDist + 0.25f, out float targetY))
+        {
+            float rise = targetY - transform.position.y;
+            if (rise > 0.02f && rise <= stepHeight)
+            {
+                climbLift = rise;
+                transform.position += Vector3.up * climbLift;
+            }
+        }
+
+        MoveWithCollisionResponse(moveDir, moveDist, climbLift);
+    }
+
+    void MoveWithCollisionResponse(Vector3 moveDir, float moveDist, float climbLift)
+    {
+        if (moveDist <= 0.0001f)
+            return;
+
+        if (!TryGetBlockingHit(moveDir, moveDist + 0.05f, transform.position, out RaycastHit hit))
+        {
+            transform.position += moveDir * moveDist;
+            return;
+        }
+
+        if (climbLift > 0.0001f)
+        {
+            Vector3 liftedPosition = transform.position + Vector3.up * climbLift;
+            if (!TryGetBlockingHit(moveDir, moveDist + 0.05f, liftedPosition, out _))
+            {
+                transform.position = liftedPosition + moveDir * moveDist;
+                currentSpeed *= 0.95f;
+                return;
+            }
+        }
+
+        float safeDist = Mathf.Max(0f, hit.distance - 0.05f);
+        if (safeDist > 0.0001f)
+            transform.position += moveDir * safeDist;
+
+        float remainingDist = Mathf.Max(0f, moveDist - safeDist);
+        Vector3 slideDir = Vector3.ProjectOnPlane(moveDir, hit.normal).normalized;
+
+        if (remainingDist > 0.0001f && slideDir.sqrMagnitude > 0.0001f && hit.normal.y < 0.35f)
+            transform.position += slideDir * (remainingDist * 0.5f);
+
+        if (Vector3.Dot(moveDir, -hit.normal) > 0.2f)
+            currentSpeed *= hit.normal.y > 0.2f ? 0.85f : 0.6f;
+    }
+
+    bool TryGetBlockingHit(Vector3 moveDir, float castDistance, Vector3 referencePosition, out RaycastHit bestHit)
+    {
+        bestHit = default;
+        if (boxCol == null)
+            return false;
+
+        Vector3 blockingCastCenter = castCenter + Vector3.up * (castHalfExt.y * 0.35f);
+        Vector3 blockingCastHalfExt = new Vector3(
+            castHalfExt.x * 0.95f,
+            Mathf.Max(castHalfExt.y * 0.55f, 0.05f),
+            castHalfExt.z * 0.95f);
+
+        Vector3 worldCenter = referencePosition + transform.rotation * blockingCastCenter;
+        RaycastHit[] hits = Physics.BoxCastAll(
+            worldCenter,
+            blockingCastHalfExt,
+            moveDir,
+            transform.rotation,
+            castDistance,
+            wallMask,
+            QueryTriggerInteraction.Ignore);
+
+        float bestDistance = float.MaxValue;
+        bool found = false;
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (hit.collider == null) continue;
+            if (hit.collider == boxCol) continue;
+            if (hit.transform == transform) continue;
+            if (hit.transform.IsChildOf(transform)) continue;
+            if (hit.normal.y >= 0.35f) continue;
+
+            if (hit.distance < bestDistance)
+            {
+                bestDistance = hit.distance;
+                bestHit = hit;
+                found = true;
+            }
+        }
+
+        return found;
     }
 
     // ── Step Climbing ─────────────────────────────────────────────────────────
@@ -487,19 +630,139 @@ public class RoverDriver : MonoBehaviour
     {
         if (Mathf.Abs(currentSpeed) < 0.01f) return;
 
-        Vector3 moveDir    = transform.forward * Mathf.Sign(currentSpeed);
-        float   checkDist  = 0.6f;
-        int     groundMask = ~((1 << 13) | (1 << 2));
+        Vector3 rawMoveDir = transform.forward * Mathf.Sign(currentSpeed);
+        Vector3 moveDir = Vector3.ProjectOnPlane(rawMoveDir, currentGroundNormal);
+        if (moveDir.sqrMagnitude < 0.0001f)
+            moveDir = rawMoveDir;
+        else
+            moveDir.Normalize();
 
-        Vector3 lowOrigin  = transform.position + Vector3.up * (stepHeight * 0.5f);
-        bool    hitLow     = Physics.Raycast(lowOrigin, moveDir, checkDist, groundMask, QueryTriggerInteraction.Ignore);
-        if (!hitLow) return;
+        float checkDist = Mathf.Max(castHalfExt.z + 0.35f, 0.8f);
+        if (!TryGetFrontGroundTargetY(moveDir, checkDist, out float targetY))
+            return;
 
-        Vector3 highOrigin = transform.position + Vector3.up * (stepHeight * 1.8f);
-        bool    hitHigh    = Physics.Raycast(highOrigin, moveDir, checkDist, groundMask, QueryTriggerInteraction.Ignore);
-        if (hitHigh) return;
+        float rise = targetY - transform.position.y;
+        if (rise <= 0.02f || rise > stepHeight)
+            return;
 
-        transform.position += Vector3.up * stepHeight * 0.4f * Time.deltaTime * 60f;
+        float lift = Mathf.Min(rise, Mathf.Max(stepHeight * 0.3f, Mathf.Abs(currentSpeed) * Time.deltaTime * 0.5f));
+        transform.position += Vector3.up * lift;
+    }
+
+    bool TryGetFrontGroundTargetY(Vector3 moveDir, float checkDist, out float targetY)
+    {
+        targetY = 0f;
+        int groundMask = ~((1 << 13) | (1 << 2));
+
+        Vector3[] probeLocalPoints;
+        if (pivotOffsetsSet)
+        {
+            probeLocalPoints = new[]
+            {
+                castCenter + Vector3.forward * castHalfExt.z,
+                new Vector3(pivotLeftLocalPos.x, castCenter.y, pivotLeftLocalPos.z),
+                new Vector3(pivotRightLocalPos.x, castCenter.y, pivotRightLocalPos.z)
+            };
+        }
+        else
+        {
+            probeLocalPoints = new[] { castCenter + Vector3.forward * castHalfExt.z };
+        }
+
+        float bestRise = float.MinValue;
+        bool found = false;
+
+        foreach (Vector3 localProbe in probeLocalPoints)
+        {
+            Vector3 probeWorld = transform.TransformPoint(localProbe) + moveDir * checkDist;
+            Vector3 rayOrigin = probeWorld + Vector3.up * (stepHeight + 1f);
+
+            if (!Physics.Raycast(rayOrigin, Vector3.down, out RaycastHit hit, stepHeight + 2f, groundMask, QueryTriggerInteraction.Ignore))
+                continue;
+
+            if (hit.transform == transform)
+                continue;
+
+            if (hit.transform.IsChildOf(transform))
+                continue;
+
+            if (hit.normal.y < 0.35f)
+                continue;
+
+            float rise = hit.point.y - transform.position.y;
+            if (rise > bestRise)
+            {
+                bestRise = rise;
+                targetY = hit.point.y;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    bool TryGetGroundSupport(out float targetY, out Vector3 supportNormal)
+    {
+        targetY = 0f;
+        supportNormal = Vector3.up;
+
+        int groundMask = ~((1 << 13) | (1 << 2));
+        float bestY = float.MinValue;
+        Vector3 normalSum = Vector3.zero;
+        int normalCount = 0;
+        bool found = false;
+
+        Vector3[] probeLocalPoints = pivotOffsetsSet
+            ? new[]
+            {
+                new Vector3(pivotLeftLocalPos.x, castCenter.y, pivotLeftLocalPos.z),
+                new Vector3(pivotRightLocalPos.x, castCenter.y, pivotRightLocalPos.z),
+                new Vector3(rearLeftLocalPos.x, castCenter.y, rearLeftLocalPos.z),
+                new Vector3(rearRightLocalPos.x, castCenter.y, rearRightLocalPos.z),
+                castCenter
+            }
+            : new[] { castCenter };
+
+        foreach (Vector3 localProbe in probeLocalPoints)
+        {
+            Vector3 origin = transform.TransformPoint(localProbe) + Vector3.up * 8f;
+            RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 20f, groundMask, QueryTriggerInteraction.Ignore);
+
+            RaycastHit bestHit = default;
+            float closestDistance = float.MaxValue;
+            bool hitFound = false;
+
+            foreach (RaycastHit hit in hits)
+            {
+                if (hit.transform == transform) continue;
+                if (hit.transform.IsChildOf(transform)) continue;
+                if (hit.normal.y < 0.4f) continue;
+                if (hit.distance >= closestDistance) continue;
+
+                closestDistance = hit.distance;
+                bestHit = hit;
+                hitFound = true;
+            }
+
+            if (!hitFound)
+                continue;
+
+            found = true;
+            if (bestHit.point.y > bestY)
+                bestY = bestHit.point.y;
+
+            normalSum += bestHit.normal;
+            normalCount++;
+        }
+
+        if (!found)
+            return false;
+
+        targetY = bestY;
+        if (normalCount > 0)
+            supportNormal = (normalSum / normalCount).normalized;
+
+        return true;
     }
 
     // ── Depenetration ─────────────────────────────────────────────────────────
@@ -528,7 +791,8 @@ public class RoverDriver : MonoBehaviour
                 if (dir.y > 0.15f) continue;
                 transform.position += dir * (dist + 0.001f);
                 float into = Vector3.Dot(transform.forward * currentSpeed, -dir);
-                if (into > 0f && dir.y < 0.1f) currentSpeed = 0f;
+                if (into > 0f && dir.y < 0.1f)
+                    currentSpeed *= 0.7f;
             }
         }
     }
@@ -698,32 +962,25 @@ public class RoverDriver : MonoBehaviour
 
     void GroundSnap()
     {
-        int groundMask = ~((1 << 13) | (1 << 2));
-        Vector3 origin = transform.position + Vector3.up * 8f;
-
-        RaycastHit[] hits = Physics.RaycastAll(origin, Vector3.down, 20f,
-            groundMask, QueryTriggerInteraction.Ignore);
-
-        RaycastHit best  = default;
-        float bestDist   = float.MaxValue;
-        bool  found      = false;
-
-        foreach (var h in hits)
+        if (TryGetGroundSupport(out float targetY, out Vector3 supportNormal))
         {
-            if (h.transform == transform) continue;
-            if (h.transform.IsChildOf(transform)) continue;
-            if (h.normal.y < 0.4f) continue;
-            if (h.distance < bestDist)
+            currentGroundNormal = supportNormal;
+            if (Mathf.Abs(currentSpeed) > 0.01f)
             {
-                bestDist = h.distance;
-                best     = h;
-                found    = true;
-            }
-        }
+                Vector3 snapProbeDir = Vector3.ProjectOnPlane(transform.forward * Mathf.Sign(currentSpeed), currentGroundNormal);
+                if (snapProbeDir.sqrMagnitude < 0.0001f)
+                    snapProbeDir = transform.forward * Mathf.Sign(currentSpeed);
+                else
+                    snapProbeDir.Normalize();
 
-        if (found)
-        {
-            float targetY = best.point.y;
+                if (TryGetFrontGroundTargetY(snapProbeDir, castHalfExt.z + 0.15f, out float frontTargetY))
+                {
+                    float forwardRise = frontTargetY - targetY;
+                    if (forwardRise > 0.02f && forwardRise <= stepHeight)
+                        targetY = frontTargetY;
+                }
+            }
+
             float diff    = targetY - transform.position.y;
 
             if (diff > -2f)
@@ -745,6 +1002,7 @@ public class RoverDriver : MonoBehaviour
         }
         else
         {
+            currentGroundNormal = Vector3.up;
             verticalVelocity    = Mathf.Max(verticalVelocity + Physics.gravity.y * Time.deltaTime, -20f);
             transform.position += Vector3.up * verticalVelocity * Time.deltaTime;
         }
