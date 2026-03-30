@@ -31,6 +31,8 @@ public class RoverDriver : MonoBehaviour
     public float acceleration    = 6f;
     public float brakingForce    = 8f;
     public float turnRate        = 35f;
+    public float initialDriveSpeed = 2.5f;
+    public float timeToFullSpeed   = 1.75f;
 
     [Header("Steering")]
     public float steerDeadzone = 8f;
@@ -70,6 +72,9 @@ public class RoverDriver : MonoBehaviour
     private float dismountHoldTimer = 0f;
     private float verticalVelocity  = 0f;
     private Vector3 currentGroundNormal = Vector3.up;
+    private float driveHoldTimer = 0f;
+    private float lastDriveSign = 0f;
+    private bool hasGroundSupport = true;
 
     // Cached pivot offsets from rover root (set at mount time)
     private Vector3 pivotLeftLocalPos;
@@ -507,12 +512,41 @@ public class RoverDriver : MonoBehaviour
     {
         smoothedSteer = Mathf.Lerp(smoothedSteer, steer, 2f * dt);
 
-        if (throttle > 0.05f)
-            currentSpeed = Mathf.MoveTowards(currentSpeed,  maxForwardSpeed, acceleration * dt);
-        else if (throttle < -0.05f)
-            currentSpeed = Mathf.MoveTowards(currentSpeed, -maxReverseSpeed, acceleration * dt);
+        float throttleSign = Mathf.Abs(throttle) > 0.05f ? Mathf.Sign(throttle) : 0f;
+        if (throttleSign != 0f)
+        {
+            if (!Mathf.Approximately(throttleSign, lastDriveSign))
+                driveHoldTimer = 0f;
+
+            driveHoldTimer += dt;
+            lastDriveSign = throttleSign;
+
+            float hold01 = timeToFullSpeed <= 0.01f
+                ? 1f
+                : Mathf.Clamp01(driveHoldTimer / timeToFullSpeed);
+
+            float launchSpeed = throttleSign > 0f
+                ? Mathf.Min(initialDriveSpeed, maxForwardSpeed)
+                : Mathf.Min(initialDriveSpeed, maxReverseSpeed);
+
+            float topSpeed = throttleSign > 0f ? maxForwardSpeed : maxReverseSpeed;
+            float targetAbsSpeed = Mathf.Lerp(launchSpeed, topSpeed, hold01);
+            float targetSpeed = targetAbsSpeed * throttleSign;
+
+            if (Mathf.Sign(currentSpeed) == throttleSign && Mathf.Abs(currentSpeed) > targetAbsSpeed)
+                targetSpeed = currentSpeed;
+
+            float appliedAcceleration = acceleration * (hasGroundSupport ? 1f : 0.35f);
+            currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, appliedAcceleration * dt);
+        }
         else
-            currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, brakingForce * dt);
+        {
+            driveHoldTimer = 0f;
+            lastDriveSign = 0f;
+
+            if (hasGroundSupport)
+                currentSpeed = Mathf.MoveTowards(currentSpeed, 0f, brakingForce * dt);
+        }
 
         float speedFactor   = 1f - (Mathf.Abs(currentSpeed) / maxForwardSpeed) * 0.5f;
         float effectiveTurn = turnRate * speedFactor;
@@ -964,6 +998,7 @@ public class RoverDriver : MonoBehaviour
     {
         if (TryGetGroundSupport(out float targetY, out Vector3 supportNormal))
         {
+            hasGroundSupport = true;
             currentGroundNormal = supportNormal;
             if (Mathf.Abs(currentSpeed) > 0.01f)
             {
@@ -1002,6 +1037,7 @@ public class RoverDriver : MonoBehaviour
         }
         else
         {
+            hasGroundSupport = false;
             currentGroundNormal = Vector3.up;
             verticalVelocity    = Mathf.Max(verticalVelocity + Physics.gravity.y * Time.deltaTime, -20f);
             transform.position += Vector3.up * verticalVelocity * Time.deltaTime;
