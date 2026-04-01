@@ -14,9 +14,9 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         public RoadSample(Vector3 p, float w, float b, float t) { position = p; width = w; bank = b; terrainBlend = t; }
     }
 
-    public Vector3 terrainSize = new Vector3(320f, 80f, 560f);
-    public int heightmapResolution = 513;
-    public int alphamapResolution = 512;
+    public Vector3 terrainSize = new Vector3(640f, 80f, 1120f);
+    public int heightmapResolution = 1025;
+    public int alphamapResolution = 1024;
     public float roadThickness = 0.42f;
     public float shoulderWidth = 10f;
     public bool autoBuildIfEmpty = true;
