@@ -43,8 +43,6 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         CreateTerrain(data);
         CreateRoad(road);
         CreateBridgeSet();
-        CreateJetpackPlatforms();
-        CreateRoadFeatures();
         CreateFinish(road[road.Count - 1].position);
         EditorUtility.SetDirty(this);
         if (gameObject.scene.IsValid()) EditorSceneManager.MarkSceneDirty(gameObject.scene);
@@ -89,12 +87,25 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
     {
         Vector3[] cp =
         {
-            new Vector3(-8f,4.5f,-244f), new Vector3(-6f,5f,-196f), new Vector3(-2f,5.6f,-146f),
-            new Vector3(4f,6.6f,-94f), new Vector3(14f,8.5f,-38f), new Vector3(48f,11.5f,12f),
-            new Vector3(62f,15.8f,52f), new Vector3(20f,18f,86f), new Vector3(-18f,17.5f,110f),
-            new Vector3(-60f,19f,148f), new Vector3(-92f,25f,184f), new Vector3(-78f,31f,230f),
-            new Vector3(-10f,36f,250f), new Vector3(62f,47f,226f), new Vector3(90f,56f,252f),
-            new Vector3(26f,64f,270f)
+            new Vector3(-6f, 4.8f, -438f),
+            new Vector3(-4f, 5.0f, -380f),
+            new Vector3(8f, 5.4f, -322f),
+            new Vector3(42f, 6.2f, -278f),
+            new Vector3(86f, 7.4f, -232f),
+            new Vector3(54f, 8.2f, -178f),
+            new Vector3(2f, 9.2f, -132f),
+            new Vector3(-56f, 10.4f, -96f),
+            new Vector3(-28f, 11.8f, -40f),
+            new Vector3(12f, 14.8f, 6f),
+            new Vector3(42f, 18.0f, 42f),
+            new Vector3(58f, 20.8f, 86f),
+            new Vector3(28f, 23.6f, 126f),
+            new Vector3(-20f, 27.4f, 160f),
+            new Vector3(-70f, 32.8f, 198f),
+            new Vector3(-88f, 38.0f, 244f),
+            new Vector3(-36f, 43.2f, 292f),
+            new Vector3(18f, 48.8f, 322f),
+            new Vector3(62f, 54.0f, 342f)
         };
         List<Vector3> pts = new List<Vector3>();
         for (int i = 0; i < cp.Length - 1; i++)
@@ -114,16 +125,20 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         {
             float t = total > 0.01f ? dist[i] / total : 0f;
             Vector3 p = pts[i];
-            p.y += Humps(t, 0.05f, 0.22f, 3, 0.9f);
-            p.y += Bell(t, 0.34f, 0.46f) * 1.2f;
-            p.y += RampPulse(t, 0.80f, 0.88f, 1.8f);
+            p.y += Humps(t, 0.06f, 0.22f, 2, 0.35f);
+            p.y += Bell(t, 0.33f, 0.43f) * 0.8f;
+            p.y += Bell(t, 0.63f, 0.77f) * 0.9f;
+            p.y += RampPulse(t, 0.86f, 0.93f, 1.1f);
             Vector3 prev = i == 0 ? p - (pts[1] - pts[0]) : pts[i - 1];
             Vector3 next = i == pts.Count - 1 ? p + (pts[i] - pts[i - 1]) : pts[i + 1];
             Vector3 a = new Vector3(p.x - prev.x, 0f, p.z - prev.z).normalized, b = new Vector3(next.x - p.x, 0f, next.z - p.z).normalized;
-            float bank = Mathf.Clamp(Vector3.SignedAngle(a, b, Vector3.up) * 0.78f, -12f, 12f);
-            bank += Bell(t, 0.11f, 0.21f) * 4f - Bell(t, 0.31f, 0.43f) * 6f + Bell(t, 0.69f, 0.83f) * 7f;
-            float width = t < 0.30f ? 11.5f : (t < 0.62f ? 10.2f : 8.8f);
-            float terrainBlend = t >= 0.34f && t <= 0.45f ? 0.12f : 1f;
+            float bank = Mathf.Clamp(Vector3.SignedAngle(a, b, Vector3.up) * 0.46f, -7f, 7f);
+            bank += Bell(t, 0.10f, 0.19f) * 2.4f;
+            bank -= Bell(t, 0.25f, 0.34f) * 2.8f;
+            bank += Bell(t, 0.50f, 0.60f) * 2.2f;
+            bank += Bell(t, 0.72f, 0.84f) * 3.1f;
+            float width = t < 0.35f ? 12.4f : (t < 0.68f ? 10.8f : 9.4f);
+            float terrainBlend = t >= 0.47f && t <= 0.57f ? 0.12f : 1f;
             road.Add(new RoadSample(p, width, bank, terrainBlend));
         }
         return road;
@@ -175,16 +190,25 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
 
     float BaseTerrain(float x, float z)
     {
-        float broad = (Mathf.PerlinNoise(x * 0.009f + 22f, z * 0.009f + 35f) - 0.5f) * 0.08f;
-        float detail = (Mathf.PerlinNoise(x * 0.022f + 120f, z * 0.022f + 78f) - 0.5f) * 0.025f;
-        float plains = 0.07f + Mathf.SmoothStep(1f, 0f, Mathf.InverseLerp(-240f, -30f, z)) * 0.025f;
-        float shelf = Ellipse(x, z, -42f, 72f, 62f, 88f, -8f) * 0.08f;
-        float mountain = Ellipse(x, z, 18f, 228f, 96f, 118f, -6f) * 0.52f + Ellipse(x, z, -36f, 184f, 74f, 88f, -28f) * 0.18f + Ellipse(x, z, 10f, 256f, 34f, 30f, 0f) * 0.12f;
+        float broad = (Mathf.PerlinNoise(x * 0.008f + 22f, z * 0.008f + 35f) - 0.5f) * 0.05f;
+        float detail = (Mathf.PerlinNoise(x * 0.020f + 120f, z * 0.020f + 78f) - 0.5f) * 0.015f;
+        float southPlain = 0.055f + Mathf.SmoothStep(1f, 0f, Mathf.InverseLerp(-300f, -40f, z)) * 0.02f;
+        float speedBasin = Ellipse(x, z, 6f, -238f, 170f, 210f, 0f) * 0.035f;
+        float bridgeShelf = Ellipse(x, z, -14f, 28f, 132f, 130f, -10f) * 0.08f;
+        float ridgeWest = Ellipse(x, z, -94f, 152f, 54f, 124f, -18f) * 0.12f;
+        float summit = Ellipse(x, z, -34f, 256f, 108f, 118f, -12f) * 0.34f
+            + Ellipse(x, z, 28f, 322f, 80f, 62f, 6f) * 0.22f
+            + Ellipse(x, z, -72f, 222f, 46f, 52f, 0f) * 0.10f;
         float border = Mathf.SmoothStep(0f, 0.14f, Mathf.InverseLerp(0.66f, 1f, Mathf.Max(Mathf.Abs(x) / (terrainSize.x * 0.5f), Mathf.Abs(z) / (terrainSize.z * 0.5f))));
-        return Mathf.Clamp01(plains + broad + detail + shelf + mountain + border - Ravine(x, z) * 0.25f);
+        return Mathf.Clamp01(southPlain + speedBasin + bridgeShelf + ridgeWest + summit + broad + detail + border - Ravine(x, z) * 0.22f);
     }
 
-    float Ravine(float x, float z) { return Mathf.Clamp01(Mathf.Max(Ellipse(x, z, 36f, 60f, 42f, 86f, 17f), Ellipse(x, z, 2f, 98f, 24f, 52f, -18f))); }
+    float Ravine(float x, float z)
+    {
+        float mainCut = Ellipse(x, z, 38f, 64f, 34f, 96f, 18f);
+        float spillCut = Ellipse(x, z, 6f, 102f, 20f, 50f, -22f);
+        return Mathf.Clamp01(Mathf.Max(mainCut, spillCut));
+    }
 
     float Nearest(float x, float z, List<RoadSample> road, out RoadSample sample)
     {
@@ -223,27 +247,6 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         Box(root.transform, "OverpassPostL", left + Vector3.up * 5f, Vector3.zero, new Vector3(2.6f, 10f, 2.6f), new Color(0.45f, 0.38f, 0.27f), true);
         Box(root.transform, "OverpassPostR", right + Vector3.up * 5f, Vector3.zero, new Vector3(2.6f, 10f, 2.6f), new Color(0.45f, 0.38f, 0.27f), true);
         for (int i = 0; i < 15; i++) { float t = i / 14f; Vector3 p = Vector3.Lerp(left, right, t); p.y -= Mathf.Sin(t * Mathf.PI) * 1.8f; Box(root.transform, "OverpassPlank_" + i.ToString("00"), p, new Vector3(0f, yaw, 0f), new Vector3(2.8f, 0.24f, 3.8f), new Color(0.54f, 0.42f, 0.28f), true); }
-    }
-
-    void CreateJetpackPlatforms()
-    {
-        GameObject root = new GameObject("JetpackPlatforms"); root.transform.SetParent(transform, false);
-        Primitive(root.transform, PrimitiveType.Cube, "JP_A", new Vector3(-88f, 18f, 54f), Vector3.zero, new Vector3(8f, 1.5f, 8f));
-        Primitive(root.transform, PrimitiveType.Sphere, "JP_B", new Vector3(-60f, 22f, 78f), Vector3.zero, new Vector3(6f, 1.7f, 6f));
-        Primitive(root.transform, PrimitiveType.Cube, "JP_C", new Vector3(-26f, 26f, 98f), Vector3.zero, new Vector3(9f, 1.4f, 9f));
-        Primitive(root.transform, PrimitiveType.Sphere, "JP_D", new Vector3(10f, 30f, 84f), Vector3.zero, new Vector3(6.5f, 1.8f, 6.5f));
-        Primitive(root.transform, PrimitiveType.Cube, "JP_E", new Vector3(36f, 27f, 118f), new Vector3(0f, 18f, 0f), new Vector3(10f, 1.3f, 10f));
-        Primitive(root.transform, PrimitiveType.Sphere, "JP_F", new Vector3(-18f, 34f, 132f), Vector3.zero, new Vector3(7f, 1.6f, 7f));
-        Primitive(root.transform, PrimitiveType.Cube, "JP_G", new Vector3(46f, 36f, 152f), new Vector3(0f, -12f, 0f), new Vector3(10f, 1.5f, 10f));
-    }
-
-    void CreateRoadFeatures()
-    {
-        GameObject root = new GameObject("RoadFeatures"); root.transform.SetParent(transform, false);
-        Box(root.transform, "SpeedHumpA", new Vector3(-4f, 6.2f, -182f), Vector3.zero, new Vector3(10.5f, 0.28f, 2.1f), new Color(0.42f, 0.33f, 0.23f), true);
-        Box(root.transform, "SpeedHumpB", new Vector3(-2f, 6.9f, -154f), Vector3.zero, new Vector3(10.5f, 0.34f, 2.1f), new Color(0.42f, 0.33f, 0.23f), true);
-        Box(root.transform, "SpeedHumpC", new Vector3(1f, 7.8f, -126f), Vector3.zero, new Vector3(10.5f, 0.28f, 2.1f), new Color(0.42f, 0.33f, 0.23f), true);
-        Box(root.transform, "SummitRamp", new Vector3(44f, 48.2f, 233f), new Vector3(-10f, 48f, 0f), new Vector3(7.8f, 0.62f, 6f), new Color(0.42f, 0.33f, 0.23f), true);
     }
 
     void CreateFinish(Vector3 pos)
