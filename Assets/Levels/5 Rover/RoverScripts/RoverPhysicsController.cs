@@ -68,6 +68,25 @@ public class RoverPhysicsController : MonoBehaviour
     public float steerDeadzone = 8f;
     public float steerMaxAngle = 150f;
 
+    [Header("Speed Sensitive Steering")]
+    public float steeringAssistTopSpeed = 12f;
+    public float lowSpeedSteerAngleMultiplier = 1f;
+    public float highSpeedSteerAngleMultiplier = 0.58f;
+    public float lowSpeedSteerResponseMultiplier = 1f;
+    public float highSpeedSteerResponseMultiplier = 0.72f;
+
+    [Header("Mounted Ride Comfort")]
+    public bool useMountedRideComfort = true;
+    public float mountedSuspensionSpringMultiplier = 1f;
+    public float mountedSuspensionDamperMultiplier = 0f;
+    public float mountedWheelDampingMultiplier = 0f;
+    public float mountedDownforceMultiplier = 1f;
+    public float mountedExtraGravityMultiplier = 1f;
+    public bool useMountedSeatStabilization = true;
+    public float mountedSeatPositionSmooth = 14f;
+    public float mountedSeatVerticalSmooth = 2.5f;
+    public float mountedSeatYawSmooth = 12f;
+
     [Header("Runtime Input")]
     [Range(-1f, 1f)] public float throttleInput;
     [Range(-1f, 1f)] public float steerInput;
@@ -99,6 +118,8 @@ public class RoverPhysicsController : MonoBehaviour
     private bool dismountReadyAfterRelease;
     private float neutralAngle;
     private float currentWheelAngle;
+    private bool lastRideComfortMountedState;
+    private Transform mountedRigAnchor;
     private Vector3 SeatWorldPosition =>
         seatAnchor != null ? seatAnchor.position : transform.position;
 
@@ -143,6 +164,7 @@ public class RoverPhysicsController : MonoBehaviour
         ConfigurePlayerBlocker();
         AlignWheelCollidersToVisuals();
         ConfigureWheelColliders();
+        ApplyRideComfortSettings(force: true);
     }
 
     private void OnValidate()
@@ -174,6 +196,7 @@ public class RoverPhysicsController : MonoBehaviour
         ApplyDrive();
         ApplyDownforce();
         ApplyExtraGravity();
+        ApplyRideComfortSettings();
     }
 
     private void Update()
@@ -182,16 +205,31 @@ public class RoverPhysicsController : MonoBehaviour
         UpdateVisuals(Time.deltaTime);
     }
 
+    private void LateUpdate()
+    {
+        UpdateMountedRigAnchor(Time.deltaTime);
+    }
+
     private void ApplySteering()
     {
-        float targetSteerAngle = steerInput * steerAngle;
+        float speed01 = GetSteeringSpeedFactor();
+        float steerAngleMultiplier = Mathf.Lerp(lowSpeedSteerAngleMultiplier, highSpeedSteerAngleMultiplier, speed01);
+        float steerResponseMultiplier = Mathf.Lerp(lowSpeedSteerResponseMultiplier, highSpeedSteerResponseMultiplier, speed01);
+        float targetSteerAngle = steerInput * steerAngle * steerAngleMultiplier;
         currentSteerAngle = Mathf.MoveTowards(
             currentSteerAngle,
             targetSteerAngle,
-            steerResponse * Time.fixedDeltaTime);
+            steerResponse * steerResponseMultiplier * Time.fixedDeltaTime);
 
         if (wheelFL != null) wheelFL.steerAngle = currentSteerAngle;
         if (wheelFR != null) wheelFR.steerAngle = currentSteerAngle;
+    }
+
+    private float GetSteeringSpeedFactor()
+    {
+        float referenceSpeed = Mathf.Max(steeringAssistTopSpeed, 0.01f);
+        float forwardSpeed = Mathf.Abs(Vector3.Dot(rb.linearVelocity, transform.forward));
+        return Mathf.Clamp01(forwardSpeed / referenceSpeed);
     }
 
     private void ApplyDrive()
@@ -245,18 +283,20 @@ public class RoverPhysicsController : MonoBehaviour
 
     private void ApplyDownforce()
     {
-        if (downforce <= 0f)
+        float appliedDownforce = GetAppliedDownforce();
+        if (appliedDownforce <= 0f)
             return;
 
-        rb.AddForce(-transform.up * downforce * rb.linearVelocity.magnitude, ForceMode.Force);
+        rb.AddForce(-transform.up * appliedDownforce * rb.linearVelocity.magnitude, ForceMode.Force);
     }
 
     private void ApplyExtraGravity()
     {
-        if (extraGravity <= 0f)
+        float appliedExtraGravity = GetAppliedExtraGravity();
+        if (appliedExtraGravity <= 0f)
             return;
 
-        rb.AddForce(Physics.gravity * extraGravity, ForceMode.Acceleration);
+        rb.AddForce(Physics.gravity * appliedExtraGravity, ForceMode.Acceleration);
     }
 
     private void UpdateVisuals(float dt)
@@ -352,13 +392,6 @@ public class RoverPhysicsController : MonoBehaviour
     {
         CacheWheelArray();
 
-        JointSpring spring = new JointSpring
-        {
-            spring = suspensionSpring,
-            damper = suspensionDamper,
-            targetPosition = suspensionTargetPosition
-        };
-
         foreach (WheelCollider wheel in wheelColliders)
         {
             if (wheel == null)
@@ -366,8 +399,6 @@ public class RoverPhysicsController : MonoBehaviour
 
             wheel.radius = wheelRadius;
             wheel.suspensionDistance = suspensionDistance;
-            wheel.suspensionSpring = spring;
-            wheel.wheelDampingRate = wheelDampingRate;
             wheel.ConfigureVehicleSubsteps(
                 wheelSubstepSpeedThreshold,
                 wheelSubstepsBelowThreshold,
@@ -381,6 +412,8 @@ public class RoverPhysicsController : MonoBehaviour
             sideways.stiffness = sidewaysFrictionStiffness;
             wheel.sidewaysFriction = sideways;
         }
+
+        ApplyRideComfortSettings(force: true);
     }
 
     private void CacheVisualState()
@@ -457,6 +490,27 @@ public class RoverPhysicsController : MonoBehaviour
             blockerTransform.localRotation = Quaternion.identity;
             blockerTransform.localScale = Vector3.one;
             playerBlocker = blockerObject.AddComponent<BoxCollider>();
+        }
+
+        if (mountedRigAnchor == null)
+        {
+            Transform existingAnchor = transform.Find("MountedRigAnchor");
+            if (existingAnchor != null)
+            {
+                mountedRigAnchor = existingAnchor;
+            }
+            else
+            {
+                GameObject anchorObject = new GameObject("MountedRigAnchor");
+                mountedRigAnchor = anchorObject.transform;
+                mountedRigAnchor.SetParent(transform, false);
+            }
+        }
+
+        if (mountedRigAnchor != null)
+        {
+            mountedRigAnchor.localScale = Vector3.one;
+            UpdateMountedRigAnchor(0f, snapImmediately: true);
         }
     }
 
@@ -626,7 +680,10 @@ public class RoverPhysicsController : MonoBehaviour
             jetpack.enabled = false;
 
         AlignRigToSeat();
-        xrOrigin.transform.SetParent(transform, worldPositionStays: true);
+        UpdateMountedRigAnchor(0f, snapImmediately: true);
+        xrOrigin.transform.SetParent(
+            useMountedSeatStabilization && mountedRigAnchor != null ? mountedRigAnchor : transform,
+            worldPositionStays: true);
 
         if (locomotionProviders != null)
         {
@@ -771,5 +828,75 @@ public class RoverPhysicsController : MonoBehaviour
             return neutralAngle;
 
         return Mathf.Atan2(local.z, local.x) * Mathf.Rad2Deg;
+    }
+
+    private void ApplyRideComfortSettings(bool force = false)
+    {
+        bool mountedState = useMountedRideComfort && isMounted;
+        if (!force && mountedState == lastRideComfortMountedState)
+            return;
+
+        float springMultiplier = mountedState ? mountedSuspensionSpringMultiplier : 1f;
+        float damperMultiplier = mountedState ? mountedSuspensionDamperMultiplier : 1f;
+        float wheelDampingMultiplier = mountedState ? mountedWheelDampingMultiplier : 1f;
+
+        JointSpring spring = new JointSpring
+        {
+            spring = suspensionSpring * springMultiplier,
+            damper = suspensionDamper * damperMultiplier,
+            targetPosition = suspensionTargetPosition
+        };
+
+        CacheWheelArray();
+        foreach (WheelCollider wheel in wheelColliders)
+        {
+            if (wheel == null)
+                continue;
+
+            wheel.suspensionSpring = spring;
+            wheel.wheelDampingRate = wheelDampingRate * wheelDampingMultiplier;
+        }
+
+        lastRideComfortMountedState = mountedState;
+    }
+
+    private float GetAppliedDownforce()
+    {
+        return downforce * (useMountedRideComfort && isMounted ? mountedDownforceMultiplier : 1f);
+    }
+
+    private float GetAppliedExtraGravity()
+    {
+        return extraGravity * (useMountedRideComfort && isMounted ? mountedExtraGravityMultiplier : 1f);
+    }
+
+    private void UpdateMountedRigAnchor(float deltaTime, bool snapImmediately = false)
+    {
+        if (mountedRigAnchor == null)
+            return;
+
+        Vector3 targetPosition = SeatWorldPosition;
+        Vector3 targetForward = Quaternion.Euler(0f, seatYawOffset, 0f) * SeatForward;
+        if (targetForward.sqrMagnitude < 0.0001f)
+            targetForward = transform.forward;
+
+        Quaternion targetRotation = Quaternion.LookRotation(targetForward.normalized, Vector3.up);
+
+        if (!useMountedSeatStabilization || !isMounted || snapImmediately || deltaTime <= 0f)
+        {
+            mountedRigAnchor.SetPositionAndRotation(targetPosition, targetRotation);
+            return;
+        }
+
+        float horizontalLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatPositionSmooth) * deltaTime);
+        float verticalLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatVerticalSmooth) * deltaTime);
+        float rotationLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatYawSmooth) * deltaTime);
+
+        Vector3 smoothedPosition = mountedRigAnchor.position;
+        smoothedPosition.x = Mathf.Lerp(smoothedPosition.x, targetPosition.x, horizontalLerp);
+        smoothedPosition.z = Mathf.Lerp(smoothedPosition.z, targetPosition.z, horizontalLerp);
+        smoothedPosition.y = Mathf.Lerp(smoothedPosition.y, targetPosition.y, verticalLerp);
+        mountedRigAnchor.position = smoothedPosition;
+        mountedRigAnchor.rotation = Quaternion.Slerp(mountedRigAnchor.rotation, targetRotation, rotationLerp);
     }
 }

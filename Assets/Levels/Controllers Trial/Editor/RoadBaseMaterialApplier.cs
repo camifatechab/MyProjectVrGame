@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -6,8 +7,28 @@ public static class RoadBaseMaterialApplier
 {
     private const string MaterialPath = "Assets/Levels/Controllers Trial/Materials/RoverRoad_BaseBrown.mat";
     private const string EdgeMaterialPath = "Assets/Levels/Controllers Trial/Materials/RoverRoad_EdgeBrown.mat";
+    private const string GuidePhysicsMaterialPath = "Assets/Levels/Controllers Trial/Materials/RoverRoad_Guide.physicMaterial";
     private const string BaseRootName = "RoverRoad_Base";
     private const string EdgeRootName = "RoverRoad_Edges";
+    private const string ShelfRootName = "RoverRoad_CatchShelves";
+    private const string GuideRootName = "RoverRoad_GuideRails";
+    private const int BranchRoadStartIndex = 324;
+    private const int BranchRoadEndIndex = 435;
+    private const float EdgeGuideTiltDegrees = 17f;
+    private const float EdgeGuideWidth = 1.24f;
+    private const float EdgeGuideHeight = 0.62f;
+    private const float EdgeGuideLengthScale = 1.08f;
+    private const float EdgeGuideInnerOverlap = 0.34f;
+    private const float CatchShelfWidth = 3.4f;
+    private const float CatchShelfHeight = 0.42f;
+    private const float CatchShelfLengthScale = 1.08f;
+    private const float CatchShelfInnerOverlap = 0.54f;
+    private const float CatchShelfDrop = 0.34f;
+    private static readonly (int start, int end)[] MarkedCurveRanges =
+    {
+        (211, 236),
+        (300, 320),
+    };
     private static readonly Vector3 Zone03BridgePosition = new(1371.1950f, 4.6114f, 264.2616f);
     private static readonly Vector3 Zone03BridgeEuler = new(-13.3779f, 54.2311f, 0f);
     private static readonly Vector3 Zone03BridgeScale = new(1f, 1f, 0.9412f);
@@ -211,6 +232,13 @@ public static class RoadBaseMaterialApplier
             return;
         }
 
+        PhysicsMaterial guidePhysicsMaterial = GetOrCreateGuidePhysicsMaterial();
+        if (guidePhysicsMaterial == null)
+        {
+            Debug.LogError("Could not create or load the road guide physics material.");
+            return;
+        }
+
         Undo.IncrementCurrentGroup();
         int undoGroup = Undo.GetCurrentGroup();
 
@@ -220,9 +248,29 @@ public static class RoadBaseMaterialApplier
             Undo.DestroyObjectImmediate(existingEdgeRoot.gameObject);
         }
 
+        Transform existingGuideRoot = roadRoot.transform.parent.Find(GuideRootName);
+        if (existingGuideRoot != null)
+        {
+            Undo.DestroyObjectImmediate(existingGuideRoot.gameObject);
+        }
+
+        Transform existingShelfRoot = roadRoot.transform.parent.Find(ShelfRootName);
+        if (existingShelfRoot != null)
+        {
+            Undo.DestroyObjectImmediate(existingShelfRoot.gameObject);
+        }
+
         GameObject edgeRoot = new GameObject(EdgeRootName);
         Undo.RegisterCreatedObjectUndo(edgeRoot, "Create road edge root");
         edgeRoot.transform.SetParent(roadRoot.transform.parent, false);
+
+        GameObject guideRoot = new GameObject(GuideRootName);
+        Undo.RegisterCreatedObjectUndo(guideRoot, "Create road guide root");
+        guideRoot.transform.SetParent(roadRoot.transform.parent, false);
+
+        GameObject shelfRoot = new GameObject(ShelfRootName);
+        Undo.RegisterCreatedObjectUndo(shelfRoot, "Create road catch shelf root");
+        shelfRoot.transform.SetParent(roadRoot.transform.parent, false);
 
         for (int i = 0; i < roadRoot.transform.childCount; i++)
         {
@@ -237,17 +285,27 @@ public static class RoadBaseMaterialApplier
             Vector3 up = road.up;
             float offset = scale.x * 0.5f - 0.18f;
 
-            CreateEdgePiece(edgeRoot.transform, road, edgeMaterial, "L", right * -offset + up * 0.23f,
+            GameObject leftEdge = CreateEdgePiece(edgeRoot.transform, road, edgeMaterial, "L", right * -offset + up * 0.23f,
                 new Vector3(0.34f, 0.46f, scale.z * 0.98f));
-            CreateEdgePiece(edgeRoot.transform, road, edgeMaterial, "R", right * offset + up * 0.23f,
+            GameObject rightEdge = CreateEdgePiece(edgeRoot.transform, road, edgeMaterial, "R", right * offset + up * 0.23f,
                 new Vector3(0.34f, 0.46f, scale.z * 0.98f));
+
+            DisableEdgeCollider(leftEdge);
+            DisableEdgeCollider(rightEdge);
+
+            CreateCatchShelf(shelfRoot.transform, road, guidePhysicsMaterial, "L", -1f);
+            CreateCatchShelf(shelfRoot.transform, road, guidePhysicsMaterial, "R", 1f);
+            CreateGuidePiece(guideRoot.transform, road, guidePhysicsMaterial, "L", -1f);
+            CreateGuidePiece(guideRoot.transform, road, guidePhysicsMaterial, "R", 1f);
         }
+
+        EnsureRecoveryAssistComponents();
 
         Undo.CollapseUndoOperations(undoGroup);
 
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
         AssetDatabase.SaveAssets();
-        Debug.Log("Applied raised edge guards on RoverRoad segments.");
+        Debug.Log("Applied forgiving edge guards, catch shelves, and guide rails on RoverRoad segments.");
     }
 
     [MenuItem("Tools/Controllers Trial/Smooth Bridge Curve For Comfort")]
@@ -382,7 +440,90 @@ public static class RoadBaseMaterialApplier
         Debug.Log("Rebuilt the downhill connector with smoother curves and a gentler descent.");
     }
 
-    private static void CreateEdgePiece(Transform parent, Transform road, Material material, string sideSuffix, Vector3 offset, Vector3 scale)
+    [MenuItem("Tools/Controllers Trial/Build Long Right Edge Descent")]
+    public static void BuildLongRightEdgeDescent()
+    {
+        GameObject roadRoot = FindRoadRoot();
+        if (roadRoot == null)
+        {
+            Debug.LogError("Could not find TerrainRoverCourse/RoverRoad in the active scene.");
+            return;
+        }
+
+        Material roadMaterial = GetRoadMaterial(roadRoot.transform);
+        if (roadMaterial == null)
+        {
+            Debug.LogError("Could not find an existing road material to apply.");
+            return;
+        }
+
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+
+        DeleteRoadRange(roadRoot.transform, BranchRoadStartIndex, BranchRoadEndIndex);
+
+        RoadCurveState[] states = BuildLongRightEdgeBranchStates();
+        foreach (RoadCurveState state in states)
+        {
+            Transform road = EnsureRoadSegment(roadRoot.transform, state.Name, roadMaterial);
+            if (road == null)
+            {
+                Debug.LogWarning($"Could not create or find {state.Name}.");
+                continue;
+            }
+
+            Undo.RecordObject(road, "Build long right edge descent");
+            road.localPosition = state.LocalPosition;
+            road.localRotation = state.LocalRotation;
+            road.localScale = state.LocalScale;
+            EditorUtility.SetDirty(road);
+        }
+
+        Transform testDup = roadRoot.transform.Find("Road_TestDup");
+        if (testDup != null)
+        {
+            Undo.DestroyObjectImmediate(testDup.gameObject);
+        }
+
+        Undo.CollapseUndoOperations(undoGroup);
+
+        ApplyRoadBaseBrown();
+        ApplyRoadEdgeGuards();
+
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        AssetDatabase.SaveAssets();
+        Debug.Log("Built the long right-edge downhill branch and refreshed the road support pieces.");
+    }
+
+    [MenuItem("Tools/Controllers Trial/Smooth Marked Bridge Curves")]
+    public static void SmoothMarkedBridgeCurves()
+    {
+        GameObject roadRoot = FindRoadRoot();
+        if (roadRoot == null)
+        {
+            Debug.LogError("Could not find TerrainRoverCourse/RoverRoad in the active scene.");
+            return;
+        }
+
+        Undo.IncrementCurrentGroup();
+        int undoGroup = Undo.GetCurrentGroup();
+
+        foreach ((int start, int end) in MarkedCurveRanges)
+        {
+            SmoothRoadRange(roadRoot.transform, start, end, 3);
+        }
+
+        Undo.CollapseUndoOperations(undoGroup);
+
+        ApplyRoadBaseBrown();
+        ApplyRoadEdgeGuards();
+
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        AssetDatabase.SaveAssets();
+        Debug.Log("Smoothed the two marked bridge curves and rebuilt the matching support pieces.");
+    }
+
+    private static GameObject CreateEdgePiece(Transform parent, Transform road, Material material, string sideSuffix, Vector3 offset, Vector3 scale)
     {
         GameObject edgePiece = GameObject.CreatePrimitive(PrimitiveType.Cube);
         Undo.RegisterCreatedObjectUndo(edgePiece, "Create road edge piece");
@@ -394,6 +535,108 @@ public static class RoadBaseMaterialApplier
 
         Renderer renderer = edgePiece.GetComponent<Renderer>();
         renderer.sharedMaterial = material;
+        return edgePiece;
+    }
+
+    private static void DisableEdgeCollider(GameObject edgePiece)
+    {
+        if (edgePiece == null)
+            return;
+
+        BoxCollider collider = edgePiece.GetComponent<BoxCollider>();
+        if (collider != null)
+        {
+            collider.enabled = false;
+            EditorUtility.SetDirty(collider);
+        }
+    }
+
+    private static void CreateGuidePiece(Transform parent, Transform road, PhysicsMaterial guidePhysicsMaterial, string sideSuffix, float sideSign)
+    {
+        Vector3 scale = road.localScale;
+        Vector3 right = road.right;
+        Vector3 up = road.up;
+        float centerOffset = scale.x * 0.5f + (EdgeGuideWidth * 0.5f) - EdgeGuideInnerOverlap;
+
+        GameObject guidePiece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Undo.RegisterCreatedObjectUndo(guidePiece, "Create road guide piece");
+        guidePiece.name = "Guide_" + road.name + "_" + sideSuffix;
+        guidePiece.transform.SetParent(parent, false);
+        guidePiece.transform.position = road.position + right * (sideSign * centerOffset) + up * 0.14f;
+        guidePiece.transform.rotation = road.rotation * Quaternion.AngleAxis(sideSign * EdgeGuideTiltDegrees, Vector3.forward);
+        guidePiece.transform.localScale = new Vector3(EdgeGuideWidth, EdgeGuideHeight, scale.z * EdgeGuideLengthScale);
+
+        Renderer renderer = guidePiece.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.enabled = false;
+        }
+
+        BoxCollider collider = guidePiece.GetComponent<BoxCollider>();
+        if (collider != null)
+        {
+            collider.sharedMaterial = guidePhysicsMaterial;
+        }
+    }
+
+    private static void CreateCatchShelf(Transform parent, Transform road, PhysicsMaterial guidePhysicsMaterial, string sideSuffix, float sideSign)
+    {
+        Vector3 scale = road.localScale;
+        Vector3 right = road.right;
+        Vector3 up = road.up;
+        float centerOffset = scale.x * 0.5f + (CatchShelfWidth * 0.5f) - CatchShelfInnerOverlap;
+
+        GameObject shelfPiece = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        Undo.RegisterCreatedObjectUndo(shelfPiece, "Create road catch shelf");
+        shelfPiece.name = "Shelf_" + road.name + "_" + sideSuffix;
+        shelfPiece.transform.SetParent(parent, false);
+        shelfPiece.transform.position = road.position + right * (sideSign * centerOffset) - up * CatchShelfDrop;
+        shelfPiece.transform.rotation = road.rotation;
+        shelfPiece.transform.localScale = new Vector3(CatchShelfWidth, CatchShelfHeight, scale.z * CatchShelfLengthScale);
+
+        Renderer renderer = shelfPiece.GetComponent<Renderer>();
+        if (renderer != null)
+        {
+            renderer.enabled = false;
+        }
+
+        BoxCollider collider = shelfPiece.GetComponent<BoxCollider>();
+        if (collider != null)
+        {
+            collider.sharedMaterial = guidePhysicsMaterial;
+        }
+    }
+
+    private static void EnsureRecoveryAssistComponents()
+    {
+        RoverPhysicsController[] controllers = Object.FindObjectsByType<RoverPhysicsController>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (RoverPhysicsController controller in controllers)
+        {
+            if (controller == null)
+                continue;
+
+            RoverEdgeRecoveryAssist assist = controller.GetComponent<RoverEdgeRecoveryAssist>();
+            if (assist == null)
+            {
+                assist = Undo.AddComponent<RoverEdgeRecoveryAssist>(controller.gameObject);
+            }
+
+            Undo.RecordObject(assist, "Configure rover edge recovery assist");
+            assist.rb = controller.rb != null ? controller.rb : controller.GetComponent<Rigidbody>();
+            assist.controller = controller;
+            EditorUtility.SetDirty(assist);
+
+            RoverRoadFailSafe failSafe = controller.GetComponent<RoverRoadFailSafe>();
+            if (failSafe == null)
+            {
+                failSafe = Undo.AddComponent<RoverRoadFailSafe>(controller.gameObject);
+            }
+
+            Undo.RecordObject(failSafe, "Configure rover road fail-safe");
+            failSafe.rb = controller.rb != null ? controller.rb : controller.GetComponent<Rigidbody>();
+            failSafe.controller = controller;
+            EditorUtility.SetDirty(failSafe);
+        }
     }
 
     private static Material GetOrCreateEdgeMaterial()
@@ -422,6 +665,28 @@ public static class RoadBaseMaterialApplier
         return material;
     }
 
+    private static PhysicsMaterial GetOrCreateGuidePhysicsMaterial()
+    {
+        PhysicsMaterial material = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(GuidePhysicsMaterialPath);
+        if (material != null)
+        {
+            return material;
+        }
+
+        material = new PhysicsMaterial("RoverRoad_Guide")
+        {
+            dynamicFriction = 0.02f,
+            staticFriction = 0.02f,
+            bounciness = 0f,
+            frictionCombine = PhysicsMaterialCombine.Minimum,
+            bounceCombine = PhysicsMaterialCombine.Minimum
+        };
+
+        AssetDatabase.CreateAsset(material, GuidePhysicsMaterialPath);
+        AssetDatabase.SaveAssets();
+        return material;
+    }
+
     private static Material GetRoadMaterial(Transform roadRoot)
     {
         for (int i = 0; i < roadRoot.childCount; i++)
@@ -434,6 +699,113 @@ public static class RoadBaseMaterialApplier
         }
 
         return null;
+    }
+
+    private static void DeleteRoadRange(Transform roadRoot, int startIndex, int endIndex)
+    {
+        for (int i = roadRoot.childCount - 1; i >= 0; i--)
+        {
+            Transform child = roadRoot.GetChild(i);
+            if (!child.name.StartsWith("Road_"))
+            {
+                continue;
+            }
+
+            if (!int.TryParse(child.name.Substring("Road_".Length), out int number))
+            {
+                continue;
+            }
+
+            if (number >= startIndex && number <= endIndex)
+            {
+                Undo.DestroyObjectImmediate(child.gameObject);
+            }
+        }
+    }
+
+    private static RoadCurveState[] BuildLongRightEdgeBranchStates()
+    {
+        Vector3[] mainControlPoints =
+        {
+            new(-6f, 4.8f, -438f),
+            new(-4f, 5.0f, -380f),
+            new(8f, 5.4f, -322f),
+            new(42f, 6.2f, -278f),
+            new(86f, 7.4f, -232f),
+            new(54f, 8.2f, -178f),
+            new(2f, 9.2f, -132f),
+            new(-56f, 10.4f, -96f),
+            new(-28f, 11.8f, -40f),
+            new(12f, 14.8f, 6f),
+            new(42f, 18.0f, 42f),
+            new(58f, 20.8f, 86f),
+            new(28f, 23.6f, 126f),
+            new(-20f, 27.4f, 160f),
+            new(-70f, 32.8f, 198f),
+            new(-88f, 38.0f, 244f),
+            new(-36f, 43.2f, 292f),
+            new(18f, 48.8f, 322f),
+            new(62f, 54.0f, 342f),
+        };
+
+        List<Vector3> mainPoints = SampleCatmullPath(mainControlPoints, 18);
+        Vector3 spurStart = mainPoints[Mathf.Clamp(mainPoints.Count - 12, 0, mainPoints.Count - 1)];
+        Vector3[] spurControlPoints =
+        {
+            spurStart,
+            new(92f, 52f, 304f),
+            new(114f, 47f, 238f),
+            new(124f, 41f, 156f),
+            new(122f, 33f, 72f),
+            new(110f, 24f, 12f),
+            new(84f, 15f, -8f),
+            new(50f, 9f, 2f),
+            new(26f, 6f, 28f),
+            new(18f, 5.6f, 60f),
+        };
+
+        List<Vector3> points = SampleCatmullPath(spurControlPoints, 10);
+        RoadCurveState[] states = new RoadCurveState[points.Count - 1];
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            Vector3 a = points[i];
+            Vector3 b = points[i + 1];
+            float t = i / (float)(points.Count - 1);
+            Vector3 center = (a + b) * 0.5f + Vector3.up * 0.21f;
+            Vector3 segment = b - a;
+            float width = Mathf.Lerp(10.4f, 9.8f, t);
+            Vector3 scale = new(width, 0.42f, segment.magnitude + 0.8f);
+            Quaternion rotation = Quaternion.LookRotation(segment.normalized, Vector3.up);
+            states[i] = new RoadCurveState($"Road_{BranchRoadStartIndex + i:000}", center, rotation, scale);
+        }
+
+        return states;
+    }
+
+    private static List<Vector3> SampleCatmullPath(Vector3[] controlPoints, int samplesPerSegment)
+    {
+        List<Vector3> points = new();
+        for (int i = 0; i < controlPoints.Length - 1; i++)
+        {
+            Vector3 p0 = i == 0 ? controlPoints[i] : controlPoints[i - 1];
+            Vector3 p1 = controlPoints[i];
+            Vector3 p2 = controlPoints[i + 1];
+            Vector3 p3 = i + 2 >= controlPoints.Length ? controlPoints[i + 1] : controlPoints[i + 2];
+            for (int j = 0; j < samplesPerSegment; j++)
+            {
+                float t = j / (float)samplesPerSegment;
+                float t2 = t * t;
+                float t3 = t2 * t;
+                Vector3 point = 0.5f * ((2f * p1)
+                    + (-p0 + p2) * t
+                    + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2
+                    + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+                points.Add(point);
+            }
+        }
+
+        points.Add(controlPoints[^1]);
+        return points;
     }
 
     private static Transform EnsureRoadSegment(Transform roadRoot, string roadName, Material material)
@@ -453,6 +825,83 @@ public static class RoadBaseMaterialApplier
         renderer.sharedMaterial = material;
 
         return roadObject.transform;
+    }
+
+    private static void SmoothRoadRange(Transform roadRoot, int startIndex, int endIndex, int iterations)
+    {
+        List<Transform> roads = new();
+        for (int i = startIndex; i <= endIndex; i++)
+        {
+            Transform road = roadRoot.Find($"Road_{i:000}");
+            if (road != null)
+            {
+                roads.Add(road);
+            }
+        }
+
+        if (roads.Count < 4)
+        {
+            Debug.LogWarning($"Not enough road segments found to smooth range {startIndex}-{endIndex}.");
+            return;
+        }
+
+        List<Vector3> smoothedPositions = new();
+        foreach (Transform road in roads)
+        {
+            smoothedPositions.Add(road.localPosition);
+        }
+
+        for (int iteration = 0; iteration < iterations; iteration++)
+        {
+            List<Vector3> next = new(smoothedPositions);
+            for (int i = 1; i < smoothedPositions.Count - 1; i++)
+            {
+                next[i] = smoothedPositions[i - 1] * 0.2f + smoothedPositions[i] * 0.6f + smoothedPositions[i + 1] * 0.2f;
+            }
+
+            smoothedPositions = next;
+        }
+
+        for (int i = 0; i < roads.Count; i++)
+        {
+            Transform road = roads[i];
+            Undo.RecordObject(road, "Smooth marked bridge curves");
+            road.localPosition = smoothedPositions[i];
+
+            Vector3 tangent;
+            if (i == 0)
+            {
+                tangent = smoothedPositions[i + 1] - smoothedPositions[i];
+            }
+            else if (i == smoothedPositions.Count - 1)
+            {
+                tangent = smoothedPositions[i] - smoothedPositions[i - 1];
+            }
+            else
+            {
+                tangent = smoothedPositions[i + 1] - smoothedPositions[i - 1];
+            }
+
+            if (tangent.sqrMagnitude > 0.0001f)
+            {
+                float bank = NormalizeAngle(road.localEulerAngles.z);
+                road.localRotation = Quaternion.LookRotation(tangent.normalized, Vector3.up) * Quaternion.AngleAxis(bank, Vector3.forward);
+            }
+
+            Vector3 scale = road.localScale;
+            float prevDistance = i > 0 ? Vector3.Distance(smoothedPositions[i], smoothedPositions[i - 1]) : Mathf.Max(0.1f, scale.z - 0.8f);
+            float nextDistance = i < smoothedPositions.Count - 1 ? Vector3.Distance(smoothedPositions[i], smoothedPositions[i + 1]) : Mathf.Max(0.1f, scale.z - 0.8f);
+            scale.z = ((prevDistance + nextDistance) * 0.5f) + 0.8f;
+            road.localScale = scale;
+            EditorUtility.SetDirty(road);
+        }
+    }
+
+    private static float NormalizeAngle(float angle)
+    {
+        while (angle > 180f) angle -= 360f;
+        while (angle < -180f) angle += 360f;
+        return angle;
     }
 
     private static GameObject FindRoadRoot()

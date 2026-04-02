@@ -36,14 +36,15 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
     public void Build()
     {
         EnsureRefs(); ClearChildren();
-        List<RoadSample> road = BuildRoad();
+        List<List<RoadSample>> roads = BuildRoadNetwork();
+        List<RoadSample> road = FlattenRoads(roads);
         TerrainData data = GetTerrainData();
         ApplyHeights(data, road);
         ApplyTextures(data, road);
+        CreateOcean();
         CreateTerrain(data);
-        CreateRoad(road);
-        CreateBridgeSet();
-        CreateFinish(road[road.Count - 1].position);
+        CreateRoad(roads);
+        CreateFinish(roads[0][roads[0].Count - 1].position);
         EditorUtility.SetDirty(this);
         if (gameObject.scene.IsValid()) EditorSceneManager.MarkSceneDirty(gameObject.scene);
         AssetDatabase.SaveAssets();
@@ -83,62 +84,61 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         t.drawInstanced = true; t.heightmapPixelError = 4f; t.basemapDistance = 800f;
     }
 
-    List<RoadSample> BuildRoad()
+    List<List<RoadSample>> BuildRoadNetwork()
+    {
+        return new List<List<RoadSample>> { BuildMainRoad() };
+    }
+
+    List<RoadSample> BuildMainRoad()
     {
         Vector3[] cp =
         {
-            new Vector3(-6f, 4.8f, -438f),
-            new Vector3(-4f, 5.0f, -380f),
-            new Vector3(8f, 5.4f, -322f),
-            new Vector3(42f, 6.2f, -278f),
-            new Vector3(86f, 7.4f, -232f),
-            new Vector3(54f, 8.2f, -178f),
-            new Vector3(2f, 9.2f, -132f),
-            new Vector3(-56f, 10.4f, -96f),
-            new Vector3(-28f, 11.8f, -40f),
-            new Vector3(12f, 14.8f, 6f),
-            new Vector3(42f, 18.0f, 42f),
-            new Vector3(58f, 20.8f, 86f),
-            new Vector3(28f, 23.6f, 126f),
-            new Vector3(-20f, 27.4f, 160f),
-            new Vector3(-70f, 32.8f, 198f),
-            new Vector3(-88f, 38.0f, 244f),
-            new Vector3(-36f, 43.2f, 292f),
-            new Vector3(18f, 48.8f, 322f),
-            new Vector3(62f, 54.0f, 342f)
+            new Vector3(-188f, 5.2f, -420f),
+            new Vector3(-154f, 5.8f, -348f),
+            new Vector3(-102f, 6.5f, -304f),
+            new Vector3(-30f, 7.1f, -286f),
+            new Vector3(54f, 7.8f, -264f),
+            new Vector3(122f, 8.8f, -214f),
+            new Vector3(164f, 10.0f, -140f),
+            new Vector3(174f, 11.4f, -48f),
+            new Vector3(146f, 12.8f, 36f),
+            new Vector3(92f, 14.2f, 106f),
+            new Vector3(16f, 15.6f, 154f),
+            new Vector3(-70f, 16.4f, 172f),
+            new Vector3(-140f, 17.4f, 132f),
+            new Vector3(-182f, 18.6f, 56f),
+            new Vector3(-170f, 19.8f, -30f),
+            new Vector3(-112f, 21.2f, -104f),
+            new Vector3(-28f, 23.4f, -138f),
+            new Vector3(44f, 26.6f, -112f),
+            new Vector3(74f, 31.0f, -46f),
+            new Vector3(52f, 37.2f, 28f),
+            new Vector3(18f, 45.2f, 92f),
+            new Vector3(2f, 53.8f, 152f),
+            new Vector3(-4f, 63.5f, 210f)
         };
-        List<Vector3> pts = new List<Vector3>();
-        for (int i = 0; i < cp.Length - 1; i++)
-        {
-            Vector3 p0 = i == 0 ? cp[i] : cp[i - 1], p1 = cp[i], p2 = cp[i + 1], p3 = i + 2 >= cp.Length ? cp[i + 1] : cp[i + 2];
-            for (int j = 0; j < 18; j++)
-            {
-                float t = j / 18f, t2 = t * t, t3 = t2 * t;
-                Vector3 p = 0.5f * ((2f * p1) + (-p0 + p2) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
-                pts.Add(p);
-            }
-        }
-        pts.Add(cp[cp.Length - 1]);
+        List<Vector3> pts = SamplePath(cp, 18);
         List<float> dist = Distances(pts); float total = dist[dist.Count - 1];
         List<RoadSample> road = new List<RoadSample>(pts.Count);
         for (int i = 0; i < pts.Count; i++)
         {
             float t = total > 0.01f ? dist[i] / total : 0f;
             Vector3 p = pts[i];
-            p.y += Humps(t, 0.06f, 0.22f, 2, 0.35f);
-            p.y += Bell(t, 0.33f, 0.43f) * 0.8f;
-            p.y += Bell(t, 0.63f, 0.77f) * 0.9f;
-            p.y += RampPulse(t, 0.86f, 0.93f, 1.1f);
+            p.y += Humps(t, 0.04f, 0.16f, 2, 0.24f);
+            p.y += Bell(t, 0.24f, 0.38f) * 0.45f;
+            p.y += Bell(t, 0.54f, 0.68f) * 0.55f;
+            p.y += Bell(t, 0.78f, 0.90f) * 0.75f;
             Vector3 prev = i == 0 ? p - (pts[1] - pts[0]) : pts[i - 1];
             Vector3 next = i == pts.Count - 1 ? p + (pts[i] - pts[i - 1]) : pts[i + 1];
             Vector3 a = new Vector3(p.x - prev.x, 0f, p.z - prev.z).normalized, b = new Vector3(next.x - p.x, 0f, next.z - p.z).normalized;
-            float bank = Mathf.Clamp(Vector3.SignedAngle(a, b, Vector3.up) * 0.46f, -7f, 7f);
-            bank += Bell(t, 0.10f, 0.19f) * 2.4f;
-            bank -= Bell(t, 0.25f, 0.34f) * 2.8f;
-            bank += Bell(t, 0.50f, 0.60f) * 2.2f;
-            bank += Bell(t, 0.72f, 0.84f) * 3.1f;
-            float width = t < 0.35f ? 12.4f : (t < 0.68f ? 10.8f : 9.4f);
-            float terrainBlend = t >= 0.47f && t <= 0.57f ? 0.12f : 1f;
+            float bank = Mathf.Clamp(Vector3.SignedAngle(a, b, Vector3.up) * 0.36f, -5.5f, 5.5f);
+            bank += Bell(t, 0.08f, 0.16f) * 1.6f;
+            bank -= Bell(t, 0.28f, 0.36f) * 1.8f;
+            bank += Bell(t, 0.46f, 0.58f) * 1.7f;
+            bank -= Bell(t, 0.62f, 0.72f) * 1.2f;
+            bank += Bell(t, 0.82f, 0.92f) * 2.2f;
+            float width = t < 0.32f ? 11.8f : (t < 0.74f ? 10.4f : 9.6f);
+            float terrainBlend = 1f;
             road.Add(new RoadSample(p, width, bank, terrainBlend));
         }
         return road;
@@ -190,24 +190,53 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
 
     float BaseTerrain(float x, float z)
     {
-        float broad = (Mathf.PerlinNoise(x * 0.008f + 22f, z * 0.008f + 35f) - 0.5f) * 0.05f;
-        float detail = (Mathf.PerlinNoise(x * 0.020f + 120f, z * 0.020f + 78f) - 0.5f) * 0.015f;
-        float southPlain = 0.055f + Mathf.SmoothStep(1f, 0f, Mathf.InverseLerp(-300f, -40f, z)) * 0.02f;
-        float speedBasin = Ellipse(x, z, 6f, -238f, 170f, 210f, 0f) * 0.035f;
-        float bridgeShelf = Ellipse(x, z, -14f, 28f, 132f, 130f, -10f) * 0.08f;
-        float ridgeWest = Ellipse(x, z, -94f, 152f, 54f, 124f, -18f) * 0.12f;
-        float summit = Ellipse(x, z, -34f, 256f, 108f, 118f, -12f) * 0.34f
-            + Ellipse(x, z, 28f, 322f, 80f, 62f, 6f) * 0.22f
-            + Ellipse(x, z, -72f, 222f, 46f, 52f, 0f) * 0.10f;
-        float border = Mathf.SmoothStep(0f, 0.14f, Mathf.InverseLerp(0.66f, 1f, Mathf.Max(Mathf.Abs(x) / (terrainSize.x * 0.5f), Mathf.Abs(z) / (terrainSize.z * 0.5f))));
-        return Mathf.Clamp01(southPlain + speedBasin + bridgeShelf + ridgeWest + summit + broad + detail + border - Ravine(x, z) * 0.22f);
+        float island =
+            Ellipse(x, z, -120f, -170f, 126f, 172f, -18f) * 0.18f +
+            Ellipse(x, z, 24f, -172f, 162f, 168f, 8f) * 0.22f +
+            Ellipse(x, z, 126f, -42f, 128f, 178f, 14f) * 0.21f +
+            Ellipse(x, z, -104f, 40f, 146f, 176f, -12f) * 0.18f +
+            Ellipse(x, z, 16f, 78f, 166f, 154f, 4f) * 0.20f +
+            Ellipse(x, z, -8f, 184f, 120f, 112f, -6f) * 0.14f;
+        float coast = Mathf.Clamp01(island);
+
+        float broad = (Mathf.PerlinNoise(x * 0.0065f + 22f, z * 0.0065f + 35f) - 0.5f) * 0.022f;
+        float detail = (Mathf.PerlinNoise(x * 0.018f + 120f, z * 0.018f + 78f) - 0.5f) * 0.010f;
+
+        float beachShelf = coast * 0.032f;
+        float interiorLift = Mathf.Pow(coast, 1.35f) * 0.065f;
+        float centralPlateau = Ellipse(x, z, -8f, 18f, 136f, 126f, 0f) * 0.040f;
+        float westCliffs = Ellipse(x, z, -168f, -36f, 68f, 214f, -12f) * 0.055f;
+        float eastCliffs = Ellipse(x, z, 170f, -24f, 74f, 224f, 8f) * 0.060f;
+        float southLagoonRim = Ellipse(x, z, 12f, -204f, 100f, 72f, 0f) * 0.028f;
+        float volcanoBase =
+            Ellipse(x, z, -4f, 182f, 88f, 84f, 0f) * 0.22f +
+            Ellipse(x, z, -6f, 220f, 54f, 48f, 0f) * 0.18f;
+        float volcanoCone = Ellipse(x, z, -6f, 224f, 28f, 24f, 0f) * 0.16f;
+        float crater = Ellipse(x, z, -4f, 230f, 12f, 10f, 0f) * 0.10f;
+
+        float coves =
+            Ellipse(x, z, 122f, 154f, 48f, 42f, 0f) * 0.08f +
+            Ellipse(x, z, -160f, -258f, 48f, 52f, 0f) * 0.10f +
+            Ellipse(x, z, 182f, 84f, 42f, 52f, 0f) * 0.08f +
+            Ellipse(x, z, -188f, 128f, 46f, 54f, 0f) * 0.08f +
+            Ellipse(x, z, 70f, -278f, 52f, 38f, 0f) * 0.08f;
+        float innerLagoon = Ellipse(x, z, 18f, -198f, 48f, 28f, 0f) * 0.07f;
+
+        float outsideDrop = Mathf.Pow(1f - coast, 1.8f) * 0.02f;
+        float height = beachShelf + interiorLift + centralPlateau + westCliffs + eastCliffs + southLagoonRim + volcanoBase + volcanoCone + broad + detail - crater - coves - innerLagoon - outsideDrop;
+        return Mathf.Clamp01(height);
     }
 
     float Ravine(float x, float z)
     {
-        float mainCut = Ellipse(x, z, 38f, 64f, 34f, 96f, 18f);
-        float spillCut = Ellipse(x, z, 6f, 102f, 20f, 50f, -22f);
-        return Mathf.Clamp01(Mathf.Max(mainCut, spillCut));
+        return 0f;
+    }
+
+    void CreateOcean()
+    {
+        GameObject root = new GameObject("Water");
+        root.transform.SetParent(transform, false);
+        Box(root.transform, "Ocean", new Vector3(0f, 2.1f, 0f), Vector3.zero, new Vector3(terrainSize.x + 220f, 4.2f, terrainSize.z + 220f), new Color(0.16f, 0.48f, 0.76f), false);
     }
 
     float Nearest(float x, float z, List<RoadSample> road, out RoadSample sample)
@@ -221,16 +250,22 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
         return best;
     }
 
-    void CreateRoad(List<RoadSample> road)
+    void CreateRoad(List<List<RoadSample>> roads)
     {
         GameObject root = new GameObject("RoverRoad"); root.transform.SetParent(transform, false);
-        for (int i = 0; i < road.Count - 1; i++)
+        int roadIndex = 0;
+        for (int pathIndex = 0; pathIndex < roads.Count; pathIndex++)
         {
-            RoadSample a = road[i], b = road[i + 1]; Vector3 seg = b.position - a.position; float len = seg.magnitude; if (len <= 0.01f) continue;
-            GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = "Road_" + i.ToString("000"); go.transform.SetParent(root.transform, false);
-            go.transform.localPosition = (a.position + b.position) * 0.5f + Vector3.up * (roadThickness * 0.5f);
-            go.transform.localRotation = Quaternion.LookRotation(seg.normalized, Vector3.up) * Quaternion.AngleAxis((a.bank + b.bank) * 0.5f, Vector3.forward);
-            go.transform.localScale = new Vector3(a.width, roadThickness, len + 0.8f); PaintRoad(go.GetComponent<Renderer>());
+            List<RoadSample> road = roads[pathIndex];
+            for (int i = 0; i < road.Count - 1; i++)
+            {
+                RoadSample a = road[i], b = road[i + 1]; Vector3 seg = b.position - a.position; float len = seg.magnitude; if (len <= 0.01f) continue;
+                GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = "Road_" + roadIndex.ToString("000"); go.transform.SetParent(root.transform, false);
+                go.transform.localPosition = (a.position + b.position) * 0.5f + Vector3.up * (roadThickness * 0.5f);
+                go.transform.localRotation = Quaternion.LookRotation(seg.normalized, Vector3.up) * Quaternion.AngleAxis((a.bank + b.bank) * 0.5f, Vector3.forward);
+                go.transform.localScale = new Vector3(a.width, roadThickness, len + 0.8f); PaintRoad(go.GetComponent<Renderer>());
+                roadIndex++;
+            }
         }
     }
 
@@ -266,6 +301,30 @@ public class TerrainRoadCourseBuilder : MonoBehaviour
     void Box(Transform parent, string name, Vector3 pos, Vector3 rot, Vector3 scale, Color color, bool collider) { GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = name; go.transform.SetParent(parent, false); go.transform.localPosition = pos; go.transform.localRotation = Quaternion.Euler(rot); go.transform.localScale = scale; Paint(go.GetComponent<Renderer>(), color); if (!collider) DestroyImmediate(go.GetComponent<BoxCollider>()); }
     void PaintRoad(Renderer r) { if (roadMaterial != null) r.sharedMaterial = roadMaterial; else Paint(r, new Color(0.42f, 0.33f, 0.23f)); }
     void Paint(Renderer r, Color c) { Material m = new Material(Shader.Find("Universal Render Pipeline/Lit")); m.color = c; r.sharedMaterial = m; }
+
+    static List<RoadSample> FlattenRoads(List<List<RoadSample>> roads)
+    {
+        List<RoadSample> merged = new List<RoadSample>();
+        for (int i = 0; i < roads.Count; i++) merged.AddRange(roads[i]);
+        return merged;
+    }
+
+    static List<Vector3> SamplePath(Vector3[] cp, int samplesPerSegment)
+    {
+        List<Vector3> pts = new List<Vector3>();
+        for (int i = 0; i < cp.Length - 1; i++)
+        {
+            Vector3 p0 = i == 0 ? cp[i] : cp[i - 1], p1 = cp[i], p2 = cp[i + 1], p3 = i + 2 >= cp.Length ? cp[i + 1] : cp[i + 2];
+            for (int j = 0; j < samplesPerSegment; j++)
+            {
+                float t = j / (float)samplesPerSegment, t2 = t * t, t3 = t2 * t;
+                Vector3 p = 0.5f * ((2f * p1) + (-p0 + p2) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+                pts.Add(p);
+            }
+        }
+        pts.Add(cp[cp.Length - 1]);
+        return pts;
+    }
 
     static List<float> Distances(List<Vector3> pts) { List<float> d = new List<float>(pts.Count) { 0f }; float t = 0f; for (int i = 1; i < pts.Count; i++) { t += Vector3.Distance(pts[i - 1], pts[i]); d.Add(t); } return d; }
     static float Bell(float t, float a, float b) { if (t <= a || t >= b) return 0f; return Mathf.Sin(Mathf.InverseLerp(a, b, t) * Mathf.PI); }
