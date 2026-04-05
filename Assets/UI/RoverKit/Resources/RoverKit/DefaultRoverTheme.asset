@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc96cf977079d864899fa55f8cee91d2, type: 3}
+  m_Name: DefaultRoverTheme
+  m_EditorClassIdentifier: 
+  primaryGlow: {r: 0.43, g: 0.92, b: 0.95, a: 1}
+  secondaryGlow: {r: 0.23, g: 0.55, b: 1, a: 1}
+  warningGlow: {r: 1, g: 0.76, b: 0.29, a: 1}
+  panelTint: {r: 0.04, g: 0.09, b: 0.14, a: 0.82}
+  textColor: {r: 0.92, g: 0.97, b: 1, a: 1}
+  mutedTextColor: {r: 0.67, g: 0.83, b: 0.9, a: 1}
+  beaconPulseFar: 1.1
+  beaconPulseNear: 2.6
+  beaconGlowFar: 0.45
+  beaconGlowNear: 1.55
+  beaconLightFar: 1.2
+  beaconLightNear: 3.8
+  beaconScaleFar: 1
+  beaconScaleNear: 1.14
+  mountTitle: Mount Rover
+  mountSubtitle: Grip to ride
+  promptFadeSpeed: 6
+  promptOffset: {x: 0, y: 0.2, z: 0}
+  bobAmplitude: 0.03
+  bobFrequency: 0.8

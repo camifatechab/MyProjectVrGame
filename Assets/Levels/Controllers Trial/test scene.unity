@@ -22250,12 +22250,11 @@ GameObject:
   m_Component:
   - component: {fileID: 144269877}
   - component: {fileID: 144269876}
-  - component: {fileID: 144269875}
-  - component: {fileID: 144269874}
   - component: {fileID: 144269873}
   - component: {fileID: 144269878}
   - component: {fileID: 144269879}
   - component: {fileID: 144269880}
+  - component: {fileID: 144269881}
   m_Layer: 0
   m_Name: Rover_PhysicsTest
   m_TagString: Untagged
@@ -22290,52 +22289,6 @@ Rigidbody:
   m_Interpolate: 1
   m_Constraints: 0
   m_CollisionDetection: 2
---- !u!114 &144269874
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 144269872}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0edd58b57d3ee14fb388077d6f3e7a9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ringColor: {r: 0.2, g: 0.8, b: 1, a: 0.6}
-  ringRadius: 2
-  ringWidth: 0.08
-  pulseSpeed: 1.8
-  pulseMinAlpha: 0.15
-  pulseMaxAlpha: 0.75
-  ringYOffset: 0.05
-  showParticles: 1
-  particleColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  particleRadius: 1.8
-  particleCount: 12
-  particleSize: 0.08
-  particleRiseSpeed: 0.6
-  particleLifetime: 1.2
-  proximityRange: 4
-  hideWhenMounted: 1
---- !u!114 &144269875
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 144269872}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c3774bfcadbe734d9285a2a82cfc542, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  ringRadius: 2
-  ringBaseAlpha: 0.35
-  pulseSpeedFar: 1.2
-  pulseSpeedNear: 3.5
-  ringColor: {r: 0.2, g: 0.9, b: 1, a: 1}
-  nearDistance: 3.5
 --- !u!65 &144269876
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -22370,6 +22323,8 @@ Transform:
   m_LocalScale: {x: 1.2, y: 1.2, z: 1.2}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 1557015248}
+  - {fileID: 1899112111}
   - {fileID: 1675557728}
   - {fileID: 1470139394}
   - {fileID: 1312314570}
@@ -22517,6 +22472,34 @@ MonoBehaviour:
   - Guide_
   instantResetTriggerNames:
   - Ocean
+--- !u!114 &144269881
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 144269872}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 17b5801cd5ae27440971c1c9a9141f91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  theme: {fileID: 0}
+  seatAnchor: {fileID: 1557015248}
+  promptAnchor: {fileID: 1899112111}
+  dashboardAnchor: {fileID: 0}
+  warningAnchor: {fileID: 0}
+  leftHintAnchor: {fileID: 0}
+  rightHintAnchor: {fileID: 0}
+  playerCamera: {fileID: 1016370485}
+  playerTarget: {fileID: 1016370484}
+  roverPhysicsController: {fileID: 144269878}
+  legacyRoverDriver: {fileID: 0}
+  seatBeacon: {fileID: 0}
+  mountPrompt: {fileID: 0}
+  nearbyDistance: 5
+  readyToMountDistance: 2.8
+  autoFindMainCamera: 1
 --- !u!1 &144948407
 GameObject:
   m_ObjectHideFlags: 0
@@ -145460,6 +145443,54 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 825012934}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &825359804
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 825359805}
+  - component: {fileID: 825359806}
+  m_Layer: 0
+  m_Name: MountPrompt
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &825359805
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 825359804}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.22765885, z: -0, w: 0.97374105}
+  m_LocalPosition: {x: -979.9653, y: -4.7466664, z: -258.8897}
+  m_LocalScale: {x: 0.8333333, y: 0.8333333, z: 0.8333333}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1899112111}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &825359806
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 825359804}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 42023303747896245bff050698f4be5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  promptRoot: {fileID: 0}
+  fallbackTitle: Mount Rover
+  fallbackSubtitle: Grip to ride
+  faceCamera: 1
 --- !u!1 &825757475
 GameObject:
   m_ObjectHideFlags: 0
@@ -179375,6 +179406,59 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1026723221}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1027544140
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1027544141}
+  - component: {fileID: 1027544142}
+  m_Layer: 0
+  m_Name: SeatBeacon
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1027544141
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027544140}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.22765885, z: -0, w: 0.97374105}
+  m_LocalPosition: {x: -979.9653, y: -4.7466664, z: -258.8897}
+  m_LocalScale: {x: 0.8333333, y: 0.8333333, z: 0.8333333}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1557015248}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1027544142
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1027544140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f05cd8c1afd53c4aa17c9d96b4f50da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  visualRoot: {fileID: 0}
+  emissiveRenderers: []
+  accentLights: []
+  ambientParticles: {fileID: 0}
+  fallbackGlow: {r: 0.43, g: 0.92, b: 0.95, a: 1}
+  defaultPulseFar: 1.1
+  defaultPulseNear: 2.1
+  hiddenParticleRate: 0
+  shownParticleRate: 10
 --- !u!1 &1027900317
 GameObject:
   m_ObjectHideFlags: 0
@@ -270924,6 +271008,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1556746385}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1557015247
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1557015248}
+  m_Layer: 0
+  m_Name: UI_SeatAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1557015248
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1557015247}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1027544141}
+  m_Father: {fileID: 144269877}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1557092284
 GameObject:
   m_ObjectHideFlags: 0
@@ -334552,6 +334668,38 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1899109731}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1899112110
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1899112111}
+  m_Layer: 0
+  m_Name: UI_PromptAnchor
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1899112111
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1899112110}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 825359805}
+  m_Father: {fileID: 144269877}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1900571272
 GameObject:
   m_ObjectHideFlags: 0

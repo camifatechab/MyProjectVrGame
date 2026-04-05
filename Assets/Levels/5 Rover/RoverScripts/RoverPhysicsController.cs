@@ -120,6 +120,9 @@ public class RoverPhysicsController : MonoBehaviour
     private float currentWheelAngle;
     private bool lastRideComfortMountedState;
     private Transform mountedRigAnchor;
+    public bool IsMounted => isMounted;
+    public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
+    public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
     private Vector3 SeatWorldPosition =>
         seatAnchor != null ? seatAnchor.position : transform.position;
 
