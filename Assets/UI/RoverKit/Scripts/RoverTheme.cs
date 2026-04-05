@@ -37,10 +37,14 @@ public class RoverTheme : ScriptableObject
     [Header("Dashboard")]
     public string dashboardStatusLabel = "SYSTEM ONLINE";
     public string dashboardSpeedUnit = "km/h";
+    public string dashboardResetWarningLabel = "RESET IMMINENT";
+    public string dashboardRepositioningLabel = "REPOSITIONING";
     public Color dashboardPanelTint = new(0.06f, 0.09f, 0.11f, 0.9f);
     public Color dashboardAccent = new(0.76f, 0.8f, 0.85f, 1f);
     public Color dashboardTextColor = new(0.95f, 0.97f, 0.99f, 1f);
     public Color dashboardMutedTextColor = new(0.63f, 0.68f, 0.73f, 1f);
+    public Color dashboardWarningAccent = new(1f, 0.76f, 0.29f, 1f);
+    public Color dashboardWarningTextColor = new(0.99f, 0.95f, 0.86f, 1f);
     public float dashboardFadeSpeed = 5f;
     public Vector3 dashboardOffset = new(0f, 0f, 0f);
 

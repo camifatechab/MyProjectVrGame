@@ -13,14 +13,19 @@ public class RoverRoadFailSafe : MonoBehaviour
     public float unsupportedResetDelay = 0.35f;
     public float fallBelowSafeDistance = 2.5f;
     public float minimumFallSpeed = 1.5f;
+    public float resetFeedbackDuration = 0.9f;
     public string[] safeColliderPrefixes = { "Road_", "Base_Road_" };
     public string[] supportColliderPrefixes = { "Shelf_", "Guide_" };
     public string[] instantResetTriggerNames = { "Ocean" };
+
+    public bool IsResetWarningActive { get; private set; }
+    public bool IsResetting { get; private set; }
 
     private Vector3 lastSafePosition;
     private Quaternion lastSafeRotation;
     private bool hasSafePosition;
     private float offRoadTimer;
+    private float resetFeedbackTimer;
 
     private void Reset()
     {
@@ -42,30 +47,47 @@ public class RoverRoadFailSafe : MonoBehaviour
         if (rb == null)
             return;
 
+        if (resetFeedbackTimer > 0f)
+        {
+            resetFeedbackTimer = Mathf.Max(0f, resetFeedbackTimer - Time.fixedDeltaTime);
+            IsResetting = resetFeedbackTimer > 0f;
+        }
+        else
+        {
+            IsResetting = false;
+        }
+
         if (TryGetSafeHit(out RaycastHit hit))
         {
             lastSafePosition = hit.point + Vector3.up * safePositionLift;
             lastSafeRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized, Vector3.up);
             hasSafePosition = true;
             offRoadTimer = 0f;
+            IsResetWarningActive = false;
             return;
         }
 
         if (IsSupportedByRecoverySurface())
         {
+            IsResetWarningActive = false;
             ResetToSafePosition();
             return;
         }
 
         if (!hasSafePosition)
+        {
+            IsResetWarningActive = false;
             return;
+        }
 
         bool movingDown = rb.linearVelocity.y < -minimumFallSpeed;
         bool fellTooLow = transform.position.y < lastSafePosition.y - fallBelowSafeDistance;
+        IsResetWarningActive = fellTooLow;
 
         if (!movingDown && !fellTooLow)
         {
             offRoadTimer = 0f;
+            IsResetWarningActive = false;
             return;
         }
 
@@ -122,6 +144,9 @@ public class RoverRoadFailSafe : MonoBehaviour
         rb.position = lastSafePosition;
         rb.rotation = lastSafeRotation;
         offRoadTimer = 0f;
+        resetFeedbackTimer = resetFeedbackDuration;
+        IsResetting = true;
+        IsResetWarningActive = false;
 
         if (controller != null)
         {

@@ -18,6 +18,8 @@ public class RoverUIBinder : MonoBehaviour
     [SerializeField] private Transform playerTarget;
     [SerializeField] private RoverPhysicsController roverPhysicsController;
     [SerializeField] private RoverDriver legacyRoverDriver;
+    [SerializeField] private RoverRoadFailSafe roverRoadFailSafe;
+    [SerializeField] private PlayerHealth playerHealth;
 
     [Header("Modules")]
     [SerializeField] private RoverSeatBeaconController seatBeacon;
@@ -44,6 +46,9 @@ public class RoverUIBinder : MonoBehaviour
     public RoverUIState CurrentState { get; private set; } = RoverUIState.Idle;
     public float ForwardSpeed => roverPhysicsController != null ? roverPhysicsController.ForwardSpeed : 0f;
     public float SpeedNormalized => roverPhysicsController != null ? roverPhysicsController.SpeedNormalized : 0f;
+    public float HealthNormalized => playerHealth != null ? playerHealth.HealthNormalized : 1f;
+    public bool IsResetWarningActive => roverRoadFailSafe != null && roverRoadFailSafe.IsResetWarningActive;
+    public bool IsRepositioning => roverRoadFailSafe != null && roverRoadFailSafe.IsResetting;
     public bool IsMounted => roverPhysicsController != null
         ? roverPhysicsController.IsMounted
         : legacyRoverDriver != null && legacyRoverDriver.IsMounted;
@@ -63,6 +68,9 @@ public class RoverUIBinder : MonoBehaviour
         RefreshTracking();
         RefreshState();
 
+        if (playerHealth != null)
+            playerHealth.SetHeadHudSuppressed(IsMounted);
+
         if (seatBeacon != null)
             seatBeacon.Present(this);
 
@@ -80,6 +88,12 @@ public class RoverUIBinder : MonoBehaviour
 
         if (legacyRoverDriver == null)
             legacyRoverDriver = GetComponent<RoverDriver>();
+
+        if (roverRoadFailSafe == null)
+            roverRoadFailSafe = GetComponent<RoverRoadFailSafe>();
+
+        if (playerHealth == null)
+            playerHealth = FindFirstObjectByType<PlayerHealth>();
 
         if (theme == null)
             theme = Resources.Load<RoverTheme>("RoverKit/DefaultRoverTheme");

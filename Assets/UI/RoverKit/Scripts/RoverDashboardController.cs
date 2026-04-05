@@ -17,14 +17,25 @@ public class RoverDashboardController : MonoBehaviour
     private Image backgroundImage;
     private Image glowImage;
     private Image accentImage;
-    private Image speedBarFill;
+    private Image healthBarBack;
+    private Image healthBarFill;
+    private TextMeshProUGUI healthLabel;
     private TextMeshProUGUI statusLabel;
     private TextMeshProUGUI speedValueLabel;
     private TextMeshProUGUI speedUnitLabel;
     private bool initialized;
     private float currentAlpha;
+    private float currentHealthNormalized = 1f;
     private float confirmationTimer;
     private bool wasMounted;
+
+    private enum DashboardState
+    {
+        Normal,
+        Confirmation,
+        ResetWarning,
+        Repositioning
+    }
 
     private void Awake()
     {
@@ -51,10 +62,11 @@ public class RoverDashboardController : MonoBehaviour
 
         float fadeSpeed = theme != null ? theme.dashboardFadeSpeed : 5f;
         currentAlpha = Mathf.MoveTowards(currentAlpha, visible ? 1f : 0f, fadeSpeed * Time.deltaTime);
+        DashboardState state = ResolveState(binder, confirmationTimer > 0f);
 
         UpdatePlacement(binder, theme);
-        UpdateCopy(binder, theme, confirmationTimer > 0f);
-        ApplyTheme(theme, currentAlpha, confirmationTimer > 0f);
+        UpdateCopy(binder, theme, state);
+        ApplyTheme(theme, currentAlpha, state);
 
         if (canvasGroup != null)
             canvasGroup.blocksRaycasts = false;
@@ -105,18 +117,22 @@ public class RoverDashboardController : MonoBehaviour
         accentImage = CreateImage("Accent", panelRect, new Vector2(132f, 4f), new Color(0.76f, 0.8f, 0.85f, 1f));
         accentImage.rectTransform.anchoredPosition = new Vector2(0f, 34f);
 
-        statusLabel = CreateText("Status", panelRect, new Vector2(0f, 20f), new Vector2(180f, 20f), 8f, FontStyles.Normal);
-        speedValueLabel = CreateText("SpeedValue", panelRect, new Vector2(0f, -2f), new Vector2(180f, 38f), 22f, FontStyles.Bold);
-        speedUnitLabel = CreateText("SpeedUnit", panelRect, new Vector2(0f, -28f), new Vector2(120f, 14f), 7f, FontStyles.Normal);
+        healthLabel = CreateText("HealthLabel", panelRect, new Vector2(-62f, -40f), new Vector2(24f, 12f), 6.5f, FontStyles.Normal);
+        healthLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        healthLabel.text = "HP";
 
-        Image speedBarBack = CreateImage("SpeedBarBack", panelRect, new Vector2(150f, 6f), new Color(1f, 1f, 1f, 0.08f));
-        speedBarBack.rectTransform.anchoredPosition = new Vector2(0f, -42f);
+        healthBarBack = CreateImage("HealthBarBack", panelRect, new Vector2(104f, 4f), new Color(1f, 1f, 1f, 0.08f));
+        healthBarBack.rectTransform.anchoredPosition = new Vector2(14f, -40f);
 
-        speedBarFill = CreateImage("SpeedBarFill", speedBarBack.rectTransform, new Vector2(150f, 6f), new Color(0.76f, 0.8f, 0.85f, 1f));
-        speedBarFill.rectTransform.anchorMin = new Vector2(0f, 0.5f);
-        speedBarFill.rectTransform.anchorMax = new Vector2(0f, 0.5f);
-        speedBarFill.rectTransform.pivot = new Vector2(0f, 0.5f);
-        speedBarFill.rectTransform.anchoredPosition = Vector2.zero;
+        healthBarFill = CreateImage("HealthBarFill", healthBarBack.rectTransform, new Vector2(104f, 4f), new Color(0.76f, 0.8f, 0.85f, 1f));
+        healthBarFill.rectTransform.anchorMin = new Vector2(0f, 0.5f);
+        healthBarFill.rectTransform.anchorMax = new Vector2(0f, 0.5f);
+        healthBarFill.rectTransform.pivot = new Vector2(0f, 0.5f);
+        healthBarFill.rectTransform.anchoredPosition = Vector2.zero;
+
+        statusLabel = CreateText("Status", panelRect, new Vector2(0f, 18f), new Vector2(180f, 18f), 8f, FontStyles.Normal);
+        speedValueLabel = CreateText("SpeedValue", panelRect, new Vector2(0f, -2f), new Vector2(180f, 34f), 22f, FontStyles.Bold);
+        speedUnitLabel = CreateText("SpeedUnit", panelRect, new Vector2(0f, -22f), new Vector2(120f, 14f), 7f, FontStyles.Normal);
     }
 
     private void UpdatePlacement(RoverUIBinder binder, RoverTheme theme)
@@ -140,14 +156,42 @@ public class RoverDashboardController : MonoBehaviour
         }
     }
 
-    private void UpdateCopy(RoverUIBinder binder, RoverTheme theme, bool showConfirmation)
+    private string GetStatusLabel(RoverTheme theme, DashboardState state, RoverUIBinder binder)
+    {
+        switch (state)
+        {
+            case DashboardState.Confirmation:
+                return theme != null ? theme.mountConfirmTitle : "Rover Linked";
+            case DashboardState.Repositioning:
+                return theme != null ? theme.dashboardRepositioningLabel : "REPOSITIONING";
+            case DashboardState.ResetWarning:
+                return theme != null ? theme.dashboardResetWarningLabel : "RESET IMMINENT";
+            default:
+                return theme != null ? theme.dashboardStatusLabel : "DRIVE READY";
+        }
+    }
+
+    private DashboardState ResolveState(RoverUIBinder binder, bool showConfirmation)
+    {
+        if (showConfirmation)
+            return DashboardState.Confirmation;
+
+        if (binder.IsRepositioning)
+            return DashboardState.Repositioning;
+
+        if (binder.IsResetWarningActive)
+            return DashboardState.ResetWarning;
+
+        return DashboardState.Normal;
+    }
+
+    private void UpdateCopy(RoverUIBinder binder, RoverTheme theme, DashboardState state)
     {
         float speedKmh = Mathf.Abs(binder.ForwardSpeed) * 3.6f;
+        currentHealthNormalized = binder.HealthNormalized;
 
         if (statusLabel != null)
-            statusLabel.text = showConfirmation
-                ? theme != null ? theme.mountConfirmTitle : "Rover Linked"
-                : theme != null ? theme.dashboardStatusLabel : "SYSTEM ONLINE";
+            statusLabel.text = GetStatusLabel(theme, state, binder);
 
         if (speedValueLabel != null)
             speedValueLabel.text = Mathf.RoundToInt(speedKmh).ToString("00");
@@ -155,28 +199,37 @@ public class RoverDashboardController : MonoBehaviour
         if (speedUnitLabel != null)
             speedUnitLabel.text = theme != null ? theme.dashboardSpeedUnit : "km/h";
 
-        if (speedBarFill != null)
+        if (healthBarFill != null)
         {
-            Vector2 size = speedBarFill.rectTransform.sizeDelta;
-            size.x = Mathf.Lerp(18f, 150f, binder.SpeedNormalized);
-            speedBarFill.rectTransform.sizeDelta = size;
+            Vector2 size = healthBarFill.rectTransform.sizeDelta;
+            size.x = Mathf.Lerp(12f, 104f, currentHealthNormalized);
+            healthBarFill.rectTransform.sizeDelta = size;
         }
     }
 
-    private void ApplyTheme(RoverTheme theme, float alpha, bool showConfirmation)
+    private void ApplyTheme(RoverTheme theme, float alpha, DashboardState state)
     {
+        bool showConfirmation = state == DashboardState.Confirmation;
+        bool showWarning = state == DashboardState.ResetWarning || state == DashboardState.Repositioning;
+
         Color panel = showConfirmation
             ? theme != null ? theme.mountConfirmPanelTint : new Color(0.16f, 0.18f, 0.2f, 0.9f)
             : theme != null ? theme.dashboardPanelTint : new Color(0.06f, 0.09f, 0.11f, 0.9f);
         Color accent = showConfirmation
             ? theme != null ? theme.mountConfirmAccent : new Color(0.7f, 0.73f, 0.77f, 1f)
-            : theme != null ? theme.dashboardAccent : new Color(0.76f, 0.8f, 0.85f, 1f);
+            : showWarning
+                ? theme != null ? theme.dashboardWarningAccent : new Color(1f, 0.76f, 0.29f, 1f)
+                : theme != null ? theme.dashboardAccent : new Color(0.76f, 0.8f, 0.85f, 1f);
         Color text = showConfirmation
             ? theme != null ? theme.mountConfirmTextColor : new Color(0.93f, 0.94f, 0.96f, 1f)
-            : theme != null ? theme.dashboardTextColor : new Color(0.95f, 0.97f, 0.99f, 1f);
+            : showWarning
+                ? theme != null ? theme.dashboardWarningTextColor : new Color(0.99f, 0.95f, 0.86f, 1f)
+                : theme != null ? theme.dashboardTextColor : new Color(0.95f, 0.97f, 0.99f, 1f);
         Color muted = showConfirmation
             ? theme != null ? theme.mountConfirmMutedTextColor : new Color(0.72f, 0.75f, 0.79f, 1f)
-            : theme != null ? theme.dashboardMutedTextColor : new Color(0.63f, 0.68f, 0.73f, 1f);
+            : showWarning
+                ? theme != null ? theme.dashboardWarningTextColor : new Color(0.99f, 0.95f, 0.86f, 1f)
+                : theme != null ? theme.dashboardMutedTextColor : new Color(0.63f, 0.68f, 0.73f, 1f);
 
         if (canvasGroup != null)
             canvasGroup.alpha = alpha;
@@ -198,15 +251,21 @@ public class RoverDashboardController : MonoBehaviour
         if (accentImage != null)
         {
             Color c = accent;
-            c.a *= alpha;
+            c.a = 0f;
             accentImage.color = c;
         }
 
-        if (speedBarFill != null)
+        if (healthBarFill != null)
         {
-            Color c = accent;
-            c.a *= alpha;
-            speedBarFill.color = c;
+            Color c = GetHealthColor(theme, alpha);
+            healthBarFill.color = c;
+        }
+
+        if (healthBarBack != null)
+        {
+            Color c = panel;
+            c.a = 0.32f * alpha;
+            healthBarBack.color = c;
         }
 
         if (statusLabel != null)
@@ -214,6 +273,13 @@ public class RoverDashboardController : MonoBehaviour
             Color c = muted;
             c.a *= alpha;
             statusLabel.color = c;
+        }
+
+        if (healthLabel != null)
+        {
+            Color c = muted;
+            c.a *= alpha;
+            healthLabel.color = c;
         }
 
         if (speedUnitLabel != null)
@@ -229,6 +295,17 @@ public class RoverDashboardController : MonoBehaviour
             c.a *= alpha;
             speedValueLabel.color = c;
         }
+    }
+
+    private Color GetHealthColor(RoverTheme theme, float alpha)
+    {
+        Color target = currentHealthNormalized > 0.6f
+            ? new Color(0.78f, 0.81f, 0.85f, 1f)
+            : currentHealthNormalized > 0.3f
+                ? new Color(1f, 0.76f, 0.29f, 1f)
+                : new Color(1f, 0.38f, 0.32f, 1f);
+        target.a *= alpha;
+        return target;
     }
 
     private static RectTransform CreateRect(string name, Transform parent, Vector2 size, Vector2 anchoredPosition)

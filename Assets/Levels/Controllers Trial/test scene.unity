@@ -22352,10 +22352,10 @@ MonoBehaviour:
   rb: {fileID: 144269873}
   bodyCollider: {fileID: 144269876}
   playerBlocker: {fileID: 0}
-  maxForwardSpeed: 10
+  maxForwardSpeed: 33.33
   maxReverseSpeed: 3
-  motorTorque: 900
-  brakeTorque: 3000
+  motorTorque: 576
+  brakeTorque: 4200
   idleBrakeTorque: 180
   steerAngle: 23
   steerResponse: 95
@@ -22403,7 +22403,7 @@ MonoBehaviour:
   seatYawOffset: 0
   steerDeadzone: 8
   steerMaxAngle: 150
-  steeringAssistTopSpeed: 12
+  steeringAssistTopSpeed: 30
   lowSpeedSteerAngleMultiplier: 1
   highSpeedSteerAngleMultiplier: 0.58
   lowSpeedSteerResponseMultiplier: 1
