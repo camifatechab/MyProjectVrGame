@@ -19,6 +19,7 @@ public class RoverUIBinder : MonoBehaviour
     [SerializeField] private RoverPhysicsController roverPhysicsController;
     [SerializeField] private RoverDriver legacyRoverDriver;
     [SerializeField] private RoverRoadFailSafe roverRoadFailSafe;
+    [SerializeField] private RoverRadioController roverRadioController;
     [SerializeField] private PlayerHealth playerHealth;
 
     [Header("Modules")]
@@ -47,6 +48,9 @@ public class RoverUIBinder : MonoBehaviour
     public float ForwardSpeed => roverPhysicsController != null ? roverPhysicsController.ForwardSpeed : 0f;
     public float SpeedNormalized => roverPhysicsController != null ? roverPhysicsController.SpeedNormalized : 0f;
     public float HealthNormalized => playerHealth != null ? playerHealth.HealthNormalized : 1f;
+    public string RadioDisplayText => roverRadioController != null ? roverRadioController.DisplayText : string.Empty;
+    public bool IsRadioOn => roverRadioController != null && roverRadioController.IsOn;
+    public bool HasRadioTracks => roverRadioController != null && roverRadioController.HasTracks;
     public bool IsResetWarningActive => roverRoadFailSafe != null && roverRoadFailSafe.IsResetWarningActive;
     public bool IsRepositioning => roverRoadFailSafe != null && roverRoadFailSafe.IsResetting;
     public bool IsMounted => roverPhysicsController != null
@@ -71,6 +75,9 @@ public class RoverUIBinder : MonoBehaviour
         if (playerHealth != null)
             playerHealth.SetHeadHudSuppressed(IsMounted);
 
+        if (roverRadioController != null)
+            roverRadioController.Tick(IsMounted);
+
         if (seatBeacon != null)
             seatBeacon.Present(this);
 
@@ -91,6 +98,12 @@ public class RoverUIBinder : MonoBehaviour
 
         if (roverRoadFailSafe == null)
             roverRoadFailSafe = GetComponent<RoverRoadFailSafe>();
+
+        if (roverRadioController == null)
+            roverRadioController = GetComponent<RoverRadioController>();
+
+        if (roverRadioController == null)
+            roverRadioController = gameObject.AddComponent<RoverRadioController>();
 
         if (playerHealth == null)
             playerHealth = FindFirstObjectByType<PlayerHealth>();
@@ -196,5 +209,15 @@ public class RoverUIBinder : MonoBehaviour
         }
 
         CurrentState = RoverUIState.Idle;
+    }
+
+    public void ToggleRadio()
+    {
+        roverRadioController?.ToggleFromUi();
+    }
+
+    public void NextRadioTrack()
+    {
+        roverRadioController?.NextTrackFromUi();
     }
 }
