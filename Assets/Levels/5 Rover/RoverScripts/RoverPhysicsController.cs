@@ -10,10 +10,10 @@ public class RoverPhysicsController : MonoBehaviour
     public Rigidbody rb;
     public BoxCollider bodyCollider;
     public BoxCollider playerBlocker;
-    public float maxForwardSpeed = 18f;
+    public float maxForwardSpeed = 33.33f;
     public float maxReverseSpeed = 7f;
-    public float motorTorque = 1600f;
-    public float brakeTorque = 2600f;
+    public float motorTorque = 576f;
+    public float brakeTorque = 4200f;
     public float idleBrakeTorque = 120f;
     public float steerAngle = 28f;
     public float steerResponse = 120f;
@@ -69,7 +69,7 @@ public class RoverPhysicsController : MonoBehaviour
     public float steerMaxAngle = 150f;
 
     [Header("Speed Sensitive Steering")]
-    public float steeringAssistTopSpeed = 12f;
+    public float steeringAssistTopSpeed = 30f;
     public float lowSpeedSteerAngleMultiplier = 1f;
     public float highSpeedSteerAngleMultiplier = 0.58f;
     public float lowSpeedSteerResponseMultiplier = 1f;
@@ -120,6 +120,9 @@ public class RoverPhysicsController : MonoBehaviour
     private float currentWheelAngle;
     private bool lastRideComfortMountedState;
     private Transform mountedRigAnchor;
+    public bool IsMounted => isMounted;
+    public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
+    public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
     private Vector3 SeatWorldPosition =>
         seatAnchor != null ? seatAnchor.position : transform.position;
 

@@ -13,8 +13,8 @@ public class HUDActivator : MonoBehaviour
         if (hud == null) return;
 
         hud.gameObject.SetActive(true);
-        hud.localPosition = new Vector3(0f, -0.12f, 0.5f);
+        hud.localPosition = new Vector3(-0.24f, -0.03f, 1.02f);
         hud.localRotation = Quaternion.identity;
-        hud.localScale    = Vector3.one * 0.0008f;
+        hud.localScale    = Vector3.one * 0.00042f;
     }
 }
