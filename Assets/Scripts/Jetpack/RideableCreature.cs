@@ -59,6 +59,16 @@ public class RideableCreature : MonoBehaviour
     
     [Tooltip("UI text to show mount prompt")]
     public string mountPromptText = "Grip to Ride";
+
+    [Header("Story Control")]
+    [Tooltip("If false, the player cannot mount this creature")]
+    public bool canPlayerMount = true;
+
+    [Tooltip("Allow grip input while flying to trigger platform parking")]
+    public bool allowManualParkingInput = true;
+
+    [Tooltip("Reverse the path automatically when the flight route finishes")]
+    public bool reversePathWhenFinished = true;
     
     [Header("Platform Parking")]
     [Tooltip("Tag used to identify landing platforms")]
@@ -145,11 +155,20 @@ public class RideableCreature : MonoBehaviour
     public int TotalWaypoints => flightPathWaypoints.Count;
     public float FlightProgress => flightPathWaypoints.Count > 1 ? (float)currentFlightWaypointIndex / (flightPathWaypoints.Count - 1) : 0f;
     public bool IsReversePath => isReversePath;
+    public Transform CurrentWaypoint => flightPathWaypoints.Count == 0
+        ? null
+        : flightPathWaypoints[Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1)];
     
     
     // Events
     public System.Action OnPlayerMounted;
     public System.Action OnPlayerDismounted;
+    public System.Action OnFlightPathCompleted;
+    public System.Action<Transform> OnLandingCompleted;
+
+    private Transform forcedDismountTarget;
+    private bool initialJetpackEnabledState;
+    private bool hasInitialJetpackEnabledState;
     
     private void Start()
     {
@@ -278,6 +297,8 @@ private void AutoFindWaypoints()
                 if (controller.GetType().Name == "AutoJetpackController")
                 {
                     jetpackController = controller;
+                    initialJetpackEnabledState = controller.enabled;
+                    hasInitialJetpackEnabledState = true;
                     return;
                 }
             }
@@ -316,6 +337,12 @@ private void AutoFindWaypoints()
     private void CheckForMountInput()
     {
         if (playerCamera == null) return;
+
+        if (!canPlayerMount)
+        {
+            wasGripPressed = false;
+            return;
+        }
         
         // Cooldown after dismount to prevent immediate remount
         if (dismountCooldown > 0f)
@@ -430,8 +457,7 @@ private bool IsGripPressed(InputDevice device)
             originalParent = xrOrigin.parent;
         }
         
-        if (jetpackController != null)
-            jetpackController.enabled = false;
+        SetJetpackLock(true);
         
         if (moveProvider != null) moveProvider.enabled = false;
         if (turnProvider != null) turnProvider.enabled = false;
@@ -529,7 +555,7 @@ private bool IsGripPressed(InputDevice device)
             bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
             if (Input.GetKeyDown(KeyCode.P)) gripPressed = true;
             
-            if (gripPressed && !wasGripPressed)
+            if (allowManualParkingInput && gripPressed && !wasGripPressed)
             {
                 TryParkAtNearestPlatform();
             }
@@ -658,9 +684,11 @@ private bool IsGripPressed(InputDevice device)
     private void EndFlightReturnToIdle()
     {
         isFlying = false;
-        isReversePath = !isReversePath;
+        if (reversePathWhenFinished)
+            isReversePath = !isReversePath;
         idleBasePosition = transform.position;
         startIdle = true;
+        OnFlightPathCompleted?.Invoke();
     }
 
 
@@ -741,7 +769,7 @@ private bool IsGripPressed(InputDevice device)
         }
         else
         {
-            landingPosition = platform.position + Vector3.up * landingHeightOffset;
+            landingPosition = platform.position;
         }
         
         Debug.Log("RideableCreature: Parking at " + targetPlatform.name + " landing Y=" + landingPosition.y);
@@ -783,6 +811,7 @@ private bool IsGripPressed(InputDevice device)
     
 private void CompleteLanding()
     {
+        Transform landedTarget = targetPlatform;
         Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked, player dismounting");
         
         // Strong haptic feedback for platform landing
@@ -812,6 +841,7 @@ private void CompleteLanding()
             StartCoroutine(DismountOnPlatform());
         }
         
+        OnLandingCompleted?.Invoke(landedTarget);
         targetPlatform = null;
     }
     
@@ -823,8 +853,12 @@ private System.Collections.IEnumerator DismountOnPlatform()
         // Dismount player onto the platform
         if (xrOrigin != null)
         {
-            Vector3 dismountPos = transform.position + transform.right * 2f;
-            dismountPos.y = transform.position.y - landingHeightOffset + 1f;
+            Vector3 dismountPos = forcedDismountTarget != null
+                ? forcedDismountTarget.position
+                : transform.position + transform.right * 2f;
+
+            if (forcedDismountTarget == null)
+                dismountPos.y = transform.position.y - landingHeightOffset + 1f;
             
             xrOrigin.SetParent(originalParent);
             
@@ -844,7 +878,7 @@ private System.Collections.IEnumerator DismountOnPlatform()
         }
         
         // Re-enable player controls
-        if (jetpackController != null) jetpackController.enabled = true;
+        SetJetpackLock(false);
         if (moveProvider != null) moveProvider.enabled = true;
         if (turnProvider != null) turnProvider.enabled = true;
         if (snapTurnProvider != null) snapTurnProvider.enabled = true;
@@ -861,6 +895,7 @@ private System.Collections.IEnumerator DismountOnPlatform()
         
         OnPlayerDismounted?.Invoke();
         isTransitioning = false;
+        forcedDismountTarget = null;
         
         Debug.Log("RideableCreature: Player dismounted, creature waiting on platform");
     }
@@ -935,8 +970,7 @@ private void SendHapticPulse()
             xrOrigin.position = dismountPos;
         }
         
-        if (jetpackController != null)
-            jetpackController.enabled = true;
+        SetJetpackLock(false);
         
         if (moveProvider != null) moveProvider.enabled = true;
         if (turnProvider != null) turnProvider.enabled = true;
@@ -957,5 +991,45 @@ private void SendHapticPulse()
         
         OnPlayerDismounted?.Invoke();
         isTransitioning = false;
+    }
+
+    public void SetMountEnabled(bool enabled)
+    {
+        canPlayerMount = enabled;
+    }
+
+    public void SetFlightPath(List<Transform> waypoints, bool resetProgress = true)
+    {
+        flightPathWaypoints.Clear();
+        if (waypoints != null)
+            flightPathWaypoints.AddRange(waypoints);
+
+        if (resetProgress)
+        {
+            isReversePath = false;
+            hasStartedPath = false;
+            currentFlightWaypointIndex = 0;
+            splineT = 0f;
+        }
+    }
+
+    public void ParkAtTarget(Transform landingTarget, Transform dismountTarget = null)
+    {
+        if (landingTarget == null)
+            return;
+
+        forcedDismountTarget = dismountTarget;
+        StartParking(landingTarget);
+    }
+
+    private void SetJetpackLock(bool locked)
+    {
+        if (jetpackController == null)
+            return;
+
+        if (jetpackController is AutoJetpackController autoJetpackController)
+            autoJetpackController.SetExternalFlightLock(locked);
+
+        jetpackController.enabled = locked ? false : (!hasInitialJetpackEnabledState || initialJetpackEnabledState);
     }
 }

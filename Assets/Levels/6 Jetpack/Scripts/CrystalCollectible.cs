@@ -1,4 +1,6 @@
 using UnityEngine;
+using Unity.XR.CoreUtils;
+using System;
 
 /// <summary>
 /// Simple collectible script for crystals/spaceship parts.
@@ -6,6 +8,8 @@ using UnityEngine;
 /// </summary>
 public class CrystalCollectible : MonoBehaviour
 {
+    public event Action Collected;
+
     [Header("Collection Settings")]
     [Tooltip("Optional audio clip to play when collected")]
     public AudioClip collectionSound;
@@ -20,20 +24,33 @@ public class CrystalCollectible : MonoBehaviour
     
     [Tooltip("Rotation speed")]
     public float rotationSpeed = 30f;
+
+    [Header("VR Pickup")]
+    [Tooltip("How close the player's head can be to collect the crystal")]
+    public float headCollectRadius = 0.5f;
+
+    [Tooltip("Extra distance allowed around the visible crystal for hand/controller pickup")]
+    public float handCollectRadius = 0.35f;
     
     private bool isCollected = false;
     // AudioSource no longer needed - using PlayClipAtPoint instead
+    private XROrigin xrOrigin;
+    private Transform[] playerTargets = System.Array.Empty<Transform>();
+    private Collider[] cachedColliders;
+    private Renderer[] cachedRenderers;
+
+    public bool IsCollected => isCollected;
 
 void Start()
     {
-        // Register with manager
+        cachedColliders = GetComponentsInChildren<Collider>(true);
+        cachedRenderers = GetComponentsInChildren<Renderer>(true);
+
+        // CrystalManager is optional so this collectible can be reused for
+        // single-object objectives without the old crystal minigame flow.
         if (CrystalManager.Instance != null)
         {
             CrystalManager.Instance.RegisterCrystal(this);
-        }
-        else
-        {
-            Debug.LogWarning("CrystalManager not found in scene! Please add one.");
         }
         
         // Auto-add particle effects if not present
@@ -50,12 +67,17 @@ void Start()
         {
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
         }
+
+        if (!isCollected)
+        {
+            TryCollectFromPlayerProximity();
+        }
     }
 
     void OnTriggerEnter(Collider other)
     {
         // Check if player collected it
-        if (!isCollected && other.CompareTag("MainCamera"))
+        if (!isCollected && (other.CompareTag("MainCamera") || other.CompareTag("Player") || other.GetComponentInParent<XROrigin>() != null))
         {
             Collect();
         }
@@ -106,8 +128,75 @@ void Collect()
         {
             CrystalManager.Instance.OnCrystalCollected(this);
         }
+
+        Collected?.Invoke();
         
         // STEP 6: Destroy immediately (sound and particles play independently)
         Destroy(gameObject, 0.1f);
+    }
+
+    void TryCollectFromPlayerProximity()
+    {
+        xrOrigin ??= FindFirstObjectByType<XROrigin>();
+        if (xrOrigin == null)
+            return;
+
+        Transform head = xrOrigin.Camera != null ? xrOrigin.Camera.transform : xrOrigin.transform;
+        if (DistanceToCrystal(head.position) <= headCollectRadius)
+        {
+            Collect();
+            return;
+        }
+
+        if (playerTargets == null || playerTargets.Length == 0)
+            playerTargets = xrOrigin.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < playerTargets.Length; i++)
+        {
+            Transform target = playerTargets[i];
+            if (target == null || target == xrOrigin.transform || target == head)
+                continue;
+
+            if (DistanceToCrystal(target.position) <= handCollectRadius)
+            {
+                Collect();
+                return;
+            }
+        }
+    }
+
+    float DistanceToCrystal(Vector3 worldPoint)
+    {
+        if (cachedColliders != null)
+        {
+            for (int i = 0; i < cachedColliders.Length; i++)
+            {
+                Collider currentCollider = cachedColliders[i];
+                if (currentCollider == null || !currentCollider.enabled)
+                    continue;
+
+                Vector3 closestPoint = currentCollider.ClosestPoint(worldPoint);
+                float distance = Vector3.Distance(worldPoint, closestPoint);
+                if (distance <= 0.001f)
+                    return 0f;
+            }
+        }
+
+        if (cachedRenderers != null && cachedRenderers.Length > 0)
+        {
+            Bounds bounds = cachedRenderers[0].bounds;
+            for (int i = 1; i < cachedRenderers.Length; i++)
+            {
+                Renderer currentRenderer = cachedRenderers[i];
+                if (currentRenderer == null || !currentRenderer.enabled)
+                    continue;
+
+                bounds.Encapsulate(currentRenderer.bounds);
+            }
+
+            return Mathf.Sqrt(bounds.SqrDistance(worldPoint));
+        }
+
+        return Vector3.Distance(worldPoint, transform.position);
     }
 }

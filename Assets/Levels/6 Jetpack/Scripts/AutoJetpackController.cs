@@ -88,6 +88,7 @@ public class AutoJetpackController : MonoBehaviour
     public bool WasFiredThisSession { get; private set; } = false;
     // Set by RoverDriver.Dismount() via field access — blocks jetpack briefly after dismount
     private float postDismountCooldown = 0f;
+    private bool externalFlightLock = false;
 
 
     private CharacterController characterController;
@@ -265,6 +266,22 @@ public class AutoJetpackController : MonoBehaviour
         if (!leftDevice.isValid || !rightDevice.isValid)
             InitializeXRDevices();
 
+        if (externalFlightLock)
+        {
+            if (isFlying)
+            {
+                isFlying = false;
+                if (HapticsManager.Instance != null) HapticsManager.Instance.StopJetpackVibration();
+                if (audioManager != null) audioManager.StopThrust();
+                else StartAudioFadeOut();
+            }
+
+            UpdateAudioFade();
+            UpdateAudioManagerState();
+            UpdateGroundMovementState();
+            return;
+        }
+
         CheckJetpackActivation();
         UpdateFuelSystem();
         UpdateFuelRecharge();
@@ -419,6 +436,11 @@ public class AutoJetpackController : MonoBehaviour
     public bool IsLowOnFuel() => GetFuelPercentage() <= lowFuelThreshold;
     public bool IsOutOfFuel() => isOutOfFuel;
     public bool IsFlying() => isFlying;
+
+    public void SetExternalFlightLock(bool locked)
+    {
+        externalFlightLock = locked;
+    }
 
     void UpdateAudioManagerState()
     {

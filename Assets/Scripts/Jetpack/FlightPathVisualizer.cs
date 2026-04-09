@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Linq;
 
 public class FlightPathVisualizer : MonoBehaviour
 {
@@ -9,11 +10,10 @@ public class FlightPathVisualizer : MonoBehaviour
     
     void OnDrawGizmos()
     {
-        Transform[] waypoints = new Transform[transform.childCount];
-        for (int i = 0; i < transform.childCount; i++)
-        {
-            waypoints[i] = transform.GetChild(i);
-        }
+        Transform[] waypoints = Enumerable.Range(0, transform.childCount)
+            .Select(i => transform.GetChild(i))
+            .OrderBy(waypoint => waypoint.name)
+            .ToArray();
         
         for (int i = 0; i < waypoints.Length; i++)
         {

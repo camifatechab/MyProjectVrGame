@@ -63,6 +63,7 @@ public class RoverPhysicsController : MonoBehaviour
     public float mountRadius = 4f;
     public float dismountHoldDuration = 0.75f;
     public float seatYawOffset = 0f;
+    public bool canMount = true;
 
     [Header("VR Steering")]
     public float steerDeadzone = 8f;
@@ -121,6 +122,7 @@ public class RoverPhysicsController : MonoBehaviour
     private bool lastRideComfortMountedState;
     private Transform mountedRigAnchor;
     public bool IsMounted => isMounted;
+    public bool CanMount => canMount;
     public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
     private Vector3 SeatWorldPosition =>
@@ -632,6 +634,12 @@ public class RoverPhysicsController : MonoBehaviour
 
         if (!isMounted)
         {
+            if (!canMount)
+            {
+                gripsLastFrame = bothGrips;
+                return;
+            }
+
             if (bothGrips && !gripsLastFrame && xrOrigin != null)
             {
                 float distance = Vector3.Distance(xrOrigin.transform.position, transform.position);
@@ -737,6 +745,11 @@ public class RoverPhysicsController : MonoBehaviour
 
         if (jetpack != null)
             jetpack.enabled = true;
+    }
+
+    public void SetMountEnabled(bool enabled)
+    {
+        canMount = enabled;
     }
 
     private void AlignRigToSeat()

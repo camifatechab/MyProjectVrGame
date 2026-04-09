@@ -56,6 +56,9 @@ public class RoverUIBinder : MonoBehaviour
     public bool IsMounted => roverPhysicsController != null
         ? roverPhysicsController.IsMounted
         : legacyRoverDriver != null && legacyRoverDriver.IsMounted;
+    public bool CanMount => roverPhysicsController != null
+        ? roverPhysicsController.CanMount
+        : legacyRoverDriver != null;
 
     private void Reset()
     {
@@ -193,6 +196,12 @@ public class RoverUIBinder : MonoBehaviour
         if (IsMounted)
         {
             CurrentState = RoverUIState.Mounted;
+            return;
+        }
+
+        if (!CanMount)
+        {
+            CurrentState = RoverUIState.Disabled;
             return;
         }
 
