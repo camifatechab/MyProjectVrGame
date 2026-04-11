@@ -13,6 +13,9 @@ public class LaserShooter : MonoBehaviour
     [Tooltip("Auto-found on parent if left empty.")]
     [SerializeField] private AutoJetpackController jetpackController;
 
+    [Tooltip("Optional rover controller. When mounted, the laser is allowed even if not flying.")]
+    [SerializeField] private RoverPhysicsController roverController;
+
     [Tooltip("Laser fires from here. Auto-created at controller tip if left empty.")]
     [SerializeField] private Transform laserOrigin;
 
@@ -103,7 +106,13 @@ void Update()
 
     bool IsArmed()
     {
-        return !requireFlying || (jetpackController != null && jetpackController.IsFlying());
+        if (!requireFlying)
+            return true;
+
+        if (roverController != null && roverController.IsMounted)
+            return true;
+
+        return jetpackController != null && jetpackController.IsFlying();
     }
 
     bool IsTriggerHeld()
@@ -330,6 +339,9 @@ void StopLaser()
             if (jetpackController == null)
                 Debug.LogWarning("[LaserShooter] AutoJetpackController not found. Assign manually or disable requireFlying.");
         }
+
+        if (roverController == null)
+            roverController = FindFirstObjectByType<RoverPhysicsController>();
 
         if (laserOrigin == null)
         {

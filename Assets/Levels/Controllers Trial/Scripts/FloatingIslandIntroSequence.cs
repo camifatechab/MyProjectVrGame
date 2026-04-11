@@ -15,6 +15,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         WaitingForCrystalPickup,
         WaitingForCrystalRemount,
         FlyingToEnd,
+        LandingAtRover,
         Completed
     }
 
@@ -27,6 +28,8 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     [SerializeField] private XROrigin xrOrigin;
     [SerializeField] private PlayerRespawnManager respawnManager;
     [SerializeField] private CrystalCollectible targetCrystal;
+    [SerializeField] private RoverPhysicsController rover;
+    [SerializeField] private PlayerHealth playerHealth;
 
     [Header("Anchors")]
     [SerializeField] private Transform playerStartAnchor;
@@ -36,12 +39,15 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     [SerializeField] private Transform crystalDismountAnchor;
     [SerializeField] private Transform crystalRespawnAnchor;
     [SerializeField] private Transform crystalApproachWaypoint;
+    [SerializeField] private Transform roverLandingAnchor;
+    [SerializeField] private Transform roverDismountAnchor;
 
     [Header("Path")]
     [SerializeField] private Transform flightPathRoot;
     [SerializeField] private string crystalStopWaypointName = "WP03_ParadiseSweep";
 
     [Header("Startup")]
+    [SerializeField] private bool startInRoverOnlyMode = true;
     [SerializeField] private bool movePlayerToStartOnPlay = true;
     [SerializeField] private bool snapDragonToStartOnPlay = true;
     [SerializeField] private Vector3 playerStartPosition = new Vector3(23.7372284f, 27.1211224f, 43.6970062f);
@@ -55,6 +61,13 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     [SerializeField] private float crystalApproachPullback = 2f;
     [SerializeField] private float groundProbeHeight = 24f;
     [SerializeField] private float groundProbeDistance = 64f;
+
+    [Header("Rover Handoff")]
+    [SerializeField] private float roverLandingBackwardOffset = 8f;
+    [SerializeField] private float roverLandingSideOffset = -5f;
+    [SerializeField] private float roverDismountSideOffset = 0f;
+    [SerializeField] private float roverDismountForwardOffset = -6f;
+    [SerializeField] private float roverDismountHeight = 0.25f;
 
     private readonly List<Transform> firstFlightWaypoints = new();
     private readonly List<Transform> secondFlightWaypoints = new();
@@ -87,6 +100,12 @@ public class FloatingIslandIntroSequence : MonoBehaviour
             return;
         }
 
+        if (startInRoverOnlyMode)
+        {
+            ConfigureRoverOnlyMode();
+            return;
+        }
+
         ConfigureSequence();
         HookEvents();
     }
@@ -101,6 +120,8 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         dragon ??= FindFirstObjectByType<RideableCreature>();
         xrOrigin ??= FindFirstObjectByType<XROrigin>();
         respawnManager ??= FindFirstObjectByType<PlayerRespawnManager>();
+        rover ??= FindFirstObjectByType<RoverPhysicsController>();
+        playerHealth ??= FindFirstObjectByType<PlayerHealth>();
         flightPathRoot ??= FindSceneTransform("FlightPath");
         targetCrystal ??= ResolveTargetCrystal();
 
@@ -131,10 +152,13 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         }
 
         BuildCrystalAnchors();
+        BuildRoverAnchors();
 
         missingReferences.Clear();
         if (crystalLandingAnchor == null) missingReferences.Add(nameof(crystalLandingAnchor));
         if (crystalDismountAnchor == null) missingReferences.Add(nameof(crystalDismountAnchor));
+        if (rover != null && roverLandingAnchor == null) missingReferences.Add(nameof(roverLandingAnchor));
+        if (rover != null && roverDismountAnchor == null) missingReferences.Add(nameof(roverDismountAnchor));
         if (missingReferences.Count > 0)
         {
             Debug.LogWarning($"FloatingIslandIntroSequence: Missing references: {string.Join(", ", missingReferences)}");
@@ -162,6 +186,9 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         dragon.SetMountEnabled(true);
         dragon.SetFlightPath(firstFlightWaypoints, resetProgress: true);
 
+        if (rover != null)
+            rover.SetMountEnabled(false);
+
         if (respawnManager != null)
         {
             respawnManager.SetRespawnEnabled(true);
@@ -176,6 +203,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         UnhookEvents();
 
         dragon.OnPlayerMounted += HandleDragonMounted;
+        dragon.OnPlayerDismounted += HandleDragonDismounted;
         dragon.OnFlightPathCompleted += HandleFlightPathCompleted;
         dragon.OnLandingCompleted += HandleLandingCompleted;
         targetCrystal.Collected += HandleCrystalCollected;
@@ -186,6 +214,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         if (dragon != null)
         {
             dragon.OnPlayerMounted -= HandleDragonMounted;
+            dragon.OnPlayerDismounted -= HandleDragonDismounted;
             dragon.OnFlightPathCompleted -= HandleFlightPathCompleted;
             dragon.OnLandingCompleted -= HandleLandingCompleted;
         }
@@ -255,11 +284,56 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
         if (stage == SequenceStage.FlyingToEnd)
         {
-            stage = SequenceStage.Completed;
-
-            if (respawnManager != null)
-                respawnManager.SetRespawnEnabled(false);
+            if (roverLandingAnchor != null)
+            {
+                stage = SequenceStage.LandingAtRover;
+                dragon.SetMountEnabled(false);
+                dragon.ParkAtTarget(roverLandingAnchor, roverDismountAnchor);
+            }
+            else
+            {
+                CompleteRoverHandoff();
+            }
         }
+    }
+
+    private void ConfigureRoverOnlyMode()
+    {
+        stage = SequenceStage.Completed;
+
+        if (targetCrystal != null)
+            targetCrystal.gameObject.SetActive(false);
+
+        if (dragon != null)
+        {
+            dragon.allowManualParkingInput = false;
+            dragon.reversePathWhenFinished = false;
+            dragon.SetMountEnabled(false);
+        }
+
+        if (rover != null)
+            rover.SetMountEnabled(true);
+
+        if (roverDismountAnchor != null)
+        {
+            xrOrigin.transform.SetParent(null, worldPositionStays: true);
+            xrOrigin.transform.position = roverDismountAnchor.position;
+
+            Vector3 currentEuler = xrOrigin.transform.eulerAngles;
+            xrOrigin.transform.rotation = Quaternion.Euler(
+                currentEuler.x,
+                roverDismountAnchor.eulerAngles.y,
+                currentEuler.z);
+        }
+
+        if (respawnManager != null && roverDismountAnchor != null)
+        {
+            respawnManager.SetRespawnEnabled(true);
+            respawnManager.SetRespawnWaypoint(roverDismountAnchor);
+        }
+
+        if (playerHealth != null && roverDismountAnchor != null)
+            playerHealth.SetCheckpoint(roverDismountAnchor.position);
     }
 
     private void HandleLandingCompleted(Transform _)
@@ -296,6 +370,12 @@ public class FloatingIslandIntroSequence : MonoBehaviour
             respawnManager.SetRespawnWaypoint(crystalRespawnAnchor != null ? crystalRespawnAnchor : crystalDismountAnchor);
     }
 
+    private void HandleDragonDismounted()
+    {
+        if (stage == SequenceStage.LandingAtRover)
+            CompleteRoverHandoff();
+    }
+
     private void BuildCrystalAnchors()
     {
         if (targetCrystal == null)
@@ -314,6 +394,41 @@ public class FloatingIslandIntroSequence : MonoBehaviour
             "CrystalDismountAnchor_Runtime",
             platformGroundPoint + Vector3.up * crystalDismountHeight,
             anchorRotation);
+    }
+
+    private void BuildRoverAnchors()
+    {
+        if (rover == null)
+            return;
+
+        Vector3 roverForward = Vector3.ProjectOnPlane(rover.transform.forward, Vector3.up);
+        if (roverForward.sqrMagnitude < 0.01f)
+            roverForward = Vector3.forward;
+        roverForward.Normalize();
+
+        Vector3 roverRight = Vector3.Cross(Vector3.up, roverForward).normalized;
+
+        Vector3 landingGroundPoint = ResolveGroundPoint(
+            rover.transform.position
+            - roverForward * roverLandingBackwardOffset
+            + roverRight * roverLandingSideOffset);
+
+        Quaternion landingRotation = Quaternion.LookRotation((rover.transform.position - landingGroundPoint).normalized, Vector3.up);
+        roverLandingAnchor = CreateOrMoveAnchor(
+            "RoverLandingAnchor_Runtime",
+            landingGroundPoint,
+            landingRotation);
+
+        Vector3 dismountGroundPoint = ResolveGroundPoint(
+            rover.transform.position
+            + roverRight * roverDismountSideOffset
+            + roverForward * roverDismountForwardOffset);
+
+        Quaternion dismountRotation = Quaternion.LookRotation(roverForward, Vector3.up);
+        roverDismountAnchor = CreateOrMoveAnchor(
+            "RoverDismountAnchor_Runtime",
+            dismountGroundPoint + Vector3.up * roverDismountHeight,
+            dismountRotation);
     }
 
     private void UpdateCrystalRespawnAnchor()
@@ -335,11 +450,36 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private Transform BuildPlayerSpawnAnchor()
     {
-        Quaternion spawnRotation = playerStartAnchor != null
-            ? Quaternion.Euler(0f, playerStartAnchor.eulerAngles.y, 0f)
-            : Quaternion.identity;
+        Vector3 spawnPosition = xrOrigin != null
+            ? xrOrigin.transform.position
+            : playerStartPosition;
 
-        return CreateOrMoveAnchor("PlayerSpawnAnchor_Runtime", playerStartPosition, spawnRotation);
+        float spawnYaw = xrOrigin != null
+            ? xrOrigin.transform.eulerAngles.y
+            : playerStartAnchor != null
+                ? playerStartAnchor.eulerAngles.y
+                : 0f;
+
+        Quaternion spawnRotation = Quaternion.Euler(0f, spawnYaw, 0f);
+        return CreateOrMoveAnchor("PlayerSpawnAnchor_Runtime", spawnPosition, spawnRotation);
+    }
+
+    private void CompleteRoverHandoff()
+    {
+        stage = SequenceStage.Completed;
+        dragon.SetMountEnabled(false);
+
+        if (rover != null)
+            rover.SetMountEnabled(true);
+
+        if (respawnManager != null && roverDismountAnchor != null)
+        {
+            respawnManager.SetRespawnEnabled(true);
+            respawnManager.SetRespawnWaypoint(roverDismountAnchor);
+        }
+
+        if (playerHealth != null && roverDismountAnchor != null)
+            playerHealth.SetCheckpoint(roverDismountAnchor.position);
     }
 
     private Transform BuildCrystalApproachWaypoint(List<Transform> orderedWaypoints, int stopIndex)

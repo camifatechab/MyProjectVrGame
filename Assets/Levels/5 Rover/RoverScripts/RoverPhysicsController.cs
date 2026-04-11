@@ -10,6 +10,7 @@ public class RoverPhysicsController : MonoBehaviour
     public Rigidbody rb;
     public BoxCollider bodyCollider;
     public BoxCollider playerBlocker;
+    public float rigidbodyMass = 450f;
     public float maxForwardSpeed = 33.33f;
     public float maxReverseSpeed = 7f;
     public float motorTorque = 576f;
@@ -64,6 +65,9 @@ public class RoverPhysicsController : MonoBehaviour
     public float dismountHoldDuration = 0.75f;
     public float seatYawOffset = 0f;
     public bool canMount = true;
+    public float mountInputArmDelay = 0.35f;
+    public float mountStabilizeDuration = 0.5f;
+    public float mountedIdleBrakeMultiplier = 2f;
 
     [Header("VR Steering")]
     public float steerDeadzone = 8f;
@@ -117,11 +121,20 @@ public class RoverPhysicsController : MonoBehaviour
     private float dismountCooldown;
     private float dismountHoldTimer;
     private bool dismountReadyAfterRelease;
+    private float mountInputArmTimer;
+    private float mountStabilizeTimer;
     private float neutralAngle;
     private float currentWheelAngle;
     private bool lastRideComfortMountedState;
     private Transform mountedRigAnchor;
+    private RigidbodyConstraints defaultConstraints;
+    private Collider[] mountedRigColliders;
+    private bool[] mountedRigColliderEnabledStates;
+    private Rigidbody[] mountedRigRigidbodies;
+    private bool[] mountedRigRigidbodyDetectCollisionStates;
+    private bool[] mountedRigRigidbodyKinematicStates;
     public bool IsMounted => isMounted;
+    public bool IsMountStabilizing => isMounted && mountStabilizeTimer > 0f;
     public bool CanMount => canMount;
     public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
@@ -170,6 +183,7 @@ public class RoverPhysicsController : MonoBehaviour
         AlignWheelCollidersToVisuals();
         ConfigureWheelColliders();
         ApplyRideComfortSettings(force: true);
+        defaultConstraints = rb != null ? rb.constraints : RigidbodyConstraints.None;
     }
 
     private void OnValidate()
@@ -186,7 +200,24 @@ public class RoverPhysicsController : MonoBehaviour
 
         if (isMounted)
         {
-            ReadMountedVrInput();
+            if (mountStabilizeTimer > 0f)
+            {
+                mountStabilizeTimer = Mathf.Max(0f, mountStabilizeTimer - Time.fixedDeltaTime);
+                if (rb != null)
+                {
+                    rb.linearVelocity = Vector3.zero;
+                    rb.angularVelocity = Vector3.zero;
+                }
+
+                SetInput(0f, 0f, 1f);
+
+                if (mountStabilizeTimer <= 0f && rb != null)
+                    rb.constraints = defaultConstraints;
+            }
+            else
+            {
+                ReadMountedVrInput();
+            }
         }
         else if (useKeyboardFallback)
         {
@@ -247,6 +278,9 @@ public class RoverPhysicsController : MonoBehaviour
         if (Mathf.Abs(driveInput) < 0.01f)
         {
             appliedBrake = Mathf.Max(appliedBrake, idleBrakeTorque);
+
+            if (isMounted)
+                appliedBrake = Mathf.Max(appliedBrake, idleBrakeTorque * mountedIdleBrakeMultiplier);
         }
         else
         {
@@ -353,6 +387,7 @@ public class RoverPhysicsController : MonoBehaviour
 
     private void ConfigureRigidbody()
     {
+        rb.mass = rigidbodyMass;
         rb.centerOfMass = centerOfMassOffset;
     }
 
@@ -621,6 +656,8 @@ public class RoverPhysicsController : MonoBehaviour
         }
 
         locomotionProviders = providers.ToArray();
+
+        CacheMountedRigPhysics();
     }
 
     private void HandleMounting()
@@ -684,11 +721,22 @@ public class RoverPhysicsController : MonoBehaviour
         dismountCooldown = 2f;
         dismountHoldTimer = 0f;
         dismountReadyAfterRelease = false;
+        mountInputArmTimer = mountInputArmDelay;
+        mountStabilizeTimer = mountStabilizeDuration;
         useKeyboardFallback = false;
         SetInput(0f, 0f, 1f);
 
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+            rb.constraints = RigidbodyConstraints.FreezeAll;
+        }
+
         if (jetpack != null)
             jetpack.enabled = false;
+
+        DisableMountedRigPhysics();
 
         AlignRigToSeat();
         UpdateMountedRigAnchor(0f, snapImmediately: true);
@@ -713,6 +761,10 @@ public class RoverPhysicsController : MonoBehaviour
             neutralAngle = GetHandAngle();
             currentWheelAngle = 0f;
         }
+
+        currentSteerAngle = 0f;
+        if (wheelFL != null) wheelFL.steerAngle = 0f;
+        if (wheelFR != null) wheelFR.steerAngle = 0f;
     }
 
     private void Dismount()
@@ -720,8 +772,13 @@ public class RoverPhysicsController : MonoBehaviour
         isMounted = false;
         dismountHoldTimer = 0f;
         dismountReadyAfterRelease = false;
+        mountInputArmTimer = 0f;
+        mountStabilizeTimer = 0f;
         useKeyboardFallback = true;
         SetInput(0f, 0f, 1f);
+
+        if (rb != null)
+            rb.constraints = defaultConstraints;
 
         if (xrOrigin != null)
         {
@@ -745,6 +802,8 @@ public class RoverPhysicsController : MonoBehaviour
 
         if (jetpack != null)
             jetpack.enabled = true;
+
+        RestoreMountedRigPhysics();
     }
 
     public void SetMountEnabled(bool enabled)
@@ -794,6 +853,109 @@ public class RoverPhysicsController : MonoBehaviour
         }
     }
 
+    private void CacheMountedRigPhysics()
+    {
+        if (xrOrigin == null)
+            return;
+
+        mountedRigColliders = xrOrigin.GetComponentsInChildren<Collider>(true);
+        mountedRigColliderEnabledStates = new bool[mountedRigColliders.Length];
+
+        mountedRigRigidbodies = xrOrigin.GetComponentsInChildren<Rigidbody>(true);
+        mountedRigRigidbodyDetectCollisionStates = new bool[mountedRigRigidbodies.Length];
+        mountedRigRigidbodyKinematicStates = new bool[mountedRigRigidbodies.Length];
+    }
+
+    private void DisableMountedRigPhysics()
+    {
+        if (mountedRigColliders != null)
+        {
+            for (int i = 0; i < mountedRigColliders.Length; i++)
+            {
+                Collider collider = mountedRigColliders[i];
+                if (collider == null)
+                    continue;
+
+                mountedRigColliderEnabledStates[i] = collider.enabled;
+                if (ShouldDisableMountedCollider(collider))
+                    collider.enabled = false;
+            }
+        }
+
+        if (mountedRigRigidbodies != null)
+        {
+            for (int i = 0; i < mountedRigRigidbodies.Length; i++)
+            {
+                Rigidbody childBody = mountedRigRigidbodies[i];
+                if (childBody == null)
+                    continue;
+
+                mountedRigRigidbodyDetectCollisionStates[i] = childBody.detectCollisions;
+                mountedRigRigidbodyKinematicStates[i] = childBody.isKinematic;
+                if (ShouldDisableMountedRigidbody(childBody))
+                {
+                    childBody.detectCollisions = false;
+                    childBody.isKinematic = true;
+                }
+            }
+        }
+    }
+
+    private void RestoreMountedRigPhysics()
+    {
+        if (mountedRigColliders != null)
+        {
+            for (int i = 0; i < mountedRigColliders.Length; i++)
+            {
+                Collider collider = mountedRigColliders[i];
+                if (collider == null)
+                    continue;
+
+                collider.enabled = mountedRigColliderEnabledStates[i];
+            }
+        }
+
+        if (mountedRigRigidbodies != null)
+        {
+            for (int i = 0; i < mountedRigRigidbodies.Length; i++)
+            {
+                Rigidbody childBody = mountedRigRigidbodies[i];
+                if (childBody == null)
+                    continue;
+
+                childBody.detectCollisions = mountedRigRigidbodyDetectCollisionStates[i];
+                childBody.isKinematic = mountedRigRigidbodyKinematicStates[i];
+            }
+        }
+    }
+
+    private bool ShouldDisableMountedCollider(Collider collider)
+    {
+        if (collider == null)
+            return false;
+
+        if (xrOrigin != null && collider.transform == xrOrigin.transform)
+            return true;
+
+        Transform cameraTransform = xrOrigin != null && xrOrigin.Camera != null ? xrOrigin.Camera.transform : null;
+        if (cameraTransform != null && collider.transform.IsChildOf(cameraTransform))
+            return true;
+
+        return collider.attachedRigidbody != null && ShouldDisableMountedRigidbody(collider.attachedRigidbody);
+    }
+
+    private bool ShouldDisableMountedRigidbody(Rigidbody body)
+    {
+        if (body == null)
+            return false;
+
+        Transform cameraTransform = xrOrigin != null && xrOrigin.Camera != null ? xrOrigin.Camera.transform : null;
+        if (cameraTransform != null && body.transform.IsChildOf(cameraTransform))
+            return true;
+
+        return false;
+    }
+
     private static bool GetGrip(InputDevice device)
     {
         return device.isValid &&
@@ -805,6 +967,26 @@ public class RoverPhysicsController : MonoBehaviour
     {
         bool leftGrip = GetGrip(leftDevice);
         bool rightGrip = GetGrip(rightDevice);
+
+        if (mountInputArmTimer > 0f)
+        {
+            mountInputArmTimer = Mathf.Max(0f, mountInputArmTimer - Time.fixedDeltaTime);
+            SetInput(0f, 0f, 1f);
+            return;
+        }
+
+        if (!dismountReadyAfterRelease)
+        {
+            if (!leftGrip && !rightGrip)
+            {
+                dismountReadyAfterRelease = true;
+                neutralAngle = GetHandAngle();
+                currentWheelAngle = 0f;
+            }
+
+            SetInput(0f, 0f, 1f);
+            return;
+        }
 
         float throttle = 0f;
         if (rightGrip && !leftGrip) throttle = 1f;

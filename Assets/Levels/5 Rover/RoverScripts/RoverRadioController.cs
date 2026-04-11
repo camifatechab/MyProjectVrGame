@@ -27,18 +27,26 @@ public class RoverRadioController : MonoBehaviour
     [SerializeField] private XRNode inputNode = XRNode.RightHand;
     [SerializeField] private bool primaryButtonTogglesRadio = true;
     [SerializeField] private bool secondaryButtonChangesTrack = true;
+    [SerializeField] private bool thumbstickClickTogglesRadio = true;
+    [SerializeField] private bool menuButtonTogglesRadio = true;
 
     [Header("Display")]
     [SerializeField] private float messageHoldDuration = 1.6f;
+
+    [Header("Runtime")]
+    [SerializeField] private RoverPhysicsController roverController;
 
     private InputDevice inputDevice;
     private bool isOn;
     private int currentTrackIndex;
     private bool previousPrimaryPressed;
     private bool previousSecondaryPressed;
+    private bool previousThumbstickPressed;
+    private bool previousMenuPressed;
     private float messageTimer;
     private string temporaryMessage = string.Empty;
     private bool wasMounted;
+    private int lastTickFrame = -1;
 
     public bool IsOn => isOn;
     public bool HasTracks => tracks != null && tracks.Length > 0;
@@ -46,12 +54,23 @@ public class RoverRadioController : MonoBehaviour
 
     private void Awake()
     {
+        roverController ??= GetComponent<RoverPhysicsController>();
         EnsureAudioSource();
         ApplySourceSettings();
     }
 
+    private void LateUpdate()
+    {
+        if (lastTickFrame == Time.frameCount)
+            return;
+
+        bool mounted = roverController != null && roverController.IsMounted;
+        Tick(mounted);
+    }
+
     public void Tick(bool isMounted)
     {
+        lastTickFrame = Time.frameCount;
         EnsureAudioSource();
         ApplySourceSettings();
         RefreshDevice();
@@ -79,35 +98,27 @@ public class RoverRadioController : MonoBehaviour
         if (inputDevice.isValid)
         {
             if (primaryButtonTogglesRadio &&
-                inputDevice.TryGetFeatureValue(CommonUsages.primaryButton, out bool primaryPressed))
-            {
-                if (primaryPressed && !previousPrimaryPressed)
-                    togglePressed = true;
-
-                previousPrimaryPressed = primaryPressed;
-            }
-            else
-            {
-                previousPrimaryPressed = false;
-            }
+                ConsumePress(CommonUsages.primaryButton, ref previousPrimaryPressed))
+                togglePressed = true;
 
             if (secondaryButtonChangesTrack &&
-                inputDevice.TryGetFeatureValue(CommonUsages.secondaryButton, out bool secondaryPressed))
-            {
-                if (secondaryPressed && !previousSecondaryPressed)
-                    nextPressed = true;
+                ConsumePress(CommonUsages.secondaryButton, ref previousSecondaryPressed))
+                nextPressed = true;
 
-                previousSecondaryPressed = secondaryPressed;
-            }
-            else
-            {
-                previousSecondaryPressed = false;
-            }
+            if (thumbstickClickTogglesRadio &&
+                ConsumePress(CommonUsages.primary2DAxisClick, ref previousThumbstickPressed))
+                togglePressed = true;
+
+            if (menuButtonTogglesRadio &&
+                ConsumePress(CommonUsages.menuButton, ref previousMenuPressed))
+                togglePressed = true;
         }
         else
         {
             previousPrimaryPressed = false;
             previousSecondaryPressed = false;
+            previousThumbstickPressed = false;
+            previousMenuPressed = false;
         }
 
         if (togglePressed)
@@ -221,6 +232,27 @@ public class RoverRadioController : MonoBehaviour
             return;
 
         inputDevice = InputDevices.GetDeviceAtXRNode(inputNode);
+
+        if (inputDevice.isValid)
+            return;
+
+        var devices = new System.Collections.Generic.List<InputDevice>();
+        InputDevices.GetDevicesAtXRNode(inputNode, devices);
+        if (devices.Count > 0)
+            inputDevice = devices[0];
+    }
+
+    private bool ConsumePress(InputFeatureUsage<bool> usage, ref bool previousPressed)
+    {
+        if (inputDevice.TryGetFeatureValue(usage, out bool pressed))
+        {
+            bool consume = pressed && !previousPressed;
+            previousPressed = pressed;
+            return consume;
+        }
+
+        previousPressed = false;
+        return false;
     }
 
     private void EnsureAudioSource()
@@ -256,6 +288,7 @@ public class RoverRadioController : MonoBehaviour
         radioSource.maxDistance = maxDistance;
         radioSource.rolloffMode = AudioRolloffMode.Linear;
         radioSource.volume = radioVolume;
+        radioSource.enabled = true;
     }
 
     public void ToggleFromUi()

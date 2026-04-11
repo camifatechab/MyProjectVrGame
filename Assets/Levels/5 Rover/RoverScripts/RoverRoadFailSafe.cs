@@ -47,6 +47,9 @@ public class RoverRoadFailSafe : MonoBehaviour
         if (rb == null)
             return;
 
+        if (controller != null && controller.IsMountStabilizing)
+            return;
+
         if (resetFeedbackTimer > 0f)
         {
             resetFeedbackTimer = Mathf.Max(0f, resetFeedbackTimer - Time.fixedDeltaTime);
