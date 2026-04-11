@@ -7,6 +7,10 @@ using System.Collections.Generic;
 /// At 1: 4 attackers, fast, short rests, spread fire on rage.
 public class DragonAttack : MonoBehaviour
 {
+    private const float EngagementZonePadding = 12f;
+    private const float AggressiveAttackRangePadding = 2f;
+    private const float AggressiveMinDistanceFactor = 0.6f;
+
     [Header("Debug Gizmos")]
     public bool showGizmos = false;
 
@@ -113,6 +117,10 @@ public class DragonAttack : MonoBehaviour
     private float                bobOffset;
     private Vector3              smoothedDir;
     private float                currentBank;
+    private bool                 alwaysChasePlayer;
+    private Bounds               engagementZoneBounds;
+    private bool                 hasEngagementZoneBounds;
+    private bool                 playerInsideEngagementZone;
 
     void OnEnable()  { if (!all.Contains(this)) all.Add(this); }
     void OnDisable() { all.Remove(this); }
@@ -130,10 +138,12 @@ public class DragonAttack : MonoBehaviour
         orbitSpeed  = 15f + sectorIndex * 3f;
         orbitAngle  = sectorAngle;
         smoothedDir = transform.forward;
+        alwaysChasePlayer = gameObject.name.StartsWith("Target_");
+        TryInitializeEngagementZoneBounds();
 
-        if (Camera.main != null)
+        player = ResolvePlayerTransform();
+        if (player != null)
         {
-            player = Camera.main.transform;
             float rad = sectorAngle * Mathf.Deg2Rad;
             transform.position = player.position
                 + new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * spawnRadius
@@ -169,22 +179,56 @@ public class DragonAttack : MonoBehaviour
             s_aggressionTimer  = Mathf.Min(s_aggressionTimer, aggressionRampTime);
         }
 
+        if (player == null)
+        {
+            player = ResolvePlayerTransform();
+            if (player == null)
+                return;
+        }
 
-        if (player == null) { if (Camera.main != null) player = Camera.main.transform; return; }
-
+        playerInsideEngagementZone = IsPlayerInsideEngagementZone(player.position);
+        bool aggressiveZoneActive = alwaysChasePlayer && playerInsideEngagementZone;
         float dist = Vector3.Distance(transform.position, player.position);
-        if (dist > detectionRange) { if (patrol != null) patrol.enabled = true; return; }
+        float currentAttackRange = GetCurrentAttackRange();
+        float currentMinDistance = GetCurrentMinDistance();
+        float currentAttackCooldown = aggressiveZoneActive ? attackCooldownMin : AttackCooldown;
+        float effectiveDetectionRange = alwaysChasePlayer
+            ? (aggressiveZoneActive ? float.PositiveInfinity : 0f)
+            : detectionRange;
+
+        if (dist > effectiveDetectionRange)
+        {
+            if (patrol != null) patrol.enabled = true;
+            if (aggressiveZoneActive == false && mode != Mode.SkyPatrol)
+            {
+                mode = Mode.SkyPatrol;
+                modeTimer = Mathf.Max(modeTimer, 0.5f);
+            }
+            return;
+        }
+
         if (patrol != null) patrol.enabled = false;
 
         rageTimer -= Time.deltaTime;
         modeTimer -= Time.deltaTime;
+
+        if (aggressiveZoneActive && (mode == Mode.SkyPatrol || mode == Mode.Rest || mode == Mode.Retreat))
+        {
+            mode = dist <= currentAttackRange ? Mode.Attack : Mode.Swoop;
+            modeTimer = dist <= currentAttackRange ? GetAggressiveAttackDuration() : 0f;
+        }
 
         // --- State transitions ---
         switch (mode)
         {
             case Mode.SkyPatrol:
             case Mode.Rest:
-                if (modeTimer <= 0f && AttackerCount() < MaxAttackers)
+                if (aggressiveZoneActive)
+                {
+                    mode = dist <= currentAttackRange ? Mode.Attack : Mode.Swoop;
+                    modeTimer = dist <= currentAttackRange ? GetAggressiveAttackDuration() : 0f;
+                }
+                else if (modeTimer <= 0f && AttackerCount() < MaxAttackers)
                 {
                     mode      = Mode.Swoop;
                     modeTimer = 0f;
@@ -192,12 +236,14 @@ public class DragonAttack : MonoBehaviour
                 break;
 
             case Mode.Swoop:
-                if (dist <= attackRange)
+                if (dist <= currentAttackRange)
                 {
                     mode      = Mode.Attack;
-                    modeTimer = IsRaged
-                        ? Random.Range(6f, 10f)
-                        : Mathf.Lerp(12f, 8f, Aggression);
+                    modeTimer = aggressiveZoneActive
+                        ? GetAggressiveAttackDuration()
+                        : (IsRaged
+                            ? Random.Range(6f, 10f)
+                            : Mathf.Lerp(12f, 8f, Aggression));
                 }
                 else if (modeTimer < -10f)
                 {
@@ -206,7 +252,12 @@ public class DragonAttack : MonoBehaviour
                 break;
 
             case Mode.Attack:
-                if (modeTimer <= 0f)
+                if (aggressiveZoneActive)
+                {
+                    if (modeTimer <= 0f)
+                        modeTimer = GetAggressiveAttackDuration();
+                }
+                else if (modeTimer <= 0f)
                 {
                     if (IsRaged && rageExtraSwoopsLeft > 0)
                     {
@@ -232,9 +283,9 @@ public class DragonAttack : MonoBehaviour
         Vector3 goal = ComputeGoal();
 
         Vector3 flat = new Vector3(goal.x - player.position.x, 0f, goal.z - player.position.z);
-        if (flat.magnitude < minDistance && flat.magnitude > 0.01f)
+        if (flat.magnitude < currentMinDistance && flat.magnitude > 0.01f)
         {
-            goal   = player.position + flat.normalized * minDistance;
+            goal   = player.position + flat.normalized * currentMinDistance;
             goal.y = ComputeGoalY();
         }
 
@@ -251,7 +302,7 @@ public class DragonAttack : MonoBehaviour
         goal += sep;
 
         // --- Move ---
-        float spd  = IsRaged ? rageMoveSpeed : MoveSpeed;
+        float spd  = IsRaged ? rageMoveSpeed : (aggressiveZoneActive ? moveSpeedMax : MoveSpeed);
         float tSpd = IsRaged ? rageTurnSpeed : turnSpeed;
         if (smoothedDir.y < 0f) spd *= 1f + Mathf.Abs(smoothedDir.y) * (diveSpeedMultiplier - 1f);
 
@@ -291,7 +342,7 @@ public class DragonAttack : MonoBehaviour
         }
 
         // --- Fire ---
-        if (mode == Mode.Attack && dist <= attackRange && Time.time >= lastAttackTime + AttackCooldown)
+        if (mode == Mode.Attack && dist <= currentAttackRange && Time.time >= lastAttackTime + currentAttackCooldown)
             Fire();
     }
 
@@ -323,6 +374,8 @@ public class DragonAttack : MonoBehaviour
 
     Vector3 ComputeGoal()
     {
+        float currentAttackRange = GetCurrentAttackRange();
+
         switch (mode)
         {
             case Mode.SkyPatrol:
@@ -345,7 +398,7 @@ public class DragonAttack : MonoBehaviour
                 float circleSpd = IsRaged ? 70f : 45f;
                 orbitAngle += circleSpd * Time.deltaTime;
                 float rad = orbitAngle * Mathf.Deg2Rad;
-                float r   = IsRaged ? attackRange * 0.65f : attackRange * 0.8f;
+                float r   = IsRaged ? currentAttackRange * 0.65f : currentAttackRange * 0.8f;
                 Vector3 pos = player.position + new Vector3(Mathf.Cos(rad), 0f, Mathf.Sin(rad)) * r;
                 pos.y = player.position.y + (IsRaged ? 1.5f : 3f) + Mathf.Sin(Time.time * bobSpeed + bobOffset) * bobAmplitude;
                 return pos;
@@ -401,5 +454,97 @@ public class DragonAttack : MonoBehaviour
         Gizmos.color = Color.red;    Gizmos.DrawWireSphere(transform.position, attackRange);
         Gizmos.color = Color.green;  Gizmos.DrawWireSphere(transform.position, minDistance);
         Gizmos.color = Color.cyan;   Gizmos.DrawWireSphere(transform.position, separationRadius);
+    }
+
+    private void TryInitializeEngagementZoneBounds()
+    {
+        if (!alwaysChasePlayer || patrol == null)
+            return;
+
+        if (patrol.waypoints != null && patrol.waypoints.Count > 0)
+        {
+            bool foundWaypoint = false;
+            Bounds bounds = default;
+
+            foreach (Transform waypoint in patrol.waypoints)
+            {
+                if (waypoint == null)
+                    continue;
+
+                if (!foundWaypoint)
+                {
+                    bounds = new Bounds(waypoint.position, Vector3.zero);
+                    foundWaypoint = true;
+                }
+                else
+                {
+                    bounds.Encapsulate(waypoint.position);
+                }
+            }
+
+            if (foundWaypoint)
+            {
+                bounds.Expand(Vector3.one * EngagementZonePadding);
+                engagementZoneBounds = bounds;
+                hasEngagementZoneBounds = true;
+                return;
+            }
+        }
+
+        if (patrol.useBoundsClamp)
+        {
+            engagementZoneBounds = new Bounds();
+            engagementZoneBounds.SetMinMax(patrol.boundsMin, patrol.boundsMax);
+            engagementZoneBounds.Expand(Vector3.one * EngagementZonePadding);
+            hasEngagementZoneBounds = true;
+        }
+    }
+
+    private bool IsPlayerInsideEngagementZone(Vector3 playerPosition)
+    {
+        if (!alwaysChasePlayer)
+            return false;
+
+        if (!hasEngagementZoneBounds)
+            return true;
+
+        return engagementZoneBounds.Contains(playerPosition);
+    }
+
+    private float GetCurrentAttackRange()
+    {
+        if (alwaysChasePlayer && playerInsideEngagementZone)
+            return Mathf.Max(attackRange, GetCurrentMinDistance() + AggressiveAttackRangePadding);
+
+        return attackRange;
+    }
+
+    private float GetCurrentMinDistance()
+    {
+        if (alwaysChasePlayer && playerInsideEngagementZone)
+            return Mathf.Min(minDistance * AggressiveMinDistanceFactor, attackRange);
+
+        return minDistance;
+    }
+
+    private float GetAggressiveAttackDuration()
+    {
+        return IsRaged ? 10f : 12f;
+    }
+
+    private Transform ResolvePlayerTransform()
+    {
+        PlayerHealth health = Object.FindFirstObjectByType<PlayerHealth>();
+        if (health != null)
+        {
+            Camera playerCamera = health.GetComponentInChildren<Camera>();
+            return playerCamera != null ? playerCamera.transform : health.transform;
+        }
+
+        if (Camera.main != null)
+            return Camera.main.transform;
+
+        Camera anyCamera = Object.FindFirstObjectByType<Camera>();
+        return anyCamera != null ? anyCamera.transform : null;
     }
 }

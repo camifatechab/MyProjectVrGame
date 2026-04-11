@@ -26,6 +26,7 @@ public class RockfallSpawner : MonoBehaviour
         for (int i = 0; i < poolSize; i++)
         {
             GameObject rock = Instantiate(rockPrefab);
+            EnsurePhysicsSetup(rock);
             rock.SetActive(false);
             pool[i] = rock;
         }
@@ -45,7 +46,7 @@ public class RockfallSpawner : MonoBehaviour
         rock.transform.position = transform.position + randomOffset;
         rock.transform.rotation = Random.rotation;
 
-        Rigidbody rb = rock.GetComponent<Rigidbody>();
+        Rigidbody rb = EnsurePhysicsSetup(rock);
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
 
@@ -60,6 +61,19 @@ public class RockfallSpawner : MonoBehaviour
         yield return new WaitForSeconds(seconds);
         if (obj != null)
             obj.SetActive(false);
+    }
+
+    Rigidbody EnsurePhysicsSetup(GameObject rock)
+    {
+        Rigidbody rb = rock.GetComponent<Rigidbody>();
+        if (rb == null)
+            rb = rock.AddComponent<Rigidbody>();
+
+        MeshCollider meshCollider = rock.GetComponent<MeshCollider>();
+        if (meshCollider != null && meshCollider.sharedMesh != null && !meshCollider.convex)
+            meshCollider.convex = true;
+
+        return rb;
     }
 
     private void OnDrawGizmosSelected()

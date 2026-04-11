@@ -45,13 +45,19 @@ public class BatteryPickup : MonoBehaviour
         isRespawning = true;
         // Hide the object visually and disable its collider
         GetComponent<Collider>().enabled = false;
-        GetComponentInChildren<MeshRenderer>().enabled = false;
+        SetRenderersEnabled(false);
 
         yield return new WaitForSeconds(respawnTime);
 
         // Reactivate components instead of SetActive(true)
         GetComponent<Collider>().enabled = true;
-        GetComponentInChildren<MeshRenderer>().enabled = true;
+        SetRenderersEnabled(true);
         isRespawning = false;
+    }
+
+    private void SetRenderersEnabled(bool enabled)
+    {
+        foreach (Renderer renderer in GetComponentsInChildren<Renderer>(true))
+            renderer.enabled = enabled;
     }
 }

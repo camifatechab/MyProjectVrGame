@@ -7,6 +7,11 @@ using System.Collections.Generic;
 /// </summary>
 public class FlyingCreaturePatrol : MonoBehaviour
 {
+    private const string AttackAreaObjectName = "Attack_Area";
+    private const float CollisionPadding = 0.05f;
+    private const float TerrainClearance = 2f;
+    private const int MaxWaypointSearchAttempts = 12;
+
     [Header("Patrol Settings")]
     [Tooltip("Waypoints to patrol between. If empty, generates random waypoints.")]
     public List<Transform> waypoints = new List<Transform>();
@@ -96,22 +101,51 @@ public class FlyingCreaturePatrol : MonoBehaviour
     private float currentBank;
     private float pauseTimer;
     private bool isPaused;
+    private bool useDynamicAreaPatrol;
+    private Collider cachedCollider;
     private Vector3 lastPosition;
     private Vector3 smoothedDirection;
     
     private void Start()
     {
+        cachedCollider = GetComponent<Collider>();
         bobOffset = Random.Range(0f, Mathf.PI * 2f);
         lastPosition = transform.position;
         smoothedDirection = transform.forward;
-        
+
+        ConfigureAttackAreaPatrol();
         InitializeWaypoints();
-        
+
         if (waypointPositions.Count == 0)
         {
             Debug.LogWarning($"{gameObject.name}: No waypoints available!");
             enabled = false;
         }
+    }
+
+    private void ConfigureAttackAreaPatrol()
+    {
+        if (!gameObject.name.StartsWith("Target_") || waypoints.Count > 0)
+            return;
+
+        GameObject attackArea = GameObject.Find(AttackAreaObjectName);
+        if (attackArea == null)
+            return;
+
+        BoxCollider attackBounds = attackArea.GetComponent<BoxCollider>();
+        if (attackBounds == null)
+            return;
+
+        Bounds bounds = attackBounds.bounds;
+        patrolAreaCenter = bounds.center;
+        patrolAreaSize = bounds.size;
+        minHeight = bounds.min.y;
+        maxHeight = bounds.max.y;
+        useBoundsClamp = true;
+        boundsMin = bounds.min;
+        boundsMax = bounds.max;
+        useDynamicAreaPatrol = true;
+        autoWaypointCount = 1;
     }
     
     private void InitializeWaypoints()
@@ -157,16 +191,120 @@ public class FlyingCreaturePatrol : MonoBehaviour
             center = transform.position;
         
         for (int i = 0; i < autoWaypointCount; i++)
+            waypointPositions.Add(GenerateRandomWaypointPosition(center));
+        
+        Debug.Log($"{gameObject.name}: Generated {autoWaypointCount} patrol waypoints");
+    }
+
+    private Vector3 GenerateRandomWaypointPosition(Vector3 center)
+    {
+        for (int attempt = 0; attempt < MaxWaypointSearchAttempts; attempt++)
         {
             Vector3 randomPoint = center + new Vector3(
                 Random.Range(-patrolAreaSize.x / 2f, patrolAreaSize.x / 2f),
-                Random.Range(minHeight, maxHeight),
+                0f,
                 Random.Range(-patrolAreaSize.z / 2f, patrolAreaSize.z / 2f)
             );
-            waypointPositions.Add(randomPoint);
+
+            randomPoint.y = Random.Range(minHeight, maxHeight);
+            randomPoint = RaiseAboveTerrain(randomPoint);
+
+            if (IsPointClear(randomPoint))
+                return randomPoint;
         }
-        
-        Debug.Log($"{gameObject.name}: Generated {autoWaypointCount} patrol waypoints");
+
+        Vector3 fallback = transform.position;
+        if (fallback == Vector3.zero)
+            fallback = center;
+
+        return RaiseAboveTerrain(ClampToBounds(fallback));
+    }
+
+    private Vector3 RaiseAboveTerrain(Vector3 point)
+    {
+        float requiredClearance = GetRequiredTerrainClearance();
+        float probeTop = useBoundsClamp ? boundsMax.y + requiredClearance : maxHeight + requiredClearance;
+        float probeDistance = Mathf.Max(1f, probeTop - minHeight + requiredClearance);
+
+        if (Physics.Raycast(new Vector3(point.x, probeTop, point.z), Vector3.down, out RaycastHit hit, probeDistance, ~0, QueryTriggerInteraction.Ignore))
+            point.y = Mathf.Max(point.y, hit.point.y + requiredClearance);
+
+        if (useBoundsClamp)
+            point = ClampToBounds(point);
+
+        return point;
+    }
+
+    private bool IsPointClear(Vector3 point)
+    {
+        float radius = GetCollisionProbeRadius();
+        Collider[] overlaps = Physics.OverlapSphere(point, radius, ~0, QueryTriggerInteraction.Ignore);
+
+        foreach (Collider overlap in overlaps)
+        {
+            if (overlap == null)
+                continue;
+
+            if (cachedCollider != null && overlap == cachedCollider)
+                continue;
+
+            if (overlap.transform == transform || overlap.transform.IsChildOf(transform))
+                continue;
+
+            if (overlap.gameObject.name == AttackAreaObjectName)
+                continue;
+
+            return false;
+        }
+
+        return true;
+    }
+
+    private float GetCollisionProbeRadius()
+    {
+        if (cachedCollider == null)
+            return 1f;
+
+        if (cachedCollider is CapsuleCollider capsule)
+        {
+            Vector3 lossyScale = transform.lossyScale;
+            float maxScale = Mathf.Max(Mathf.Abs(lossyScale.x), Mathf.Abs(lossyScale.z));
+            return Mathf.Max(capsule.radius * maxScale, 0.5f);
+        }
+
+        if (cachedCollider is SphereCollider sphere)
+        {
+            float maxScale = Mathf.Max(
+                Mathf.Abs(transform.lossyScale.x),
+                Mathf.Abs(transform.lossyScale.y),
+                Mathf.Abs(transform.lossyScale.z));
+            return Mathf.Max(sphere.radius * maxScale, 0.5f);
+        }
+
+        if (cachedCollider is BoxCollider box)
+        {
+            Vector3 scaledSize = Vector3.Scale(box.size, transform.lossyScale);
+            return Mathf.Max(Mathf.Min(Mathf.Abs(scaledSize.x), Mathf.Abs(scaledSize.y), Mathf.Abs(scaledSize.z)) * 0.5f, 0.5f);
+        }
+
+        Bounds bounds = cachedCollider.bounds;
+        return Mathf.Max(Mathf.Min(bounds.extents.x, bounds.extents.y, bounds.extents.z), 0.5f);
+    }
+
+    private float GetRequiredTerrainClearance()
+    {
+        return Mathf.Max(TerrainClearance, GetCollisionProbeRadius() + CollisionPadding);
+    }
+
+    private Vector3 ClampToBounds(Vector3 position)
+    {
+        if (!useBoundsClamp)
+            return position;
+
+        position.x = Mathf.Clamp(position.x, boundsMin.x, boundsMax.x);
+        position.y = Mathf.Clamp(position.y, boundsMin.y, boundsMax.y);
+        position.z = Mathf.Clamp(position.z, boundsMin.z, boundsMax.z);
+        return position;
     }
     
     private void Update()
@@ -202,10 +340,13 @@ public class FlyingCreaturePatrol : MonoBehaviour
         
         // Move toward waypoint
         Vector3 movement = smoothedDirection * currentSpeed * Time.deltaTime;
+        movement = AdjustMovementForObstacles(movement);
         transform.position += movement;
         
         // Apply bobbing
         ApplyBobbing();
+        ResolveCollisions();
+        transform.position = RaiseAboveTerrain(transform.position);
         
         // Apply rotation with banking
         ApplyRotationAndBanking(directionToTarget);
@@ -266,8 +407,15 @@ private void ApplyRotationAndBanking(Vector3 targetDirection)
         transform.rotation = Quaternion.Slerp(normalRotation, diveRotation, diveAmount);
     }
     
-private void MoveToNextWaypoint()
+    private void MoveToNextWaypoint()
     {
+        if (useDynamicAreaPatrol && waypointPositions.Count > 0)
+        {
+            Vector3 center = patrolAreaCenter != Vector3.zero ? patrolAreaCenter : transform.position;
+            waypointPositions[currentWaypointIndex] = GenerateRandomWaypointPosition(center);
+            return;
+        }
+
         if (loopWaypoints)
         {
             currentWaypointIndex = (currentWaypointIndex + 1) % waypointPositions.Count;
@@ -296,15 +444,79 @@ private void MoveToNextWaypoint()
         GenerateRandomWaypoints();
         currentWaypointIndex = 0;
     }
-    
+
+    private void ResolveCollisions()
+    {
+        if (cachedCollider == null)
+            return;
+
+        float probeRadius = GetCollisionProbeRadius();
+        Collider[] overlaps = Physics.OverlapSphere(transform.position, probeRadius, ~0, QueryTriggerInteraction.Ignore);
+
+        foreach (Collider overlap in overlaps)
+        {
+            if (overlap == null)
+                continue;
+
+            if (overlap == cachedCollider)
+                continue;
+
+            if (overlap.transform == transform || overlap.transform.IsChildOf(transform))
+                continue;
+
+            if (overlap.gameObject.name == AttackAreaObjectName)
+                continue;
+
+            if (Physics.ComputePenetration(
+                    cachedCollider, transform.position, transform.rotation,
+                    overlap, overlap.transform.position, overlap.transform.rotation,
+                    out Vector3 pushDirection, out float pushDistance))
+            {
+                transform.position += pushDirection * (pushDistance + CollisionPadding);
+            }
+        }
+
+        transform.position = ClampToBounds(transform.position);
+    }
+
+    private Vector3 AdjustMovementForObstacles(Vector3 movement)
+    {
+        if (cachedCollider == null || movement.sqrMagnitude <= 0.0001f)
+            return movement;
+
+        float movementDistance = movement.magnitude;
+        float probeRadius = GetCollisionProbeRadius();
+        Vector3 origin = cachedCollider.bounds.center;
+        Vector3 direction = movement / movementDistance;
+
+        if (!Physics.SphereCast(origin, probeRadius, direction, out RaycastHit hit, movementDistance + CollisionPadding, ~0, QueryTriggerInteraction.Ignore))
+            return movement;
+
+        if (hit.collider == null || hit.collider == cachedCollider)
+            return movement;
+
+        if (hit.transform == transform || hit.transform.IsChildOf(transform))
+            return movement;
+
+        if (hit.collider.gameObject.name == AttackAreaObjectName)
+            return movement;
+
+        float allowedDistance = Mathf.Max(0f, hit.distance - CollisionPadding);
+        if (allowedDistance <= 0.01f)
+            MoveToNextWaypoint();
+
+        return direction * allowedDistance;
+    }
+     
     private void LateUpdate()
     {
         if (!useBoundsClamp) return;
-        Vector3 p = transform.position;
-        p.x = Mathf.Clamp(p.x, boundsMin.x, boundsMax.x);
-        p.y = Mathf.Clamp(p.y, boundsMin.y, boundsMax.y);
-        p.z = Mathf.Clamp(p.z, boundsMin.z, boundsMax.z);
-        transform.position = p;
+        transform.position = ClampToBounds(transform.position);
+    }
+
+    private void OnValidate()
+    {
+        cachedCollider = GetComponent<Collider>();
     }
 
     
