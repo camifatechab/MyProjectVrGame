@@ -78,6 +78,9 @@ public class RoverRadioController : MonoBehaviour
         if (isMounted && !wasMounted && playOnMount && HasTracks && !isOn)
             ToggleRadio();
 
+        if (!isMounted && wasMounted)
+            PowerOffForDismount();
+
         if (isMounted)
             HandleInput();
 
@@ -189,6 +192,21 @@ public class RoverRadioController : MonoBehaviour
 
         if (pushNowPlaying)
             PushMessage(GetTrackDisplay(track));
+    }
+
+    private void PowerOffForDismount()
+    {
+        if (!isOn && (radioSource == null || !radioSource.isPlaying))
+            return;
+
+        isOn = false;
+        if (radioSource != null)
+            radioSource.Stop();
+
+        previousPrimaryPressed = false;
+        previousSecondaryPressed = false;
+        previousThumbstickPressed = false;
+        previousMenuPressed = false;
     }
 
     private string GetDisplayText()

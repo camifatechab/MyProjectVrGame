@@ -11,13 +11,13 @@ public class RoverPhysicsController : MonoBehaviour
     public BoxCollider bodyCollider;
     public BoxCollider playerBlocker;
     public float rigidbodyMass = 450f;
-    public float maxForwardSpeed = 33.33f;
+    public float maxForwardSpeed = 150f;
     public float maxReverseSpeed = 7f;
-    public float motorTorque = 576f;
+    public float motorTorque = 350f;
     public float brakeTorque = 4200f;
     public float idleBrakeTorque = 120f;
     public float steerAngle = 28f;
-    public float steerResponse = 120f;
+    public float steerResponse = 95f;
     public float downforce = 80f;
     public float extraGravity = 10f;
     public Vector3 centerOfMassOffset = new Vector3(0f, -0.35f, 0f);
@@ -38,7 +38,7 @@ public class RoverPhysicsController : MonoBehaviour
     public int wheelSubstepsBelowThreshold = 8;
     public int wheelSubstepsAboveThreshold = 12;
     public float forwardFrictionStiffness = 1.35f;
-    public float sidewaysFrictionStiffness = 1.6f;
+    public float sidewaysFrictionStiffness = 2.5f;
 
     [Header("Wheel Colliders")]
     public WheelCollider wheelFL;

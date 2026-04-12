@@ -43,7 +43,7 @@ public class RoverEdgeRecoveryAssist : MonoBehaviour
         if (throttle >= minimumThrottleForAssist && stuck01 > 0f)
         {
             Vector3 averageNormal = guideNormalSum / guideContactCount;
-            Vector3 inward = Vector3.ProjectOnPlane(averageNormal, Vector3.up).normalized;
+            Vector3 inward = ResolveRecoveryDirection(averageNormal, transform.forward);
 
             if (inward.sqrMagnitude > 0.0001f)
             {
@@ -72,5 +72,21 @@ public class RoverEdgeRecoveryAssist : MonoBehaviour
             guideNormalSum += collision.GetContact(i).normal;
             guideContactCount++;
         }
+    }
+
+    private static Vector3 ResolveRecoveryDirection(Vector3 averageNormal, Vector3 forward)
+    {
+        Vector3 horizontalNormal = Vector3.ProjectOnPlane(averageNormal, Vector3.up);
+        if (horizontalNormal.sqrMagnitude <= 0.0001f)
+            return Vector3.zero;
+
+        Vector3 planarForward = Vector3.ProjectOnPlane(forward, Vector3.up);
+        if (planarForward.sqrMagnitude <= 0.0001f)
+            return horizontalNormal.normalized;
+
+        Vector3 lateralOnly = Vector3.ProjectOnPlane(horizontalNormal, planarForward.normalized);
+        return lateralOnly.sqrMagnitude > 0.0001f
+            ? lateralOnly.normalized
+            : horizontalNormal.normalized;
     }
 }
