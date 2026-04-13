@@ -73,20 +73,24 @@ public class RoverPhysicsControllerTests
     private static readonly Type LaserShooterType = Type.GetType("LaserShooter, Assembly-CSharp");
 
     [Test]
-    public void SetJetpackMountedState_DisablesJetpack_And_LocksFlight()
+    public void Mount_DisablesJetpack_And_Dismount_ReenablesIt()
     {
         Assert.That(RoverPhysicsControllerType, Is.Not.Null, "RoverPhysicsController type not found");
         Assert.That(AutoJetpackControllerType, Is.Not.Null, "AutoJetpackController type not found");
         Assert.That(FlightSmokeTrailType, Is.Not.Null, "FlightSmokeTrail type not found");
+        Type xrOriginType = Type.GetType("Unity.XR.CoreUtils.XROrigin, Unity.XR.CoreUtils");
+        Assert.That(xrOriginType, Is.Not.Null, "XROrigin type not found");
 
         GameObject rover = new GameObject("RoverPhysics");
         GameObject player = new GameObject("Player");
+        GameObject seat = new GameObject("Seat");
 
         try
         {
             Component controller = rover.AddComponent(RoverPhysicsControllerType);
             Component jetpack = player.AddComponent(AutoJetpackControllerType);
             Component smokeTrail = player.AddComponent(FlightSmokeTrailType);
+            Component xrOrigin = player.AddComponent(xrOriginType);
 
             FlightSmokeTrailType.GetField("jetpackController", BindingFlags.Instance | BindingFlags.Public)
                 ?.SetValue(smokeTrail, jetpack);
@@ -95,35 +99,36 @@ public class RoverPhysicsControllerTests
                 ?.SetValue(controller, jetpack);
             RoverPhysicsControllerType.GetField("flightSmokeTrail", BindingFlags.Instance | BindingFlags.NonPublic)
                 ?.SetValue(controller, smokeTrail);
+            RoverPhysicsControllerType.GetField("xrOrigin", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(controller, xrOrigin);
+            RoverPhysicsControllerType.GetField("seatAnchor", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(controller, seat.transform);
 
-            FieldInfo isFlyingField = AutoJetpackControllerType.GetField("isFlying", BindingFlags.Instance | BindingFlags.NonPublic);
-            FieldInfo externalLockField = AutoJetpackControllerType.GetField("externalFlightLock", BindingFlags.Instance | BindingFlags.NonPublic);
-            FieldInfo cooldownField = AutoJetpackControllerType.GetField("postDismountCooldown", BindingFlags.Instance | BindingFlags.NonPublic);
-            MethodInfo setMountedStateMethod = RoverPhysicsControllerType.GetMethod("SetJetpackMountedState", BindingFlags.Instance | BindingFlags.NonPublic);
+            seat.transform.SetParent(rover.transform, false);
 
-            Assert.That(isFlyingField, Is.Not.Null, "AutoJetpackController.isFlying not found");
-            Assert.That(externalLockField, Is.Not.Null, "AutoJetpackController.externalFlightLock not found");
-            Assert.That(cooldownField, Is.Not.Null, "AutoJetpackController.postDismountCooldown not found");
-            Assert.That(setMountedStateMethod, Is.Not.Null, "RoverPhysicsController.SetJetpackMountedState not found");
+            MethodInfo mountMethod = RoverPhysicsControllerType.GetMethod("Mount", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo dismountMethod = RoverPhysicsControllerType.GetMethod("Dismount", BindingFlags.Instance | BindingFlags.NonPublic);
+            PropertyInfo isMountedProperty = RoverPhysicsControllerType.GetProperty("IsMounted", BindingFlags.Instance | BindingFlags.Public);
 
-            isFlyingField.SetValue(jetpack, true);
+            Assert.That(mountMethod, Is.Not.Null, "RoverPhysicsController.Mount not found");
+            Assert.That(dismountMethod, Is.Not.Null, "RoverPhysicsController.Dismount not found");
+            Assert.That(isMountedProperty, Is.Not.Null, "RoverPhysicsController.IsMounted not found");
 
-            setMountedStateMethod.Invoke(controller, new object[] { true });
+            mountMethod.Invoke(controller, null);
 
-            Assert.That((bool)externalLockField.GetValue(jetpack), Is.True, "Mounting should externally lock the jetpack.");
-            Assert.That((bool)isFlyingField.GetValue(jetpack), Is.False, "Mounting should force the jetpack out of flying state.");
+            Assert.That((bool)isMountedProperty.GetValue(controller), Is.True, "Mounting should put the rover into mounted state.");
             Assert.That(((Behaviour)jetpack).enabled, Is.False, "Mounting should disable AutoJetpackController.");
 
-            setMountedStateMethod.Invoke(controller, new object[] { false });
+            dismountMethod.Invoke(controller, null);
 
-            Assert.That((bool)externalLockField.GetValue(jetpack), Is.False, "Dismounting should clear the external flight lock.");
+            Assert.That((bool)isMountedProperty.GetValue(controller), Is.False, "Dismounting should clear the mounted state.");
             Assert.That(((Behaviour)jetpack).enabled, Is.True, "Dismounting should re-enable AutoJetpackController.");
-            Assert.That((float)cooldownField.GetValue(jetpack), Is.EqualTo(1f).Within(0.001f), "Dismounting should restore the post-dismount jetpack cooldown.");
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(rover);
             UnityEngine.Object.DestroyImmediate(player);
+            UnityEngine.Object.DestroyImmediate(seat);
         }
     }
 

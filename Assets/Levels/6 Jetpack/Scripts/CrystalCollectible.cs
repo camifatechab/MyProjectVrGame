@@ -33,6 +33,7 @@ public class CrystalCollectible : MonoBehaviour
     public float handCollectRadius = 0.35f;
     
     private bool isCollected = false;
+    private bool collectionEnabled = true;
     // AudioSource no longer needed - using PlayClipAtPoint instead
     private XROrigin xrOrigin;
     private Transform[] playerTargets = System.Array.Empty<Transform>();
@@ -40,6 +41,7 @@ public class CrystalCollectible : MonoBehaviour
     private Renderer[] cachedRenderers;
 
     public bool IsCollected => isCollected;
+    public bool CollectionEnabled => collectionEnabled;
 
 void Start()
     {
@@ -68,7 +70,7 @@ void Start()
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
         }
 
-        if (!isCollected)
+        if (!isCollected && collectionEnabled)
         {
             TryCollectFromPlayerProximity();
         }
@@ -76,11 +78,19 @@ void Start()
 
     void OnTriggerEnter(Collider other)
     {
+        if (!collectionEnabled)
+            return;
+
         // Check if player collected it
         if (!isCollected && (other.CompareTag("MainCamera") || other.CompareTag("Player") || other.GetComponentInParent<XROrigin>() != null))
         {
             Collect();
         }
+    }
+
+    public void SetCollectionEnabled(bool enabled)
+    {
+        collectionEnabled = enabled;
     }
 
 void Collect()

@@ -11,8 +11,8 @@ public class RoverPhysicsController : MonoBehaviour
     public BoxCollider bodyCollider;
     public BoxCollider playerBlocker;
     public float rigidbodyMass = 450f;
-    public float maxForwardSpeed = 150f;
-    public float maxReverseSpeed = 7f;
+    public float maxForwardSpeed = 28f;
+    public float maxReverseSpeed = 10f;
     public float motorTorque = 350f;
     public float brakeTorque = 4200f;
     public float idleBrakeTorque = 120f;

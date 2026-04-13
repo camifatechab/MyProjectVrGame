@@ -28,6 +28,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     [SerializeField] private XROrigin xrOrigin;
     [SerializeField] private PlayerRespawnManager respawnManager;
     [SerializeField] private CrystalCollectible targetCrystal;
+    [SerializeField] private List<CrystalCollectible> requiredCrystals = new();
     [SerializeField] private RoverPhysicsController rover;
     [SerializeField] private PlayerHealth playerHealth;
 
@@ -44,16 +45,18 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     [Header("Path")]
     [SerializeField] private Transform flightPathRoot;
-    [SerializeField] private string crystalStopWaypointName = "WP03_ParadiseSweep";
+    [SerializeField] private string crystalStopWaypointName = "WP03";
 
     [Header("Startup")]
     [SerializeField] private bool startInRoverOnlyMode = true;
     [SerializeField] private bool movePlayerToStartOnPlay = true;
     [SerializeField] private bool snapDragonToStartOnPlay = true;
+    [SerializeField] private bool hideCrystalsUntilLanding = true;
     [SerializeField] private Vector3 playerStartPosition = new Vector3(23.7372284f, 27.1211224f, 43.6970062f);
 
     [Header("Crystal Landing")]
     [SerializeField] private float startFlightPitch = 61f;
+    [SerializeField] private float crystalStopReachDistance = 8f;
     [SerializeField] private float crystalPlatformDistance = 10f;
     [SerializeField] private float crystalLandingHeight = 3.25f;
     [SerializeField] private float crystalDismountHeight = 0.25f;
@@ -71,9 +74,11 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private readonly List<Transform> firstFlightWaypoints = new();
     private readonly List<Transform> secondFlightWaypoints = new();
+    private readonly List<CrystalCollectible> resolvedCrystals = new();
     private SequenceStage stage = SequenceStage.WaitingForInitialMount;
     private Transform crystalStopWaypoint;
     private Transform remountStartAnchor;
+    private bool crystalLandingTriggered;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -110,9 +115,18 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         HookEvents();
     }
 
+    private void Update()
+    {
+        if (stage == SequenceStage.FlyingToCrystal)
+            TryTriggerCrystalLandingFromWaypoint();
+    }
+
     private void OnDestroy()
     {
         UnhookEvents();
+
+        if (dragon != null)
+            dragon.SetScriptedSequenceActive(false, lockJetpackWhileUnmounted: false);
     }
 
     private bool ResolveReferences()
@@ -123,7 +137,9 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         rover ??= FindFirstObjectByType<RoverPhysicsController>();
         playerHealth ??= FindFirstObjectByType<PlayerHealth>();
         flightPathRoot ??= FindSceneTransform("FlightPath");
+        ResolveRequiredCrystals();
         targetCrystal ??= ResolveTargetCrystal();
+        targetCrystal ??= resolvedCrystals.FirstOrDefault();
 
         playerStartAnchor ??= FindWaypoint("WP01_");
         dragonStartAnchor ??= playerStartAnchor;
@@ -133,6 +149,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         if (dragon == null) missingReferences.Add(nameof(dragon));
         if (xrOrigin == null) missingReferences.Add(nameof(xrOrigin));
         if (flightPathRoot == null) missingReferences.Add(nameof(flightPathRoot));
+        if (resolvedCrystals.Count == 0) missingReferences.Add(nameof(requiredCrystals));
         if (targetCrystal == null) missingReferences.Add(nameof(targetCrystal));
         if (playerStartAnchor == null) missingReferences.Add(nameof(playerStartAnchor));
         if (playerSpawnAnchor == null) missingReferences.Add(nameof(playerSpawnAnchor));
@@ -178,24 +195,31 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         if (snapDragonToStartOnPlay)
             SnapDragonToStart();
 
-        if (targetCrystal != null)
-            targetCrystal.gameObject.SetActive(true);
+        SetObjectiveCrystalsActive(!hideCrystalsUntilLanding);
+        SetObjectiveCrystalCollectionEnabled(false);
+        crystalLandingTriggered = false;
 
+        dragon.SetScriptedSequenceActive(true, lockJetpackWhileUnmounted: true);
         dragon.allowManualParkingInput = false;
         dragon.reversePathWhenFinished = false;
         dragon.SetMountEnabled(true);
-        dragon.SetFlightPath(firstFlightWaypoints, resetProgress: true);
+        ApplyInitialFlightPath();
 
         if (rover != null)
             rover.SetMountEnabled(false);
 
         if (respawnManager != null)
-        {
             respawnManager.SetRespawnEnabled(true);
+        
+        SyncRespawnAndCheckpoint(playerSpawnAnchor);
+    }
 
-            if (playerSpawnAnchor != null)
-                respawnManager.SetRespawnWaypoint(playerSpawnAnchor);
-        }
+    private void ApplyInitialFlightPath()
+    {
+        if (dragon == null || firstFlightWaypoints.Count < 2)
+            return;
+
+        dragon.SetFlightPath(firstFlightWaypoints, resetProgress: true);
     }
 
     private void HookEvents()
@@ -206,7 +230,12 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         dragon.OnPlayerDismounted += HandleDragonDismounted;
         dragon.OnFlightPathCompleted += HandleFlightPathCompleted;
         dragon.OnLandingCompleted += HandleLandingCompleted;
-        targetCrystal.Collected += HandleCrystalCollected;
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal != null)
+                crystal.Collected += HandleCrystalCollected;
+        }
     }
 
     private void UnhookEvents()
@@ -219,8 +248,12 @@ public class FloatingIslandIntroSequence : MonoBehaviour
             dragon.OnLandingCompleted -= HandleLandingCompleted;
         }
 
-        if (targetCrystal != null)
-            targetCrystal.Collected -= HandleCrystalCollected;
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal != null)
+                crystal.Collected -= HandleCrystalCollected;
+        }
     }
 
     private void BuildFlightPaths()
@@ -229,8 +262,9 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         secondFlightWaypoints.Clear();
 
         List<Transform> orderedWaypoints = flightPathRoot.Cast<Transform>()
-            .Where(waypoint => waypoint != null)
-            .OrderBy(waypoint => waypoint.name)
+            .Where(IsNamedWaypoint)
+            .OrderBy(GetWaypointOrder)
+            .ThenBy(waypoint => waypoint.name)
             .ToList();
 
         if (orderedWaypoints.Count == 0)
@@ -240,10 +274,8 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         crystalStopWaypoint = orderedWaypoints[stopIndex];
         crystalApproachWaypoint = BuildCrystalApproachWaypoint(orderedWaypoints, stopIndex);
 
-        for (int i = 0; i < stopIndex; i++)
+        for (int i = 0; i <= stopIndex; i++)
             firstFlightWaypoints.Add(orderedWaypoints[i]);
-
-        firstFlightWaypoints.Add(crystalApproachWaypoint != null ? crystalApproachWaypoint : crystalStopWaypoint);
 
         for (int i = stopIndex + 1; i < orderedWaypoints.Count; i++)
             secondFlightWaypoints.Add(orderedWaypoints[i]);
@@ -265,6 +297,8 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     {
         if (stage == SequenceStage.WaitingForInitialMount)
         {
+            ApplyInitialFlightPath();
+            crystalLandingTriggered = false;
             stage = SequenceStage.FlyingToCrystal;
             return;
         }
@@ -277,8 +311,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     {
         if (stage == SequenceStage.FlyingToCrystal)
         {
-            stage = SequenceStage.LandingAtCrystal;
-            dragon.ParkAtTarget(crystalLandingAnchor, crystalDismountAnchor);
+            BeginCrystalLanding();
             return;
         }
 
@@ -301,11 +334,11 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     {
         stage = SequenceStage.Completed;
 
-        if (targetCrystal != null)
-            targetCrystal.gameObject.SetActive(false);
+        SetObjectiveCrystalsActive(false);
 
         if (dragon != null)
         {
+            dragon.SetScriptedSequenceActive(false, lockJetpackWhileUnmounted: false);
             dragon.allowManualParkingInput = false;
             dragon.reversePathWhenFinished = false;
             dragon.SetMountEnabled(false);
@@ -326,14 +359,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
                 currentEuler.z);
         }
 
-        if (respawnManager != null && roverDismountAnchor != null)
-        {
-            respawnManager.SetRespawnEnabled(true);
-            respawnManager.SetRespawnWaypoint(roverDismountAnchor);
-        }
-
-        if (playerHealth != null && roverDismountAnchor != null)
-            playerHealth.SetCheckpoint(roverDismountAnchor.position);
+        SyncRespawnAndCheckpoint(roverDismountAnchor);
     }
 
     private void HandleLandingCompleted(Transform _)
@@ -343,9 +369,9 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
         stage = SequenceStage.WaitingForCrystalPickup;
         dragon.SetMountEnabled(false);
-
-        if (respawnManager != null && crystalDismountAnchor != null)
-            respawnManager.SetRespawnWaypoint(crystalDismountAnchor);
+        SetObjectiveCrystalsActive(true);
+        SetObjectiveCrystalCollectionEnabled(true);
+        SyncRespawnAndCheckpoint(crystalDismountAnchor);
     }
 
     private void HandleCrystalCollected()
@@ -353,7 +379,11 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         if (stage != SequenceStage.WaitingForCrystalPickup)
             return;
 
+        if (!AreAllRequiredCrystalsCollected())
+            return;
+
         stage = SequenceStage.WaitingForCrystalRemount;
+        SetObjectiveCrystalCollectionEnabled(false);
         UpdateCrystalRespawnAnchor();
         remountStartAnchor = CreateOrMoveAnchor(
             "CrystalRemountStart_Runtime",
@@ -365,9 +395,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
         dragon.SetFlightPath(remountFlightPath, resetProgress: true);
         dragon.SetMountEnabled(true);
-
-        if (respawnManager != null)
-            respawnManager.SetRespawnWaypoint(crystalRespawnAnchor != null ? crystalRespawnAnchor : crystalDismountAnchor);
+        SyncRespawnAndCheckpoint(crystalRespawnAnchor != null ? crystalRespawnAnchor : crystalDismountAnchor);
     }
 
     private void HandleDragonDismounted()
@@ -378,11 +406,17 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private void BuildCrystalAnchors()
     {
-        if (targetCrystal == null)
+        Vector3 crystalObjectiveCenter = GetCrystalObjectiveCenter();
+        bool hasCrystalObjective = crystalObjectiveCenter != Vector3.zero;
+        bool hasStopWaypoint = crystalStopWaypoint != null;
+        if (!hasCrystalObjective && !hasStopWaypoint)
             return;
 
-        Vector3 approachDirection = ResolveCrystalApproachDirection();
-        Vector3 platformGroundPoint = ResolveGroundPoint(targetCrystal.transform.position + approachDirection * crystalPlatformDistance);
+        Vector3 landingReferencePoint = hasStopWaypoint
+            ? crystalStopWaypoint.position
+            : crystalObjectiveCenter + ResolveCrystalApproachDirection() * crystalPlatformDistance;
+
+        Vector3 platformGroundPoint = ResolveGroundPoint(landingReferencePoint);
         Quaternion anchorRotation = GetAnchorFacingRotation(platformGroundPoint);
 
         crystalLandingAnchor = CreateOrMoveAnchor(
@@ -433,19 +467,18 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private void UpdateCrystalRespawnAnchor()
     {
-        if (respawnManager == null || xrOrigin == null)
+        if (crystalDismountAnchor == null)
             return;
 
-        Vector3 playerGroundPoint = ResolveGroundPoint(xrOrigin.transform.position);
-        Vector3 respawnPosition = playerGroundPoint + Vector3.up * crystalDismountHeight;
-        Quaternion respawnRotation = Quaternion.Euler(0f, xrOrigin.transform.eulerAngles.y, 0f);
+        float respawnYaw = xrOrigin != null
+            ? xrOrigin.transform.eulerAngles.y
+            : crystalDismountAnchor.eulerAngles.y;
+        Quaternion respawnRotation = Quaternion.Euler(0f, respawnYaw, 0f);
 
         crystalRespawnAnchor = CreateOrMoveAnchor(
             "CrystalRespawnAnchor_Runtime",
-            respawnPosition,
+            crystalDismountAnchor.position,
             respawnRotation);
-
-        respawnManager.SetRespawnWaypoint(crystalRespawnAnchor);
     }
 
     private Transform BuildPlayerSpawnAnchor()
@@ -467,19 +500,13 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     private void CompleteRoverHandoff()
     {
         stage = SequenceStage.Completed;
+        dragon.SetScriptedSequenceActive(false, lockJetpackWhileUnmounted: false);
         dragon.SetMountEnabled(false);
 
         if (rover != null)
             rover.SetMountEnabled(true);
 
-        if (respawnManager != null && roverDismountAnchor != null)
-        {
-            respawnManager.SetRespawnEnabled(true);
-            respawnManager.SetRespawnWaypoint(roverDismountAnchor);
-        }
-
-        if (playerHealth != null && roverDismountAnchor != null)
-            playerHealth.SetCheckpoint(roverDismountAnchor.position);
+        SyncRespawnAndCheckpoint(roverDismountAnchor);
     }
 
     private Transform BuildCrystalApproachWaypoint(List<Transform> orderedWaypoints, int stopIndex)
@@ -526,15 +553,16 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private Vector3 ResolveCrystalApproachDirection()
     {
+        Vector3 crystalObjectiveCenter = GetCrystalObjectiveCenter();
         Vector3 referencePoint = crystalStopWaypoint != null
             ? crystalStopWaypoint.position
             : playerStartAnchor != null
                 ? playerStartAnchor.position
                 : dragon != null
                     ? dragon.transform.position
-                    : targetCrystal.transform.position + Vector3.back;
+                    : crystalObjectiveCenter + Vector3.back;
 
-        Vector3 direction = referencePoint - targetCrystal.transform.position;
+        Vector3 direction = referencePoint - crystalObjectiveCenter;
         direction.y = 0f;
 
         if (direction.sqrMagnitude < 0.01f)
@@ -554,7 +582,7 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private Quaternion GetAnchorFacingRotation(Vector3 anchorPosition)
     {
-        Vector3 lookDirection = targetCrystal.transform.position - anchorPosition;
+        Vector3 lookDirection = GetCrystalObjectiveCenter() - anchorPosition;
         lookDirection.y = 0f;
 
         if (lookDirection.sqrMagnitude < 0.01f)
@@ -571,19 +599,23 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private int FindStopWaypointIndex(List<Transform> orderedWaypoints)
     {
-        int namedIndex = orderedWaypoints.FindIndex(waypoint => waypoint.name == crystalStopWaypointName);
+        int configuredStopOrder = ExtractWaypointOrder(crystalStopWaypointName);
+        int namedIndex = configuredStopOrder != int.MaxValue
+            ? orderedWaypoints.FindIndex(waypoint => GetWaypointOrder(waypoint) == configuredStopOrder)
+            : orderedWaypoints.FindIndex(waypoint => waypoint.name == crystalStopWaypointName);
         if (namedIndex >= 1)
             return namedIndex;
 
-        if (targetCrystal == null)
+        if (resolvedCrystals.Count == 0 && targetCrystal == null)
             return Mathf.Clamp(orderedWaypoints.Count / 2, 1, orderedWaypoints.Count - 1);
 
         int nearestIndex = 1;
         float nearestDistance = float.MaxValue;
+        Vector3 crystalObjectiveCenter = GetCrystalObjectiveCenter();
 
         for (int i = 1; i < orderedWaypoints.Count - 1; i++)
         {
-            float distance = Vector3.Distance(orderedWaypoints[i].position, targetCrystal.transform.position);
+            float distance = Vector3.Distance(orderedWaypoints[i].position, crystalObjectiveCenter);
             if (distance < nearestDistance)
             {
                 nearestDistance = distance;
@@ -592,6 +624,111 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         }
 
         return nearestIndex;
+    }
+
+    private void ResolveRequiredCrystals()
+    {
+        resolvedCrystals.Clear();
+
+        IEnumerable<CrystalCollectible> crystals = requiredCrystals.Where(crystal => crystal != null);
+        if (!crystals.Any())
+            crystals = ResolveSceneCrystals();
+
+        foreach (CrystalCollectible crystal in crystals.Distinct())
+            resolvedCrystals.Add(crystal);
+
+        requiredCrystals.Clear();
+        requiredCrystals.AddRange(resolvedCrystals);
+    }
+
+    private IEnumerable<CrystalCollectible> ResolveSceneCrystals()
+    {
+        Transform crystalRoot = FindSceneTransform("Crystals");
+
+        IEnumerable<CrystalCollectible> crystals = Resources.FindObjectsOfTypeAll<CrystalCollectible>()
+            .Where(crystal =>
+                crystal != null &&
+                crystal.hideFlags == HideFlags.None &&
+                crystal.gameObject.scene.IsValid());
+
+        if (crystalRoot != null)
+            crystals = crystals.Where(crystal => crystal.transform != null && crystal.transform.IsChildOf(crystalRoot));
+
+        return crystals.OrderBy(crystal => crystal.name);
+    }
+
+    private void SetObjectiveCrystalsActive(bool active)
+    {
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal != null)
+                crystal.gameObject.SetActive(active);
+        }
+    }
+
+    private void SetObjectiveCrystalCollectionEnabled(bool enabled)
+    {
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal != null)
+                crystal.SetCollectionEnabled(enabled);
+        }
+    }
+
+    private bool AreAllRequiredCrystalsCollected()
+    {
+        int crystalCount = 0;
+
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal == null)
+                continue;
+
+            crystalCount++;
+            if (!crystal.IsCollected)
+                return false;
+        }
+
+        return crystalCount > 0;
+    }
+
+    private Vector3 GetCrystalObjectiveCenter()
+    {
+        Vector3 sum = Vector3.zero;
+        int count = 0;
+
+        for (int i = 0; i < resolvedCrystals.Count; i++)
+        {
+            CrystalCollectible crystal = resolvedCrystals[i];
+            if (crystal == null)
+                continue;
+
+            sum += crystal.transform.position;
+            count++;
+        }
+
+        if (count > 0)
+            return sum / count;
+
+        return targetCrystal != null ? targetCrystal.transform.position : Vector3.zero;
+    }
+
+    private void SyncRespawnAndCheckpoint(Transform anchor)
+    {
+        if (anchor == null)
+            return;
+
+        if (respawnManager != null)
+        {
+            respawnManager.SetRespawnEnabled(true);
+            respawnManager.SetRespawnWaypoint(anchor);
+        }
+
+        if (playerHealth != null)
+            playerHealth.SetCheckpoint(anchor.position);
     }
 
     private static Transform FindWaypoint(string prefix)
@@ -612,6 +749,55 @@ public class FloatingIslandIntroSequence : MonoBehaviour
                 transform.hideFlags == HideFlags.None &&
                 transform.gameObject.scene.IsValid() &&
                 transform.name == objectName);
+    }
+
+    private static bool IsNamedWaypoint(Transform waypoint)
+    {
+        return waypoint != null && GetWaypointOrder(waypoint) != int.MaxValue;
+    }
+
+    private static int GetWaypointOrder(Transform waypoint)
+    {
+        return waypoint == null ? int.MaxValue : ExtractWaypointOrder(waypoint.name);
+    }
+
+    private void TryTriggerCrystalLandingFromWaypoint()
+    {
+        if (crystalLandingTriggered || dragon == null || crystalStopWaypoint == null)
+            return;
+
+        if (Vector3.Distance(dragon.transform.position, crystalStopWaypoint.position) > crystalStopReachDistance)
+            return;
+
+        BeginCrystalLanding();
+    }
+
+    private void BeginCrystalLanding()
+    {
+        if (stage != SequenceStage.FlyingToCrystal || crystalLandingTriggered)
+            return;
+
+        crystalLandingTriggered = true;
+        stage = SequenceStage.LandingAtCrystal;
+        dragon.ParkAtTarget(crystalStopWaypoint != null ? crystalStopWaypoint : crystalLandingAnchor, crystalDismountAnchor);
+    }
+
+    private static int ExtractWaypointOrder(string waypointName)
+    {
+        if (string.IsNullOrEmpty(waypointName) || waypointName.Length < 3 || !waypointName.StartsWith("WP"))
+            return int.MaxValue;
+
+        int digitStart = 2;
+        int digitEnd = digitStart;
+        while (digitEnd < waypointName.Length && char.IsDigit(waypointName[digitEnd]))
+            digitEnd++;
+
+        if (digitEnd == digitStart)
+            return int.MaxValue;
+
+        return int.TryParse(waypointName.Substring(digitStart, digitEnd - digitStart), out int order)
+            ? order
+            : int.MaxValue;
     }
 
     private static Transform CreateOrMoveAnchor(string name, Vector3 position, Quaternion rotation)

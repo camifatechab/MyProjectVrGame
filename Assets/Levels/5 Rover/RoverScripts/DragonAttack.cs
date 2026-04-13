@@ -19,8 +19,8 @@ public class DragonAttack : MonoBehaviour
     private const float AggressivePursuitSpeedMultiplier = 1.38f;
     private const float LowSpeedTurnSpeedMultiplier = 1.04f;
     private const float AggressiveTurnSpeedMultiplier = 1.25f;
-    private const float PlayerSpeedThreatStart = 12f;
-    private const float PlayerSpeedThreatMax = 50f;
+    private const float PlayerSpeedThreatStart = 8f;
+    private const float PlayerSpeedThreatMax = 28f;
     private const float FastPlayerAggroThreshold = 0.6f;
     private const float SpeedPressureWeight = 0.75f;
     private const float AlertMemoryMin = 2.75f;

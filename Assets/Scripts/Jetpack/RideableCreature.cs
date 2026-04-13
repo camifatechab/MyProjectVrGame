@@ -69,6 +69,12 @@ public class RideableCreature : MonoBehaviour
 
     [Tooltip("Reverse the path automatically when the flight route finishes")]
     public bool reversePathWhenFinished = true;
+
+    [Tooltip("When true, scripted progression owns the ride and blocks manual parking/dismount input")]
+    public bool scriptedSequenceActive = false;
+
+    [Tooltip("Keep the jetpack locked while the scripted sequence is active, even when the player is dismounted")]
+    public bool keepJetpackLockedWhileUnmounted = false;
     
     [Header("Platform Parking")]
     [Tooltip("Tag used to identify landing platforms")]
@@ -155,6 +161,7 @@ public class RideableCreature : MonoBehaviour
     public int TotalWaypoints => flightPathWaypoints.Count;
     public float FlightProgress => flightPathWaypoints.Count > 1 ? (float)currentFlightWaypointIndex / (flightPathWaypoints.Count - 1) : 0f;
     public bool IsReversePath => isReversePath;
+    public bool IsScriptedSequenceActive => scriptedSequenceActive;
     public Transform CurrentWaypoint => flightPathWaypoints.Count == 0
         ? null
         : flightPathWaypoints[Mathf.Clamp(currentFlightWaypointIndex, 0, flightPathWaypoints.Count - 1)];
@@ -200,6 +207,9 @@ public class RideableCreature : MonoBehaviour
         
 FindXRControllers();
         FindJetpackController();
+
+        if (scriptedSequenceActive && keepJetpackLockedWhileUnmounted)
+            SetJetpackLock(true);
         
         moveProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Movement.ContinuousMoveProvider>();
         turnProvider = FindObjectOfType<UnityEngine.XR.Interaction.Toolkit.Locomotion.Turning.ContinuousTurnProvider>();
@@ -555,7 +565,7 @@ private bool IsGripPressed(InputDevice device)
             bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
             if (Input.GetKeyDown(KeyCode.P)) gripPressed = true;
             
-            if (allowManualParkingInput && gripPressed && !wasGripPressed)
+            if (CanUseManualParkingInput() && gripPressed && !wasGripPressed)
             {
                 TryParkAtNearestPlatform();
             }
@@ -568,7 +578,7 @@ private bool IsGripPressed(InputDevice device)
         }
         
         // Only allow dismount when NOT flying and NOT parking
-        if (!isFlying && !isParking)
+        if (!isFlying && !isParking && CanUseManualDismountInput())
         {
             bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
             if (Input.GetKeyDown(KeyCode.E)) gripPressed = true;
@@ -878,7 +888,7 @@ private System.Collections.IEnumerator DismountOnPlatform()
         }
         
         // Re-enable player controls
-        SetJetpackLock(false);
+        SetJetpackLock(ShouldKeepJetpackLockedAfterDismount());
         if (moveProvider != null) moveProvider.enabled = true;
         if (turnProvider != null) turnProvider.enabled = true;
         if (snapTurnProvider != null) snapTurnProvider.enabled = true;
@@ -970,7 +980,7 @@ private void SendHapticPulse()
             xrOrigin.position = dismountPos;
         }
         
-        SetJetpackLock(false);
+        SetJetpackLock(ShouldKeepJetpackLockedAfterDismount());
         
         if (moveProvider != null) moveProvider.enabled = true;
         if (turnProvider != null) turnProvider.enabled = true;
@@ -996,6 +1006,22 @@ private void SendHapticPulse()
     public void SetMountEnabled(bool enabled)
     {
         canPlayerMount = enabled;
+    }
+
+    public void SetScriptedSequenceActive(bool active, bool lockJetpackWhileUnmounted = true)
+    {
+        scriptedSequenceActive = active;
+        keepJetpackLockedWhileUnmounted = active && lockJetpackWhileUnmounted;
+        wasGripPressed = false;
+
+        if (active)
+        {
+            SetJetpackLock(true);
+        }
+        else if (!isPlayerMounted)
+        {
+            SetJetpackLock(false);
+        }
     }
 
     public void SetFlightPath(List<Transform> waypoints, bool resetProgress = true)
@@ -1031,5 +1057,20 @@ private void SendHapticPulse()
             autoJetpackController.SetExternalFlightLock(locked);
 
         jetpackController.enabled = locked ? false : (!hasInitialJetpackEnabledState || initialJetpackEnabledState);
+    }
+
+    private bool CanUseManualParkingInput()
+    {
+        return allowManualParkingInput && !scriptedSequenceActive;
+    }
+
+    private bool CanUseManualDismountInput()
+    {
+        return !scriptedSequenceActive;
+    }
+
+    private bool ShouldKeepJetpackLockedAfterDismount()
+    {
+        return scriptedSequenceActive && keepJetpackLockedWhileUnmounted;
     }
 }

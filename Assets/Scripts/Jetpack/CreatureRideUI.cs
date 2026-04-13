@@ -92,7 +92,7 @@ public class CreatureRideUI : MonoBehaviour
     private void UpdatePromptState()
     {
         // Simple logic: show "Grip to Ride" when near creature and not mounted
-        if (!creature.IsPlayerMounted)
+        if (!creature.IsPlayerMounted && creature.canPlayerMount)
         {
             // Not mounted - check distance
             float distance = Vector3.Distance(playerCamera.position, creature.transform.position);
