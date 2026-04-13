@@ -47,11 +47,16 @@ public class RoverDriver : MonoBehaviour
     [Header("Haptics")]
     public float idleRumble = 0.05f;
     public float maxRumble  = 0.25f;
+    public float steeringRumble = 0.07f;
+    public float roughTerrainRumble = 0.05f;
+    public float impactRumble = 0.35f;
+    public float impactDuration = 0.12f;
 
     // --- runtime refs ---
     private BoxCollider           boxCol;
     private XROrigin              xrOrigin;
     private AutoJetpackController jetpack;
+    private FlightSmokeTrail      flightSmokeTrail;
     private CharacterController   charController;
     private Transform             leftCtrl;
     private Transform             rightCtrl;
@@ -69,6 +74,7 @@ public class RoverDriver : MonoBehaviour
     private float smoothedSteer     = 0f;
     private float dismountCooldown  = 0f;
     private float rumbleTimer       = 0f;
+    private float impactCooldown    = 0f;
     private float dismountHoldTimer = 0f;
     private float verticalVelocity  = 0f;
     private Vector3 currentGroundNormal = Vector3.up;
@@ -130,6 +136,7 @@ public class RoverDriver : MonoBehaviour
 
         xrOrigin = FindAnyObjectByType<XROrigin>();
         jetpack  = FindAnyObjectByType<AutoJetpackController>();
+        flightSmokeTrail = FindAnyObjectByType<FlightSmokeTrail>();
 
         if (xrOrigin != null)
         {
@@ -422,6 +429,7 @@ public class RoverDriver : MonoBehaviour
     {
         RefreshDevices();
         dismountCooldown -= Time.deltaTime;
+        impactCooldown = Mathf.Max(0f, impactCooldown - Time.deltaTime);
 
         bool leftGrip  = GetGrip(leftDevice);
         bool rightGrip = GetGrip(rightDevice);
@@ -462,7 +470,7 @@ public class RoverDriver : MonoBehaviour
             GroundSnap();
             Depenetrate();
             SpinWheels();
-            UpdateHaptics(rightGrip);
+            UpdateHaptics(throttle, steer);
         }
 
         gripsLastFrame = bothGrips;
@@ -611,7 +619,10 @@ public class RoverDriver : MonoBehaviour
             transform.position += slideDir * (remainingDist * 0.5f);
 
         if (Vector3.Dot(moveDir, -hit.normal) > 0.2f)
+        {
             currentSpeed *= hit.normal.y > 0.2f ? 0.85f : 0.6f;
+            TriggerImpactHaptics(hit.normal.y > 0.2f ? 0.55f : 1f);
+        }
     }
 
     bool TryGetBlockingHit(Vector3 moveDir, float castDistance, Vector3 referencePosition, out RaycastHit bestHit)
@@ -826,7 +837,10 @@ public class RoverDriver : MonoBehaviour
                 transform.position += dir * (dist + 0.001f);
                 float into = Vector3.Dot(transform.forward * currentSpeed, -dir);
                 if (into > 0f && dir.y < 0.1f)
+                {
                     currentSpeed *= 0.7f;
+                    TriggerImpactHaptics(0.75f);
+                }
             }
         }
     }
@@ -854,21 +868,59 @@ public class RoverDriver : MonoBehaviour
 
     // ── Haptics ───────────────────────────────────────────────────────────────
 
-    void UpdateHaptics(bool gasHeld)
+    void UpdateHaptics(float throttle, float steer)
     {
-        if (!gasHeld || Mathf.Abs(currentSpeed) < 0.2f)
+        float speed01 = Mathf.Clamp01(Mathf.Abs(currentSpeed) / Mathf.Max(maxForwardSpeed, 0.01f));
+        float throttle01 = Mathf.Clamp01(Mathf.Abs(throttle));
+        float steer01 = Mathf.Clamp01(Mathf.Abs(steer));
+        float terrain01 = Mathf.Clamp01(1f - currentGroundNormal.y);
+
+        if (speed01 < 0.02f && throttle01 < 0.01f && steer01 < 0.05f)
         {
-            SendHaptic(leftDevice,  0f, 0f);
-            SendHaptic(rightDevice, 0f, 0f);
-            rumbleTimer = 0f;
+            StopDriveHaptics();
             return;
         }
+
         rumbleTimer -= Time.deltaTime;
         if (rumbleTimer > 0f) return;
+
         rumbleTimer = 0.08f;
-        float intensity = Mathf.Lerp(idleRumble, maxRumble, Mathf.Abs(currentSpeed) / maxForwardSpeed);
-        SendHaptic(leftDevice,  intensity, 0.08f);
-        SendHaptic(rightDevice, intensity, 0.08f);
+
+        float cruise = Mathf.Lerp(idleRumble, maxRumble, speed01);
+        float throttleBoost = idleRumble * 0.5f * throttle01;
+        float terrainBoost = roughTerrainRumble * terrain01;
+        float steerBoost = steeringRumble * steer01;
+
+        float leftIntensity = cruise + throttleBoost + terrainBoost + (steer < -0.05f ? steerBoost : steerBoost * 0.35f);
+        float rightIntensity = cruise + throttleBoost + terrainBoost + (steer > 0.05f ? steerBoost : steerBoost * 0.35f);
+
+        if (!hasGroundSupport)
+        {
+            leftIntensity *= 0.6f;
+            rightIntensity *= 0.6f;
+        }
+
+        SendHaptic(leftDevice, Mathf.Clamp01(leftIntensity), 0.08f);
+        SendHaptic(rightDevice, Mathf.Clamp01(rightIntensity), 0.08f);
+    }
+
+    void StopDriveHaptics()
+    {
+        SendHaptic(leftDevice, 0f, 0f);
+        SendHaptic(rightDevice, 0f, 0f);
+        rumbleTimer = 0f;
+    }
+
+    void TriggerImpactHaptics(float intensityScale)
+    {
+        if (!isMounted || impactCooldown > 0f)
+            return;
+
+        impactCooldown = impactDuration;
+
+        float amplitude = Mathf.Clamp01(impactRumble * Mathf.Clamp01(intensityScale));
+        SendHaptic(leftDevice, amplitude, impactDuration);
+        SendHaptic(rightDevice, amplitude, impactDuration);
     }
 
     void SendHaptic(InputDevice d, float amplitude, float duration)
@@ -880,20 +932,12 @@ public class RoverDriver : MonoBehaviour
 
     void Mount()
     {
-        if (jetpack != null) jetpack.enabled = false;
+        SetJetpackMountedState(mounted: true);
 
         isMounted        = true;
         dismountCooldown = 2f;
         currentSpeed     = 0f;
         Debug.Log("[RoverDriver] Mounted!");
-
-        if (jetpack != null)
-        {
-            jetpack.enabled = false;
-            var flyingField = typeof(AutoJetpackController).GetField("isFlying",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            if (flyingField != null) flyingField.SetValue(jetpack, false);
-        }
 
         if (xrOrigin != null)
         {
@@ -920,8 +964,7 @@ public class RoverDriver : MonoBehaviour
         dismountHoldTimer = 0f;
         Debug.Log("[RoverDriver] Dismounted!");
 
-        SendHaptic(leftDevice,  0f, 0f);
-        SendHaptic(rightDevice, 0f, 0f);
+        StopDriveHaptics();
 
         if (xrOrigin != null)
         {
@@ -934,14 +977,41 @@ public class RoverDriver : MonoBehaviour
         if (locomotionProviders != null)
             foreach (var p in locomotionProviders) if (p != null) p.enabled = true;
         if (charController != null) charController.enabled = true;
+        SetJetpackMountedState(mounted: false);
+    }
 
-        if (jetpack != null)
+    void SetJetpackMountedState(bool mounted)
+    {
+        if (jetpack == null)
+            return;
+
+        jetpack.SetExternalFlightLock(mounted);
+
+        var flyingField = typeof(AutoJetpackController).GetField("isFlying",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        if (mounted)
         {
-            jetpack.enabled = true;
-            var field = typeof(AutoJetpackController).GetField("postDismountCooldown",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-            if (field != null) field.SetValue(jetpack, 1.0f);
+            if (flyingField != null)
+                flyingField.SetValue(jetpack, false);
+
+            if (flightSmokeTrail != null)
+                flightSmokeTrail.ClearTrail();
+
+            if (HapticsManager.Instance != null)
+                HapticsManager.Instance.StopJetpackVibration();
+
+            jetpack.enabled = false;
+            return;
         }
+
+        jetpack.enabled = true;
+        jetpack.SetExternalFlightLock(false);
+
+        var cooldownField = typeof(AutoJetpackController).GetField("postDismountCooldown",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (cooldownField != null)
+            cooldownField.SetValue(jetpack, 1.0f);
     }
 
     // ── XR helpers ────────────────────────────────────────────────────────────

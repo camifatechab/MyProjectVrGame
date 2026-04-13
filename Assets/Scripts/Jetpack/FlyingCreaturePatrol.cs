@@ -105,16 +105,43 @@ public class FlyingCreaturePatrol : MonoBehaviour
     private Collider cachedCollider;
     private Vector3 lastPosition;
     private Vector3 smoothedDirection;
+    private float instanceSpeedMult = 1f;
+    private float instanceTurnMult = 1f;
+    private float stuckTimer;
+    private Vector3 stuckCheckPosition;
+    private const float StuckCheckInterval = 3f;
+    private const float StuckDistanceThreshold = 1f;
+    private int movementLayerMask = ~0;
     
-    private void Start()
+    private void Awake()
     {
         cachedCollider = GetComponent<Collider>();
+        AutoDiscoverWaypoints();
+    }
+
+    private void Start()
+    {
         bobOffset = Random.Range(0f, Mathf.PI * 2f);
         lastPosition = transform.position;
         smoothedDirection = transform.forward;
 
+        // Per-instance variation so targets don't look synchronized
+        instanceSpeedMult = Random.Range(0.75f, 1.3f);
+        instanceTurnMult = Random.Range(0.8f, 1.2f);
+        bobAmplitude *= Random.Range(0.6f, 1.4f);
+        bobSpeed *= Random.Range(0.7f, 1.3f);
+        stuckCheckPosition = transform.position;
+
         ConfigureAttackAreaPatrol();
         InitializeWaypoints();
+
+        // Only dynamic-area targets need a startup stagger.
+        // Authored waypoint routes should begin navigating immediately.
+        if (gameObject.name.StartsWith("Target_") && useDynamicAreaPatrol)
+        {
+            isPaused = true;
+            pauseTimer = Random.Range(0.1f, 3f);
+        }
 
         if (waypointPositions.Count == 0)
         {
@@ -123,18 +150,59 @@ public class FlyingCreaturePatrol : MonoBehaviour
         }
     }
 
+    private void AutoDiscoverWaypoints()
+    {
+        if (waypoints.Count > 0)
+            return;
+
+        string baseName = gameObject.name;
+        for (int i = 1; i <= 20; i++)
+        {
+            GameObject wp = GameObject.Find(baseName + "_WP" + i);
+            if (wp != null)
+                waypoints.Add(wp.transform);
+            else
+                break;
+        }
+
+        if (waypoints.Count > 0)
+            Debug.Log($"{baseName}: Auto-discovered {waypoints.Count} waypoints");
+    }
+
     private void ConfigureAttackAreaPatrol()
     {
-        if (!gameObject.name.StartsWith("Target_") || waypoints.Count > 0)
+        if (!gameObject.name.StartsWith("Target_"))
             return;
+
+        moveSpeed = Mathf.Max(moveSpeed, 18f);
+        turnSpeed = Mathf.Max(turnSpeed, 4f);
+        movementLayerMask = ~(1 << 13);
+
+        // Prefer authored Target_*_WP* routes in FloatingIsland.
+        if (HasAssignedWaypoints())
+        {
+            ConfigureWaypointRouteBounds();
+            useDynamicAreaPatrol = false;
+            return;
+        }
 
         GameObject attackArea = GameObject.Find(AttackAreaObjectName);
-        if (attackArea == null)
+        if (attackArea == null || !attackArea.activeInHierarchy)
+        {
+            ConfigureFallbackRouteBounds();
+            useDynamicAreaPatrol = false;
+            autoWaypointCount = Mathf.Max(autoWaypointCount, 4);
             return;
+        }
 
         BoxCollider attackBounds = attackArea.GetComponent<BoxCollider>();
-        if (attackBounds == null)
+        if (attackBounds == null || !attackBounds.enabled)
+        {
+            ConfigureFallbackRouteBounds();
+            useDynamicAreaPatrol = false;
+            autoWaypointCount = Mathf.Max(autoWaypointCount, 4);
             return;
+        }
 
         Bounds bounds = attackBounds.bounds;
         patrolAreaCenter = bounds.center;
@@ -145,7 +213,7 @@ public class FlyingCreaturePatrol : MonoBehaviour
         boundsMin = bounds.min;
         boundsMax = bounds.max;
         useDynamicAreaPatrol = true;
-        autoWaypointCount = 1;
+        autoWaypointCount = 4;
     }
     
     private void InitializeWaypoints()
@@ -181,11 +249,25 @@ public class FlyingCreaturePatrol : MonoBehaviour
                     currentWaypointIndex = i;
                 }
             }
+
+            if (!useDynamicAreaPatrol && waypointPositions.Count > 1 && nearestDist <= waypointReachDistance)
+            {
+                currentWaypointIndex = loopWaypoints
+                    ? (currentWaypointIndex + 1) % waypointPositions.Count
+                    : Mathf.Min(currentWaypointIndex + 1, waypointPositions.Count - 1);
+            }
         }
     }
     
     private void GenerateRandomWaypoints()
     {
+        if (gameObject.name.StartsWith("Target_") && !HasAssignedWaypoints() && !useDynamicAreaPatrol)
+        {
+            GenerateFallbackRouteWaypoints();
+            Debug.Log($"{gameObject.name}: Generated fallback patrol route with {waypointPositions.Count} waypoints");
+            return;
+        }
+
         Vector3 center = patrolAreaCenter;
         if (center == Vector3.zero)
             center = transform.position;
@@ -226,7 +308,7 @@ public class FlyingCreaturePatrol : MonoBehaviour
         float probeTop = useBoundsClamp ? boundsMax.y + requiredClearance : maxHeight + requiredClearance;
         float probeDistance = Mathf.Max(1f, probeTop - minHeight + requiredClearance);
 
-        if (Physics.Raycast(new Vector3(point.x, probeTop, point.z), Vector3.down, out RaycastHit hit, probeDistance, ~0, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(new Vector3(point.x, probeTop, point.z), Vector3.down, out RaycastHit hit, probeDistance, movementLayerMask, QueryTriggerInteraction.Ignore))
             point.y = Mathf.Max(point.y, hit.point.y + requiredClearance);
 
         if (useBoundsClamp)
@@ -238,7 +320,7 @@ public class FlyingCreaturePatrol : MonoBehaviour
     private bool IsPointClear(Vector3 point)
     {
         float radius = GetCollisionProbeRadius();
-        Collider[] overlaps = Physics.OverlapSphere(point, radius, ~0, QueryTriggerInteraction.Ignore);
+        Collider[] overlaps = Physics.OverlapSphere(point, radius, movementLayerMask, QueryTriggerInteraction.Ignore);
 
         foreach (Collider overlap in overlaps)
         {
@@ -307,10 +389,110 @@ public class FlyingCreaturePatrol : MonoBehaviour
         return position;
     }
     
+    private bool UsesAuthoredWaypointRoute()
+    {
+        if (useDynamicAreaPatrol || waypoints == null)
+            return false;
+
+        foreach (Transform waypoint in waypoints)
+        {
+            if (waypoint != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    private bool HasAssignedWaypoints()
+    {
+        if (waypoints == null)
+            return false;
+
+        foreach (Transform waypoint in waypoints)
+        {
+            if (waypoint != null)
+                return true;
+        }
+
+        return false;
+    }
+
+    private void ConfigureWaypointRouteBounds()
+    {
+        bool foundWaypoint = false;
+        Bounds waypointBounds = default;
+
+        foreach (Transform waypoint in waypoints)
+        {
+            if (waypoint == null)
+                continue;
+
+            if (!foundWaypoint)
+            {
+                waypointBounds = new Bounds(waypoint.position, Vector3.zero);
+                foundWaypoint = true;
+            }
+            else
+            {
+                waypointBounds.Encapsulate(waypoint.position);
+            }
+        }
+
+        if (!foundWaypoint)
+            return;
+
+        waypointBounds.Expand(new Vector3(
+            Mathf.Max(waypointReachDistance * 2f, 8f),
+            Mathf.Max(GetRequiredTerrainClearance() * 2f, 8f),
+            Mathf.Max(waypointReachDistance * 2f, 8f)));
+
+        patrolAreaCenter = waypointBounds.center;
+        patrolAreaSize = waypointBounds.size;
+        minHeight = waypointBounds.min.y;
+        maxHeight = waypointBounds.max.y;
+        useBoundsClamp = true;
+        boundsMin = waypointBounds.min;
+        boundsMax = waypointBounds.max;
+    }
+
+    private void ConfigureFallbackRouteBounds()
+    {
+        patrolAreaCenter = transform.position;
+        patrolAreaSize = new Vector3(90f, 28f, 90f);
+        minHeight = transform.position.y - 14f;
+        maxHeight = transform.position.y + 14f;
+        useBoundsClamp = true;
+        boundsMin = patrolAreaCenter - patrolAreaSize * 0.5f;
+        boundsMax = patrolAreaCenter + patrolAreaSize * 0.5f;
+    }
+
+    private void GenerateFallbackRouteWaypoints()
+    {
+        Vector3 center = patrolAreaCenter == Vector3.zero ? transform.position : patrolAreaCenter;
+        float horizontalRadius = Mathf.Clamp(patrolAreaSize.x * 0.35f, 20f, 36f);
+        float depthRadius = Mathf.Clamp(patrolAreaSize.z * 0.35f, 20f, 36f);
+        float verticalOffset = Mathf.Clamp((maxHeight - minHeight) * 0.25f, 4f, 8f);
+
+        Vector3[] offsets =
+        {
+            new Vector3(-horizontalRadius, -verticalOffset, -depthRadius * 0.35f),
+            new Vector3(horizontalRadius * 0.7f, verticalOffset, -depthRadius),
+            new Vector3(horizontalRadius, 0f, depthRadius * 0.5f),
+            new Vector3(-horizontalRadius * 0.8f, verticalOffset * 0.5f, depthRadius)
+        };
+
+        foreach (Vector3 offset in offsets)
+        {
+            Vector3 waypoint = RaiseAboveTerrain(ClampToBounds(center + offset));
+            waypointPositions.Add(waypoint);
+        }
+    }
+
     private void Update()
     {
         if (waypointPositions.Count == 0) return;
-        
+        bool usesAuthoredWaypointRoute = UsesAuthoredWaypointRoute();
+
         // Handle pause at waypoints
         if (isPaused)
         {
@@ -323,34 +505,54 @@ public class FlyingCreaturePatrol : MonoBehaviour
             ApplyBobbing();
             return;
         }
-        
+
         Vector3 targetPosition = waypointPositions[currentWaypointIndex];
+        if (Vector3.Distance(transform.position, targetPosition) <= waypointReachDistance)
+        {
+            if (pauseAtWaypoints)
+            {
+                isPaused = true;
+                pauseTimer = pauseDuration;
+                ApplyBobbing();
+                return;
+            }
+
+            MoveToNextWaypoint();
+            if (!enabled || waypointPositions.Count == 0)
+                return;
+
+            targetPosition = waypointPositions[currentWaypointIndex];
+        }
+
         Vector3 directionToTarget = (targetPosition - transform.position).normalized;
-        
+
         // Smooth direction for natural turning
-        smoothedDirection = Vector3.Lerp(smoothedDirection, directionToTarget, turnSpeed * Time.deltaTime);
-        
-        // Move toward waypoint
+        smoothedDirection = Vector3.Lerp(smoothedDirection, directionToTarget, turnSpeed * instanceTurnMult * Time.deltaTime);
+        if (smoothedDirection.sqrMagnitude > 0.0001f)
+            smoothedDirection.Normalize();
+
         // Calculate speed - faster when diving
-        float currentSpeed = moveSpeed;
+        float currentSpeed = moveSpeed * instanceSpeedMult;
         if (smoothedDirection.y < 0)
         {
-            currentSpeed = moveSpeed * (1f + Mathf.Abs(smoothedDirection.y) * (diveSpeedMultiplier - 1f));
+            currentSpeed = moveSpeed * instanceSpeedMult * (1f + Mathf.Abs(smoothedDirection.y) * (diveSpeedMultiplier - 1f));
         }
-        
-        // Move toward waypoint
+
+        // Move toward waypoint — skip obstacle checks for authored routes
         Vector3 movement = smoothedDirection * currentSpeed * Time.deltaTime;
-        movement = AdjustMovementForObstacles(movement);
+        if (!usesAuthoredWaypointRoute)
+            movement = AdjustMovementForObstacles(movement);
         transform.position += movement;
-        
+
         // Apply bobbing
         ApplyBobbing();
         ResolveCollisions();
-        transform.position = RaiseAboveTerrain(transform.position);
-        
+        if (!usesAuthoredWaypointRoute)
+            transform.position = RaiseAboveTerrain(transform.position);
+
         // Apply rotation with banking
         ApplyRotationAndBanking(directionToTarget);
-        
+
         // Check if reached waypoint
         float distanceToWaypoint = Vector3.Distance(transform.position, targetPosition);
         if (distanceToWaypoint < waypointReachDistance)
@@ -365,10 +567,20 @@ public class FlyingCreaturePatrol : MonoBehaviour
                 MoveToNextWaypoint();
             }
         }
-        
+
         lastPosition = transform.position;
+
+        // Stuck detection — pick new waypoint if not making progress
+        stuckTimer += Time.deltaTime;
+        if (stuckTimer >= StuckCheckInterval)
+        {
+            if (Vector3.Distance(transform.position, stuckCheckPosition) < StuckDistanceThreshold)
+                MoveToNextWaypoint();
+            stuckCheckPosition = transform.position;
+            stuckTimer = 0f;
+        }
     }
-    
+
     private void ApplyBobbing()
     {
         float bob = Mathf.Sin((Time.time * bobSpeed) + bobOffset) * bobAmplitude;
@@ -451,7 +663,7 @@ private void ApplyRotationAndBanking(Vector3 targetDirection)
             return;
 
         float probeRadius = GetCollisionProbeRadius();
-        Collider[] overlaps = Physics.OverlapSphere(transform.position, probeRadius, ~0, QueryTriggerInteraction.Ignore);
+        Collider[] overlaps = Physics.OverlapSphere(transform.position, probeRadius, movementLayerMask, QueryTriggerInteraction.Ignore);
 
         foreach (Collider overlap in overlaps)
         {
@@ -489,7 +701,7 @@ private void ApplyRotationAndBanking(Vector3 targetDirection)
         Vector3 origin = cachedCollider.bounds.center;
         Vector3 direction = movement / movementDistance;
 
-        if (!Physics.SphereCast(origin, probeRadius, direction, out RaycastHit hit, movementDistance + CollisionPadding, ~0, QueryTriggerInteraction.Ignore))
+        if (!Physics.SphereCast(origin, probeRadius, direction, out RaycastHit hit, movementDistance + CollisionPadding, movementLayerMask, QueryTriggerInteraction.Ignore))
             return movement;
 
         if (hit.collider == null || hit.collider == cachedCollider)
@@ -503,7 +715,11 @@ private void ApplyRotationAndBanking(Vector3 targetDirection)
 
         float allowedDistance = Mathf.Max(0f, hit.distance - CollisionPadding);
         if (allowedDistance <= 0.01f)
+        {
+            if (hit.normal.sqrMagnitude > 0.001f)
+                transform.position += hit.normal * 0.5f;
             MoveToNextWaypoint();
+        }
 
         return direction * allowedDistance;
     }

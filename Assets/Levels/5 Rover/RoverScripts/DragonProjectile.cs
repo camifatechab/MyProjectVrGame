@@ -17,7 +17,8 @@ public class DragonProjectile : MonoBehaviour
     {
         var rb = GetComponent<Rigidbody>();
         if (rb) rb.useGravity = false;
-        Destroy(gameObject, lifetime);
+        if (Application.isPlaying)
+            Destroy(gameObject, lifetime);
     }
 
     public void SetTarget(Transform playerTransform)
@@ -50,14 +51,14 @@ public class DragonProjectile : MonoBehaviour
         {
             health.TakeDamage(damage);
             SpawnHitEffect();
-            Destroy(gameObject);
+            Despawn();
             return;
         }
 
         if (!other.isTrigger)
         {
             SpawnHitEffect();
-            Destroy(gameObject);
+            Despawn();
         }
     }
 
@@ -65,5 +66,16 @@ public class DragonProjectile : MonoBehaviour
     {
         if (hitEffectPrefab)
             Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
+    }
+
+    void Despawn()
+    {
+        if (Application.isPlaying)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        DestroyImmediate(gameObject);
     }
 }

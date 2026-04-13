@@ -108,6 +108,7 @@ public class AutoJetpackController : MonoBehaviour
     // Landing detection
     private float previousVerticalVelocity = 0f;
     private RoverDriver roverDriver;
+    private RoverPhysicsController roverPhysicsController;
 
     // Track previous grounded state
     private bool wasGrounded = true;
@@ -146,6 +147,7 @@ public class AutoJetpackController : MonoBehaviour
         }
 
         roverDriver = FindAnyObjectByType<RoverDriver>();
+        roverPhysicsController = FindAnyObjectByType<RoverPhysicsController>();
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
 
         if (jetpackAudioSource != null && flyingSound != null)
@@ -302,7 +304,8 @@ public class AutoJetpackController : MonoBehaviour
         if (Time.frameCount % 60 == 0)
             Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}, Fuel: {GetFuelPercentage():F1}%");
 
-        bool inRover = roverDriver != null && roverDriver.IsMounted;
+        bool inRover = (roverDriver != null && roverDriver.IsMounted)
+            || (roverPhysicsController != null && roverPhysicsController.IsMounted);
         bool shouldFly = bothGripsPressed && armsDown && !isOutOfFuel && !inRover;
 
         if (postDismountCooldown > 0f) { postDismountCooldown -= Time.deltaTime; return; }
@@ -440,6 +443,34 @@ public class AutoJetpackController : MonoBehaviour
     public void SetExternalFlightLock(bool locked)
     {
         externalFlightLock = locked;
+
+        if (locked)
+            ForceStopFlightEffects();
+    }
+
+    private void OnDisable()
+    {
+        ForceStopFlightEffects();
+    }
+
+    private void ForceStopFlightEffects()
+    {
+        isFlying = false;
+        isFadingOut = false;
+        fadeTimer = 0f;
+        velocity = Vector3.zero;
+
+        if (HapticsManager.Instance != null)
+            HapticsManager.Instance.StopJetpackVibration();
+
+        if (audioManager != null)
+            audioManager.StopAllAudio();
+
+        if (jetpackAudioSource != null)
+        {
+            jetpackAudioSource.Stop();
+            jetpackAudioSource.volume = flyingSoundVolume;
+        }
     }
 
     void UpdateAudioManagerState()
@@ -487,9 +518,6 @@ public class AutoJetpackController : MonoBehaviour
 
         float grip = 0f;
         if (device.TryGetFeatureValue(CommonUsages.grip, out grip) && grip > 0.5f) return true;
-
-        float trigger = 0f;
-        if (device.TryGetFeatureValue(CommonUsages.trigger, out trigger) && trigger > 0.5f) return true;
 
         return false;
     }

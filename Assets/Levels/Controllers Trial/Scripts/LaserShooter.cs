@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.XR;
 using InputDevice = UnityEngine.XR.InputDevice;
@@ -31,6 +32,9 @@ public class LaserShooter : MonoBehaviour
     [SerializeField] private float killHapticIntensity  = 0.8f;
     [SerializeField] private float killHapticDuration   = 0.3f;
 
+    [Header("Hit Feedback")]
+    [SerializeField] private Color hitLaserColor = new Color(1f, 0.3f, 0f);
+
     [Header("Vignette")]
     [Tooltip("Auto-found on Main Camera if left empty.")]
     [SerializeField] private LaserVignetteEffect vignetteEffect;
@@ -53,6 +57,9 @@ public class LaserShooter : MonoBehaviour
     private InputDevice     rightDevice;
     private ParticleSystem  impactParticle;
     private GameObject      readyDot;
+    private GameObject      hitMarkerRoot;
+    private float           hitMarkerTimer;
+    private const float     HitMarkerDuration = 0.12f;
 
     private bool  isLaserActive  = false;
     private float rhythmTimer    = 0f;
@@ -70,6 +77,7 @@ public class LaserShooter : MonoBehaviour
         SetupAudio();
         InitializeXRDevice();
         AutoFindReferences();
+        SetupHitMarker();
     }
 
 void Update()
@@ -90,6 +98,13 @@ void Update()
         emptyClickedLastFrame = triggerHeld && !armed;
 
         hitSoundCooldown -= Time.deltaTime;
+
+        if (hitMarkerTimer > 0f)
+        {
+            hitMarkerTimer -= Time.deltaTime;
+            if (hitMarkerTimer <= 0f && hitMarkerRoot != null)
+                hitMarkerRoot.SetActive(false);
+        }
 
         if (readyDot != null)
             readyDot.SetActive(armed && !shouldFire);
@@ -171,8 +186,9 @@ void FireLaser()
         Vector3 direction = laserOrigin.forward;
         lineRenderer.SetPosition(0, origin);
 
-        RaycastHit hit;
-        if (Physics.Raycast(origin, direction, out hit, laserRange))
+        bool hittingTarget = false;
+
+        if (TryGetLaserHit(origin, direction, out RaycastHit hit))
         {
             lineRenderer.SetPosition(1, hit.point);
             impactParticle.transform.position = hit.point;
@@ -185,6 +201,10 @@ void FireLaser()
                               ?? hit.collider.GetComponentInParent<LaserTarget>();
             if (target != null)
             {
+                hittingTarget = true;
+                hitMarkerTimer = HitMarkerDuration;
+                if (hitMarkerRoot != null) hitMarkerRoot.SetActive(true);
+
                 // Hit sound (throttled so it doesn't spam every frame)
                 if (hitSoundCooldown <= 0f && gunAudio != null && hitSound != null)
                 {
@@ -203,6 +223,45 @@ void FireLaser()
             if (impactParticle.gameObject.activeSelf)
                 impactParticle.gameObject.SetActive(false);
         }
+
+        UpdateLaserColor(hittingTarget);
+    }
+
+    bool TryGetLaserHit(Vector3 origin, Vector3 direction, out RaycastHit validHit)
+    {
+        RaycastHit[] hits = Physics.RaycastAll(origin, direction, laserRange, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        Array.Sort(hits, static (a, b) => a.distance.CompareTo(b.distance));
+
+        foreach (RaycastHit hit in hits)
+        {
+            if (ShouldIgnoreHit(hit.collider))
+                continue;
+
+            validHit = hit;
+            return true;
+        }
+
+        validHit = default;
+        return false;
+    }
+
+    bool ShouldIgnoreHit(Collider collider)
+    {
+        if (collider == null)
+            return true;
+
+        Transform hitTransform = collider.transform;
+        if (hitTransform == transform || hitTransform.IsChildOf(transform))
+            return true;
+
+        if (roverController != null && roverController.IsMounted)
+        {
+            RoverPhysicsController hitRover = collider.GetComponentInParent<RoverPhysicsController>();
+            if (hitRover != null && hitRover == roverController)
+                return true;
+        }
+
+        return false;
     }
 
 void StopLaser()
@@ -210,6 +269,7 @@ void StopLaser()
         if (!isLaserActive) return;
         isLaserActive        = false;
         lineRenderer.enabled = false;
+        UpdateLaserColor(false);
         impactParticle.Stop();
         // Stop whoosh loop
         if (gunAudio != null && gunAudio.isPlaying)
@@ -378,6 +438,59 @@ void SetupAudio()
             gunAudio = gameObject.AddComponent<AudioSource>();
         gunAudio.spatialBlend = 0f; // 2D
         gunAudio.playOnAwake  = false;
+    }
+
+    void SetupHitMarker()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return;
+
+        hitMarkerRoot = new GameObject("HitMarker");
+        hitMarkerRoot.transform.SetParent(cam.transform);
+        hitMarkerRoot.transform.localPosition = new Vector3(0f, 0f, 0.4f);
+        hitMarkerRoot.transform.localRotation = Quaternion.identity;
+
+        Shader sh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+        Material markerMat = new Material(sh);
+        markerMat.SetColor("_BaseColor", Color.white);
+        markerMat.SetColor("_Color", Color.white);
+
+        float gap = 0.003f;
+        float armEnd = 0.012f;
+        float width = 0.0015f;
+
+        MakeHitMarkerLine(markerMat, new Vector3(gap, gap, 0f), new Vector3(armEnd, armEnd, 0f), width);
+        MakeHitMarkerLine(markerMat, new Vector3(-gap, gap, 0f), new Vector3(-armEnd, armEnd, 0f), width);
+        MakeHitMarkerLine(markerMat, new Vector3(gap, -gap, 0f), new Vector3(armEnd, -armEnd, 0f), width);
+        MakeHitMarkerLine(markerMat, new Vector3(-gap, -gap, 0f), new Vector3(-armEnd, -armEnd, 0f), width);
+
+        hitMarkerRoot.SetActive(false);
+    }
+
+    void MakeHitMarkerLine(Material mat, Vector3 start, Vector3 end, float width)
+    {
+        GameObject lineGO = new GameObject("HitArm");
+        lineGO.transform.SetParent(hitMarkerRoot.transform, false);
+
+        LineRenderer lr = lineGO.AddComponent<LineRenderer>();
+        lr.useWorldSpace = false;
+        lr.positionCount = 2;
+        lr.SetPosition(0, start);
+        lr.SetPosition(1, end);
+        lr.startWidth = width;
+        lr.endWidth = width;
+        lr.startColor = Color.white;
+        lr.endColor = Color.white;
+        lr.material = mat;
+    }
+
+    void UpdateLaserColor(bool hittingTarget)
+    {
+        Color c = hittingTarget ? hitLaserColor : laserColor;
+        lineRenderer.startColor = c;
+        lineRenderer.endColor = new Color(c.r, c.g, c.b, 0.3f);
+        lineRenderer.material.SetColor("_BaseColor", c);
+        lineRenderer.material.SetColor("_Color", c);
     }
 
 }
