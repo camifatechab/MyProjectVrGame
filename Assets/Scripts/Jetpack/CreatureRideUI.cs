@@ -15,6 +15,7 @@ public class CreatureRideUI : MonoBehaviour
     
     [Header("Prompt Messages")]
     public string nearCreaturePrompt = "Grip to Ride";
+    public string finalDismountPrompt = "Press both grips to get out";
     
     [Header("Settings")]
     public float fadeSpeed = 3f;
@@ -29,6 +30,7 @@ public class CreatureRideUI : MonoBehaviour
     private Transform playerCamera;
     private CanvasGroup canvasGroup;
     private bool shouldShow = false;
+    private FloatingIslandIntroSequence introSequence;
     
     private void Start()
     {
@@ -44,13 +46,10 @@ public class CreatureRideUI : MonoBehaviour
         
         // Find creature
         creature = FindObjectOfType<RideableCreature>();
+        introSequence = FindFirstObjectByType<FloatingIslandIntroSequence>();
         
         // Find player camera
-        var xrOrigin = FindObjectOfType<Unity.XR.CoreUtils.XROrigin>();
-        if (xrOrigin != null && xrOrigin.Camera != null)
-        {
-            playerCamera = xrOrigin.Camera.transform;
-        }
+        ResolvePlayerCamera();
         
         // Setup canvas group for fading
         if (rideCanvas != null)
@@ -82,8 +81,13 @@ public class CreatureRideUI : MonoBehaviour
     
     private void Update()
     {
-        if (creature == null || playerCamera == null) return;
-        
+        if (creature == null) return;
+
+        if (playerCamera == null)
+            ResolvePlayerCamera();
+
+        if (playerCamera == null) return;
+
         UpdatePromptState();
         UpdateCanvasFade();
         UpdateCanvasPosition();
@@ -91,6 +95,12 @@ public class CreatureRideUI : MonoBehaviour
     
     private void UpdatePromptState()
     {
+        if (ShouldShowFinalDismountPrompt())
+        {
+            SetPrompt(finalDismountPrompt, true);
+            return;
+        }
+
         // Simple logic: show "Grip to Ride" when near creature and not mounted
         if (!creature.IsPlayerMounted && creature.canPlayerMount)
         {
@@ -110,6 +120,34 @@ public class CreatureRideUI : MonoBehaviour
             // Mounted (flying or parked) - hide UI
             SetPrompt("", false);
         }
+    }
+
+    private bool ShouldShowFinalDismountPrompt()
+    {
+        if (!creature.IsPlayerMounted || creature.IsFlying || creature.IsParking)
+            return false;
+
+        if (introSequence != null && introSequence.IsWaitingForFinalDismount)
+            return true;
+
+        return creature.TotalWaypoints > 0 && creature.CurrentWaypointIndex >= creature.TotalWaypoints - 1;
+    }
+
+    private void ResolvePlayerCamera()
+    {
+        var xrOrigin = FindObjectOfType<Unity.XR.CoreUtils.XROrigin>();
+        if (xrOrigin != null && xrOrigin.Camera != null)
+        {
+            playerCamera = xrOrigin.Camera.transform;
+            return;
+        }
+
+        Camera foundCamera = Camera.main;
+        if (foundCamera == null && xrOrigin != null)
+            foundCamera = xrOrigin.GetComponentInChildren<Camera>(true);
+
+        if (foundCamera != null)
+            playerCamera = foundCamera.transform;
     }
     
     private void SetPrompt(string prompt, bool show)

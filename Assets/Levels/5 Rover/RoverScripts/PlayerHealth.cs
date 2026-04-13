@@ -50,8 +50,16 @@ public class PlayerHealth : MonoBehaviour
     private bool suppressHeadHud;
     private float hudAttention;
     private float lowHealthPulse;
+    private RideableCreature cachedCreature;
 
     public float HealthNormalized => maxHealth <= 0.001f ? 0f : Mathf.Clamp01(currentHealth / maxHealth);
+
+    private bool IsPlayerMountedOnCreature()
+    {
+        if (cachedCreature == null)
+            cachedCreature = FindFirstObjectByType<RideableCreature>();
+        return cachedCreature != null && cachedCreature.IsPlayerMounted;
+    }
 
     private void Start()
     {
@@ -62,7 +70,7 @@ public class PlayerHealth : MonoBehaviour
 
     private void Update()
     {
-        if (!isDead && transform.position.y < killPlaneY)
+        if (!isDead && !IsPlayerMountedOnCreature() && transform.position.y < killPlaneY)
             Die();
 
         EnsureHUD();

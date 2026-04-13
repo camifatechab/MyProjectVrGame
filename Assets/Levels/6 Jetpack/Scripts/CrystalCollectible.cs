@@ -39,6 +39,7 @@ public class CrystalCollectible : MonoBehaviour
     private Transform[] playerTargets = System.Array.Empty<Transform>();
     private Collider[] cachedColliders;
     private Renderer[] cachedRenderers;
+    private RideableCreature cachedCreature;
 
     public bool IsCollected => isCollected;
     public bool CollectionEnabled => collectionEnabled;
@@ -70,7 +71,7 @@ void Start()
             transform.Rotate(Vector3.up, rotationSpeed * Time.deltaTime);
         }
 
-        if (!isCollected && collectionEnabled)
+        if (!isCollected && collectionEnabled && !IsPlayerMountedOnCreature())
         {
             TryCollectFromPlayerProximity();
         }
@@ -78,7 +79,7 @@ void Start()
 
     void OnTriggerEnter(Collider other)
     {
-        if (!collectionEnabled)
+        if (!collectionEnabled || IsPlayerMountedOnCreature())
             return;
 
         // Check if player collected it
@@ -91,6 +92,13 @@ void Start()
     public void SetCollectionEnabled(bool enabled)
     {
         collectionEnabled = enabled;
+    }
+
+    private bool IsPlayerMountedOnCreature()
+    {
+        if (cachedCreature == null)
+            cachedCreature = FindFirstObjectByType<RideableCreature>();
+        return cachedCreature != null && cachedCreature.IsPlayerMounted;
     }
 
 void Collect()

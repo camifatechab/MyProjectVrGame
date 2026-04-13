@@ -276,6 +276,9 @@ public class PlayerRespawnManager : MonoBehaviour
 
     void OnDrawGizmos()
     {
+        if (!enabled || !respawnEnabled)
+            return;
+
         float gizmoFailHeight = failHeight;
         Vector3 gizmoCenter = Vector3.zero;
 

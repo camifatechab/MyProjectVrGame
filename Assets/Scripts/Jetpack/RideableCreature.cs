@@ -25,7 +25,7 @@ public class RideableCreature : MonoBehaviour
     
     [Tooltip("Speed while carrying player")]
     public float rideSpeed = 12f;
-    
+
     [Tooltip("Return to start position after dismount")]
     public bool returnToStartAfterDismount = true;
     
@@ -88,6 +88,9 @@ public class RideableCreature : MonoBehaviour
     
     [Tooltip("Speed when flying to platform")]
     public float parkingSpeed = 20f;
+
+    [Tooltip("Automatically dismount the player when parking finishes")]
+    public bool autoDismountAfterParking = true;
     
         [Header("Mount Protection")]
     [Tooltip("Require player to look at creature to mount")]
@@ -450,6 +453,11 @@ private bool IsGripPressed(InputDevice device)
         
         return false;
     }
+
+    private bool AreBothGripsPressed()
+    {
+        return IsGripPressed(leftDevice) && IsGripPressed(rightDevice);
+    }
     
     private void MountCreature()
     {
@@ -580,7 +588,7 @@ private bool IsGripPressed(InputDevice device)
         // Only allow dismount when NOT flying and NOT parking
         if (!isFlying && !isParking && CanUseManualDismountInput())
         {
-            bool gripPressed = IsGripPressed(leftDevice) || IsGripPressed(rightDevice);
+            bool gripPressed = AreBothGripsPressed();
             if (Input.GetKeyDown(KeyCode.E)) gripPressed = true;
             
             if (gripPressed && !wasGripPressed)
@@ -668,6 +676,10 @@ private bool IsGripPressed(InputDevice device)
         
         if (splineT >= 1f)
         {
+            // Snap to the segment endpoint before advancing so the creature
+            // actually reaches authored stop waypoints like WP03/WP10.
+            transform.position = pos2;
+
             splineT = splineT - 1f;
             
             if (isReversePath)
@@ -822,7 +834,7 @@ private bool IsGripPressed(InputDevice device)
 private void CompleteLanding()
     {
         Transform landedTarget = targetPlatform;
-        Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked, player dismounting");
+        Debug.Log("RideableCreature: Landed on " + targetPlatform.name + " - Creature parked");
         
         // Strong haptic feedback for platform landing
         if (HapticsManager.Instance != null)
@@ -845,8 +857,8 @@ private void CompleteLanding()
         idleBasePosition = transform.position;
         startIdle = true;
         
-        // Auto-dismount the player onto the platform
-        if (isPlayerMounted)
+        // Auto-dismount the player only when this landing should force an exit.
+        if (isPlayerMounted && autoDismountAfterParking)
         {
             StartCoroutine(DismountOnPlatform());
         }
@@ -959,8 +971,12 @@ private void SendHapticPulse()
         
         if (xrOrigin != null)
         {
-            Vector3 dismountPos = transform.position + transform.right * 2f;
-            dismountPos.y = transform.position.y;
+            Vector3 dismountPos = forcedDismountTarget != null
+                ? forcedDismountTarget.position
+                : transform.position + transform.right * 2f;
+
+            if (forcedDismountTarget == null)
+                dismountPos.y = transform.position.y;
             
             xrOrigin.SetParent(originalParent);
             
@@ -1001,6 +1017,7 @@ private void SendHapticPulse()
         
         OnPlayerDismounted?.Invoke();
         isTransitioning = false;
+        forcedDismountTarget = null;
     }
 
     public void SetMountEnabled(bool enabled)
@@ -1039,6 +1056,14 @@ private void SendHapticPulse()
         }
     }
 
+    public void PrepareManualDismount(Transform dismountTarget = null)
+    {
+        forcedDismountTarget = dismountTarget;
+        wasGripPressed = false;
+        dismountCooldown = 0f;
+        RefreshInputDevices();
+    }
+
     public void ParkAtTarget(Transform landingTarget, Transform dismountTarget = null)
     {
         if (landingTarget == null)
@@ -1066,7 +1091,14 @@ private void SendHapticPulse()
 
     private bool CanUseManualDismountInput()
     {
-        return !scriptedSequenceActive;
+        if (!scriptedSequenceActive)
+            return true;
+
+        return isPlayerMounted
+            && !isFlying
+            && !isParking
+            && flightPathWaypoints.Count > 0
+            && currentFlightWaypointIndex >= flightPathWaypoints.Count - 1;
     }
 
     private bool ShouldKeepJetpackLockedAfterDismount()
