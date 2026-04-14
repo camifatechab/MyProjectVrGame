@@ -15,14 +15,20 @@ public class WaypointEnvironmentTransition : MonoBehaviour
     [SerializeField] private SkyboxByHeight legacyHeightController;
 
     [Header("Transition Waypoints")]
+    [SerializeField] private Transform waypoint06;
+    [SerializeField] private Transform waypoint07;
     [SerializeField] private Transform waypoint08;
     [SerializeField] private Transform waypoint09;
     [SerializeField] private Transform waypoint10;
+    [SerializeField, Range(0f, 1f)] private float blendStartOnWp06ToWp07 = 0.45f;
 
     [Header("Skybox Materials")]
     [SerializeField] private Material blendedSkyboxMaterial;
     [SerializeField] private Material finalSkyboxMaterial;
-    [SerializeField, Range(0.9f, 1f)] private float finalSkyboxSwapThreshold = 0.98f;
+    [SerializeField] private Cubemap finalBlendCubemap;
+
+    [Header("Blend Smoothing")]
+    [SerializeField] private float manualBlendResponse = 2.25f;
 
     [Header("Start Environment")]
     [SerializeField] private Color startSkyColor = new(0.8307701f, 0.63075733f, 0.36130688f, 1f);
@@ -34,16 +40,18 @@ public class WaypointEnvironmentTransition : MonoBehaviour
     [SerializeField] private float startFogEndDistance = 300f;
 
     [Header("End Environment")]
-    [SerializeField] private Color endSkyColor = new(0.596f, 0.839f, 0.639f, 1f);
-    [SerializeField] private Color endEquatorColor = new(0.855f, 0.678f, 0.247f, 1f);
-    [SerializeField] private Color endGroundColor = new(0.835f, 0.517f, 0.208f, 1f);
+    [SerializeField] private Color endSkyColor = new(0.62f, 0.24f, 0.18f, 1f);
+    [SerializeField] private Color endEquatorColor = new(0.8f, 0.34f, 0.18f, 1f);
+    [SerializeField] private Color endGroundColor = new(0.38f, 0.12f, 0.09f, 1f);
     [SerializeField] private bool endFogEnabled = true;
-    [SerializeField] private Color endFogColor = new(0.702f, 0.486f, 0.071f, 1f);
-    [SerializeField] private float endFogStartDistance = 60f;
-    [SerializeField] private float endFogEndDistance = 200f;
+    [SerializeField] private Color endFogColor = new(0.66f, 0.2f, 0.1f, 1f);
+    [SerializeField] private float endFogStartDistance = 45f;
+    [SerializeField] private float endFogEndDistance = 150f;
     [SerializeField] private FogMode fogMode = FogMode.Linear;
 
     private bool hasStartedTransition;
+    private Material originalSkyboxMaterial;
+    private Material runtimeBlendMaterial;
 
     private void Reset()
     {
@@ -87,12 +95,30 @@ public class WaypointEnvironmentTransition : MonoBehaviour
         ApplyEnvironment(blendController.CurrentBlend);
     }
 
+    private void OnDestroy()
+    {
+        if (runtimeBlendMaterial != null)
+        {
+            if (RenderSettings.skybox == runtimeBlendMaterial && originalSkyboxMaterial != null)
+                RenderSettings.skybox = originalSkyboxMaterial;
+
+            if (Application.isPlaying)
+                Destroy(runtimeBlendMaterial);
+            else
+                DestroyImmediate(runtimeBlendMaterial);
+
+            runtimeBlendMaterial = null;
+        }
+    }
+
     private void AutoAssignReferences()
     {
         blendController ??= GetComponent<SkyboxBlendController>();
         rideableCreature ??= FindFirstObjectByType<RideableCreature>();
         legacyHeightController ??= GetComponent<SkyboxByHeight>();
 
+        waypoint06 ??= FindWaypointByPrefix("WP06");
+        waypoint07 ??= FindWaypointByPrefix("WP07");
         waypoint08 ??= FindWaypointByPrefix("WP08");
         waypoint09 ??= FindWaypointByPrefix("WP09");
         waypoint10 ??= FindWaypointByPrefix("WP10");
@@ -100,9 +126,15 @@ public class WaypointEnvironmentTransition : MonoBehaviour
         if (blendedSkyboxMaterial == null && blendController != null)
             blendedSkyboxMaterial = blendController.blendedSkyboxMaterial;
 
+        if (finalBlendCubemap == null && finalSkyboxMaterial != null && finalSkyboxMaterial.HasProperty("_Tex"))
+            finalBlendCubemap = finalSkyboxMaterial.GetTexture("_Tex") as Cubemap;
+
 #if UNITY_EDITOR
         if (finalSkyboxMaterial == null)
-            finalSkyboxMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/SkySeries Freebie/DarkStorm.mat");
+            finalSkyboxMaterial = AssetDatabase.LoadAssetAtPath<Material>("Assets/SkySeries Freebie/UnearthlyRed.mat");
+
+        if (finalBlendCubemap == null)
+            finalBlendCubemap = AssetDatabase.LoadAssetAtPath<Cubemap>("Assets/SkySeries Freebie/FreebieHdri/UnearthlyRed4k.hdr");
 #endif
     }
 
@@ -114,9 +146,32 @@ public class WaypointEnvironmentTransition : MonoBehaviour
         blendController.blendMode = SkyboxBlendController.BlendMode.Manual;
         blendController.useFogTransition = false;
         blendController.transitionDelay = 0f;
+        blendController.transitionSpeed = manualBlendResponse;
 
-        if (blendedSkyboxMaterial != null)
-            blendController.blendedSkyboxMaterial = blendedSkyboxMaterial;
+        originalSkyboxMaterial = RenderSettings.skybox;
+        runtimeBlendMaterial = CreateRuntimeBlendMaterial();
+        blendController.blendedSkyboxMaterial = runtimeBlendMaterial != null
+            ? runtimeBlendMaterial
+            : blendedSkyboxMaterial;
+    }
+
+    private Material CreateRuntimeBlendMaterial()
+    {
+        if (blendedSkyboxMaterial == null)
+            return null;
+
+        Material runtimeMaterial = new Material(blendedSkyboxMaterial)
+        {
+            name = $"{blendedSkyboxMaterial.name}_RideRuntime"
+        };
+
+        if (finalBlendCubemap != null && runtimeMaterial.HasProperty("_SkyboxB"))
+            runtimeMaterial.SetTexture("_SkyboxB", finalBlendCubemap);
+
+        if (runtimeMaterial.HasProperty("_Blend"))
+            runtimeMaterial.SetFloat("_Blend", 0f);
+
+        return runtimeMaterial;
     }
 
     private float ComputeTargetBlend()
@@ -131,24 +186,27 @@ public class WaypointEnvironmentTransition : MonoBehaviour
         if (currentWaypoint == null)
             return hasStartedTransition ? blendController.CurrentBlend : 0f;
 
-        string currentWaypointName = currentWaypoint.name;
-        if (currentWaypointName.StartsWith("WP08"))
-            return ComputeSegmentBlend(waypoint08, waypoint09, rideableCreature.transform.position, 0f, 0.5f);
+        return EvaluateBlendWindow(
+            ExtractWaypointNumber(currentWaypoint.name),
+            rideableCreature.transform.position,
+            GetBlendStartPosition(),
+            waypoint07 != null ? waypoint07.position : Vector3.zero,
+            waypoint08 != null ? waypoint08.position : Vector3.zero,
+            waypoint09 != null ? waypoint09.position : Vector3.zero);
+    }
 
-        if (currentWaypointName.StartsWith("WP09"))
-            return ComputeSegmentBlend(waypoint09, waypoint10, rideableCreature.transform.position, 0.5f, 1f);
+    private Vector3 GetBlendStartPosition()
+    {
+        if (waypoint06 == null && waypoint07 == null)
+            return Vector3.zero;
 
-        if (currentWaypointName.StartsWith("WP10"))
-            return 1f;
+        if (waypoint06 == null)
+            return waypoint07.position;
 
-        int waypointNumber = ExtractWaypointNumber(currentWaypointName);
-        if (waypointNumber >= 10)
-            return 1f;
+        if (waypoint07 == null)
+            return waypoint06.position;
 
-        if (waypointNumber < 8)
-            return 0f;
-
-        return hasStartedTransition ? blendController.CurrentBlend : 0f;
+        return Vector3.Lerp(waypoint06.position, waypoint07.position, blendStartOnWp06ToWp07);
     }
 
     private void ApplyEnvironment(float blend)
@@ -172,10 +230,7 @@ public class WaypointEnvironmentTransition : MonoBehaviour
             RenderSettings.fog = blend > 0.001f ? endFogEnabled : startFogEnabled;
         }
 
-        Material desiredSkybox = blend >= finalSkyboxSwapThreshold && finalSkyboxMaterial != null
-            ? finalSkyboxMaterial
-            : blendedSkyboxMaterial;
-
+        Material desiredSkybox = runtimeBlendMaterial != null ? runtimeBlendMaterial : blendedSkyboxMaterial;
         if (desiredSkybox != null && RenderSettings.skybox != desiredSkybox)
         {
             RenderSettings.skybox = desiredSkybox;
@@ -183,18 +238,59 @@ public class WaypointEnvironmentTransition : MonoBehaviour
         }
     }
 
-    private static float ComputeSegmentBlend(Transform from, Transform to, Vector3 currentPosition, float minBlend, float maxBlend)
+    public static float EvaluateBlendWindow(
+        int waypointNumber,
+        Vector3 currentPosition,
+        Vector3 blendStartPosition,
+        Vector3 waypoint07Position,
+        Vector3 waypoint08Position,
+        Vector3 waypoint09Position)
     {
-        if (from == null || to == null)
-            return minBlend;
+        if (waypointNumber < 6)
+            return 0f;
 
-        Vector3 segment = to.position - from.position;
-        float lengthSquared = segment.sqrMagnitude;
-        if (lengthSquared <= 0.0001f)
-            return maxBlend;
+        float firstSegmentLength = Vector3.Distance(blendStartPosition, waypoint07Position);
+        float secondSegmentLength = Vector3.Distance(waypoint07Position, waypoint08Position);
+        float thirdSegmentLength = Vector3.Distance(waypoint08Position, waypoint09Position);
+        float totalLength = firstSegmentLength + secondSegmentLength + thirdSegmentLength;
 
-        float t = Vector3.Dot(currentPosition - from.position, segment) / lengthSquared;
-        return Mathf.Lerp(minBlend, maxBlend, Mathf.Clamp01(t));
+        if (totalLength <= 0.001f)
+            return waypointNumber >= 9 ? 1f : 0f;
+
+        float travelled;
+        if (waypointNumber == 6)
+        {
+            travelled = ProjectDistanceOnSegment(blendStartPosition, waypoint07Position, currentPosition);
+        }
+        else if (waypointNumber == 7)
+        {
+            travelled = firstSegmentLength +
+                ProjectDistanceOnSegment(waypoint07Position, waypoint08Position, currentPosition);
+        }
+        else if (waypointNumber == 8)
+        {
+            travelled = firstSegmentLength + secondSegmentLength +
+                ProjectDistanceOnSegment(waypoint08Position, waypoint09Position, currentPosition);
+        }
+        else
+        {
+            travelled = totalLength;
+        }
+
+        float normalized = Mathf.Clamp01(travelled / totalLength);
+        return normalized * normalized * (3f - 2f * normalized);
+    }
+
+    private static float ProjectDistanceOnSegment(Vector3 start, Vector3 end, Vector3 position)
+    {
+        Vector3 segment = end - start;
+        float length = segment.magnitude;
+        if (length <= 0.001f)
+            return 0f;
+
+        Vector3 direction = segment / length;
+        float projected = Vector3.Dot(position - start, direction);
+        return Mathf.Clamp(projected, 0f, length);
     }
 
     private static int ExtractWaypointNumber(string waypointName)

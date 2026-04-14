@@ -8,7 +8,8 @@ public class RoverDashboardRadioButton : MonoBehaviour
     public enum ButtonAction
     {
         ToggleRadio,
-        NextTrack
+        NextTrack,
+        ReturnToRoverStart
     }
 
     [SerializeField] private ButtonAction buttonAction;
@@ -87,6 +88,8 @@ public class RoverDashboardRadioButton : MonoBehaviour
         if (binder == null)
             return;
 
+        bool handled = true;
+
         switch (buttonAction)
         {
             case ButtonAction.ToggleRadio:
@@ -95,9 +98,13 @@ public class RoverDashboardRadioButton : MonoBehaviour
             case ButtonAction.NextTrack:
                 binder.NextRadioTrack();
                 break;
+            case ButtonAction.ReturnToRoverStart:
+                handled = binder.ReturnToRoverStart();
+                break;
         }
 
-        pressedTimer = 1f;
+        if (handled)
+            pressedTimer = 1f;
     }
 
     private void UpdateVisuals()

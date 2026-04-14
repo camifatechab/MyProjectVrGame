@@ -384,6 +384,53 @@ public class RoverPhysicsControllerTests
     }
 
     [Test]
+    public void ReturnToRoverStartFromUi_ResetsToInitialRoverPose()
+    {
+        Assert.That(RoverRoadFailSafeType, Is.Not.Null, "RoverRoadFailSafe type not found");
+
+        GameObject rover = new GameObject("RoverFailSafeUiReset");
+
+        try
+        {
+            Rigidbody rb = rover.AddComponent<Rigidbody>();
+            Component failSafe = rover.AddComponent(RoverRoadFailSafeType);
+
+            rover.transform.position = new Vector3(2f, 1f, 0f);
+
+            RoverRoadFailSafeType.GetField("rb", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(failSafe, rb);
+
+            FieldInfo roverStartPositionField = RoverRoadFailSafeType.GetField("roverStartPosition", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo roverStartRotationField = RoverRoadFailSafeType.GetField("roverStartRotation", BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo hasRoverStartPoseField = RoverRoadFailSafeType.GetField("hasRoverStartPose", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo returnToRoverStartMethod = RoverRoadFailSafeType.GetMethod("ReturnToRoverStartFromUi", BindingFlags.Instance | BindingFlags.Public);
+
+            Assert.That(roverStartPositionField, Is.Not.Null, "RoverRoadFailSafe.roverStartPosition not found");
+            Assert.That(roverStartRotationField, Is.Not.Null, "RoverRoadFailSafe.roverStartRotation not found");
+            Assert.That(hasRoverStartPoseField, Is.Not.Null, "RoverRoadFailSafe.hasRoverStartPose not found");
+            Assert.That(returnToRoverStartMethod, Is.Not.Null, "RoverRoadFailSafe.ReturnToRoverStartFromUi not found");
+
+            Vector3 roverStartPosition = new Vector3(12f, 3f, -4f);
+            Quaternion roverStartRotation = Quaternion.Euler(0f, 35f, 0f);
+            roverStartPositionField.SetValue(failSafe, roverStartPosition);
+            roverStartRotationField.SetValue(failSafe, roverStartRotation);
+            hasRoverStartPoseField.SetValue(failSafe, true);
+
+            bool handled = (bool)returnToRoverStartMethod.Invoke(failSafe, null);
+
+            Assert.That(handled, Is.True, "UI rover start button should be handled when a rover start pose exists.");
+            Assert.That(Vector3.Distance(rb.position, roverStartPosition), Is.LessThan(0.001f),
+                "UI rover start button should move the rover back to the rover start immediately.");
+            Assert.That(Quaternion.Angle(rb.rotation, roverStartRotation), Is.LessThan(0.001f),
+                "UI rover start button should restore the rover's initial facing direction.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(rover);
+        }
+    }
+
+    [Test]
     public void OffsetRoadUnderRoverFootprint_StillCountsAsOnRoad()
     {
         Assert.That(RoverRoadFailSafeType, Is.Not.Null, "RoverRoadFailSafe type not found");

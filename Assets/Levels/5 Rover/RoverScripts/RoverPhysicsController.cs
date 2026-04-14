@@ -97,6 +97,7 @@ public class RoverPhysicsController : MonoBehaviour
     [Range(-1f, 1f)] public float steerInput;
     [Range(0f, 1f)] public float brakeInput;
     public bool useKeyboardFallback;
+    public bool restoreKeyboardFallbackOnDismount = true;
 
     private readonly WheelCollider[] wheelColliders = new WheelCollider[4];
     private readonly float[] wheelSpinAngles = new float[4];
@@ -774,7 +775,7 @@ public class RoverPhysicsController : MonoBehaviour
         dismountReadyAfterRelease = false;
         mountInputArmTimer = 0f;
         mountStabilizeTimer = 0f;
-        useKeyboardFallback = true;
+        useKeyboardFallback = restoreKeyboardFallbackOnDismount;
         SetInput(0f, 0f, 1f);
 
         if (rb != null)

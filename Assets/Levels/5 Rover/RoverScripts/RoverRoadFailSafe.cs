@@ -39,10 +39,15 @@ public class RoverRoadFailSafe : MonoBehaviour
 
     public bool IsResetWarningActive { get; private set; }
     public bool IsResetting { get; private set; }
+    public bool CanReturnToCheckpoint => hasSafePosition || HasRespawnPoint();
+    public bool CanReturnToRoverStart => hasRoverStartPose;
 
     private Vector3 lastSafePosition;
     private Quaternion lastSafeRotation;
     private bool hasSafePosition;
+    private Vector3 roverStartPosition;
+    private Quaternion roverStartRotation;
+    private bool hasRoverStartPose;
     private float offRoadTimer;
     private float resetFeedbackTimer;
 
@@ -62,6 +67,9 @@ public class RoverRoadFailSafe : MonoBehaviour
         unsupportedResetDelay = Mathf.Clamp(unsupportedResetDelay, offRoadResetDelay, MaxResponsiveUnsupportedResetDelay);
         unsupportedHorizontalResetDistance = Mathf.Max(0.5f, unsupportedHorizontalResetDistance);
         passableColliderPrefixes = EnsureRequiredPrefixes(passableColliderPrefixes, "Guide_", "Shelf_", "Edge_");
+        roverStartPosition = transform.position;
+        roverStartRotation = transform.rotation;
+        hasRoverStartPose = true;
         lastSafePosition = transform.position + Vector3.up * safePositionLift;
         lastSafeRotation = transform.rotation;
         hasSafePosition = true;
@@ -178,14 +186,54 @@ public class RoverRoadFailSafe : MonoBehaviour
         }
 
         offRoadTimer = 0f;
-        resetFeedbackTimer = resetFeedbackDuration;
-        IsResetting = true;
-        IsResetWarningActive = false;
+        ApplyResetFeedback();
 
         if (controller != null)
         {
             controller.SetInput(0f, 0f, 1f);
         }
+    }
+
+    private void ResetToRoverStartPosition()
+    {
+        if (!hasRoverStartPose || rb == null)
+            return;
+
+        rb.linearVelocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+        rb.position = roverStartPosition;
+        rb.rotation = roverStartRotation;
+
+        offRoadTimer = 0f;
+        ApplyResetFeedback();
+
+        if (controller != null)
+            controller.SetInput(0f, 0f, 1f);
+    }
+
+    private void ApplyResetFeedback()
+    {
+        resetFeedbackTimer = resetFeedbackDuration;
+        IsResetting = true;
+        IsResetWarningActive = false;
+    }
+
+    public bool ReturnToLastCheckpointFromUi()
+    {
+        if (!CanReturnToCheckpoint || rb == null)
+            return false;
+
+        ResetToSafePosition();
+        return true;
+    }
+
+    public bool ReturnToRoverStartFromUi()
+    {
+        if (!CanReturnToRoverStart || rb == null)
+            return false;
+
+        ResetToRoverStartPosition();
+        return true;
     }
 
     private void OnTriggerEnter(Collider other)
@@ -310,5 +358,13 @@ public class RoverRoadFailSafe : MonoBehaviour
         string[] merged = new string[prefixes.Count];
         prefixes.CopyTo(merged);
         return merged;
+    }
+
+    private bool HasRespawnPoint()
+    {
+        if (cachedPlayerHealth == null)
+            cachedPlayerHealth = FindFirstObjectByType<PlayerHealth>();
+
+        return cachedPlayerHealth != null && cachedPlayerHealth.respawnPoint != null;
     }
 }

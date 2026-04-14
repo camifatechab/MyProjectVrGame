@@ -20,6 +20,8 @@ public class RoverDashboardController : MonoBehaviour
     private Image accentImage;
     private Image radioCardImage;
     private Image radioCardOutline;
+    private Image checkpointCardImage;
+    private Image checkpointCardOutline;
     private Image healthBarBack;
     private Image healthBarFill;
     private Image compassAxisVertical;
@@ -35,13 +37,17 @@ public class RoverDashboardController : MonoBehaviour
     private TextMeshProUGUI radioValueLabel;
     private TextMeshProUGUI radioToggleHintLabel;
     private TextMeshProUGUI radioNextHintLabel;
+    private TextMeshProUGUI checkpointValueLabel;
+    private TextMeshProUGUI checkpointHintLabel;
     private TextMeshProUGUI statusLabel;
     private TextMeshProUGUI speedValueLabel;
     private TextMeshProUGUI speedUnitLabel;
     private RectTransform compassRoot;
     private Transform radioControlsRoot;
+    private Transform checkpointControlsRoot;
     private RoverDashboardRadioButton radioToggleButton;
     private RoverDashboardRadioButton radioNextButton;
+    private RoverDashboardRadioButton checkpointReturnButton;
     private bool initialized;
     private float currentAlpha;
     private float currentHealthNormalized = 1f;
@@ -49,6 +55,7 @@ public class RoverDashboardController : MonoBehaviour
     private bool wasMounted;
     private float currentHeadingAngle;
     private float radioPressFeedback;
+    private float checkpointPressFeedback;
 
     private enum DashboardState
     {
@@ -87,6 +94,7 @@ public class RoverDashboardController : MonoBehaviour
 
         UpdatePlacement(binder, theme);
         EnsureRadioControls(binder);
+        EnsureCheckpointControls(binder);
         UpdateCopy(binder, theme, state);
         ApplyTheme(theme, currentAlpha, state);
 
@@ -143,6 +151,10 @@ public class RoverDashboardController : MonoBehaviour
         radioCardImage = CreateImage("RadioCardFill", radioCardRect, new Vector2(66f, 34f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
         radioCardOutline = CreateImage("RadioCardOutline", radioCardRect, new Vector2(68f, 36f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
 
+        RectTransform checkpointCardRect = CreateRect("CheckpointCard", panelRect, new Vector2(66f, 34f), new Vector2(58f, 6f));
+        checkpointCardImage = CreateImage("CheckpointCardFill", checkpointCardRect, new Vector2(66f, 34f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
+        checkpointCardOutline = CreateImage("CheckpointCardOutline", checkpointCardRect, new Vector2(68f, 36f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
+
         healthLabel = CreateText("HealthLabel", panelRect, new Vector2(-86f, -29f), new Vector2(22f, 12f), 6f, FontStyles.Normal);
         healthLabel.alignment = TextAlignmentOptions.MidlineLeft;
         healthLabel.text = "HP";
@@ -188,6 +200,13 @@ public class RoverDashboardController : MonoBehaviour
         radioNextHintLabel = CreateText("RadioNextHint", panelRect, new Vector2(-48f, -6f), new Vector2(24f, 12f), 5.4f, FontStyles.Normal);
         radioNextHintLabel.alignment = TextAlignmentOptions.Center;
         radioNextHintLabel.text = "NEXT";
+
+        checkpointValueLabel = CreateText("CheckpointValue", panelRect, new Vector2(58f, 16f), new Vector2(52f, 12f), 5.2f, FontStyles.Normal);
+        checkpointValueLabel.alignment = TextAlignmentOptions.Center;
+        checkpointValueLabel.text = "ROVER START";
+        checkpointHintLabel = CreateText("CheckpointHint", panelRect, new Vector2(58f, -6f), new Vector2(44f, 12f), 5.4f, FontStyles.Normal);
+        checkpointHintLabel.alignment = TextAlignmentOptions.Center;
+        checkpointHintLabel.text = "RETURN";
 
         statusLabel = CreateText("Status", panelRect, new Vector2(0f, 24f), new Vector2(108f, 14f), 6.9f, FontStyles.Normal);
         statusLabel.alignment = TextAlignmentOptions.Center;
@@ -261,15 +280,25 @@ public class RoverDashboardController : MonoBehaviour
 
         currentHeadingAngle = GetHeadingAngle(binder.transform.forward);
         radioPressFeedback = 0f;
+        checkpointPressFeedback = 0f;
 
         if (radioValueLabel != null)
             radioValueLabel.text = binder.RadioDisplayText;
+
+        if (checkpointValueLabel != null)
+            checkpointValueLabel.text = binder.CanReturnToRoverStart ? "ROVER START" : "START LOCKED";
+
+        if (checkpointHintLabel != null)
+            checkpointHintLabel.text = binder.CanReturnToRoverStart ? "RETURN" : "UNAVAILABLE";
 
         if (radioToggleButton != null)
             radioPressFeedback = Mathf.Max(radioPressFeedback, radioToggleButton.PressedStrength);
 
         if (radioNextButton != null)
             radioPressFeedback = Mathf.Max(radioPressFeedback, radioNextButton.PressedStrength);
+
+        if (checkpointReturnButton != null)
+            checkpointPressFeedback = Mathf.Max(checkpointPressFeedback, checkpointReturnButton.PressedStrength);
 
         if (healthBarFill != null)
         {
@@ -344,6 +373,23 @@ public class RoverDashboardController : MonoBehaviour
             radioCardOutline.color = c;
         }
 
+        if (checkpointCardImage != null)
+        {
+            Color c = panel;
+            c.r += 0.02f;
+            c.g += 0.02f;
+            c.b += 0.02f;
+            c.a = Mathf.Lerp(0.58f, 0.74f, checkpointPressFeedback) * alpha;
+            checkpointCardImage.color = c;
+        }
+
+        if (checkpointCardOutline != null)
+        {
+            Color c = accent;
+            c.a = Mathf.Lerp(0.14f, 0.52f, checkpointPressFeedback) * alpha;
+            checkpointCardOutline.color = c;
+        }
+
         if (healthBarFill != null)
         {
             Color c = GetHealthColor(theme, alpha);
@@ -373,7 +419,7 @@ public class RoverDashboardController : MonoBehaviour
 
         if (radioValueLabel != null)
         {
-            Color c = binderRadioColor(text, muted, alpha, showWarning);
+            Color c = GetValueLabelColor(radioValueLabel.text, text, muted, alpha, showWarning, "OFF", "EMPTY");
             radioValueLabel.color = c;
         }
 
@@ -389,6 +435,19 @@ public class RoverDashboardController : MonoBehaviour
             Color c = muted;
             c.a *= alpha;
             radioNextHintLabel.color = c;
+        }
+
+        if (checkpointValueLabel != null)
+        {
+            Color c = GetValueLabelColor(checkpointValueLabel.text, text, muted, alpha, showWarning, "NO", "UNAVAILABLE");
+            checkpointValueLabel.color = c;
+        }
+
+        if (checkpointHintLabel != null)
+        {
+            Color c = muted;
+            c.a *= alpha;
+            checkpointHintLabel.color = c;
         }
 
         ApplyCompassTheme(text, muted, accent, alpha);
@@ -419,12 +478,25 @@ public class RoverDashboardController : MonoBehaviour
         return target;
     }
 
-    private Color binderRadioColor(Color text, Color muted, float alpha, bool showWarning)
+    private static Color GetValueLabelColor(string labelText, Color text, Color muted, float alpha, bool showWarning, params string[] inactiveTokens)
     {
         Color target = muted;
-        if (radioValueLabel != null && !string.IsNullOrWhiteSpace(radioValueLabel.text))
+        if (!string.IsNullOrWhiteSpace(labelText))
         {
-            if (!radioValueLabel.text.Contains("OFF") && !radioValueLabel.text.Contains("EMPTY"))
+            bool isInactive = false;
+            if (inactiveTokens != null)
+            {
+                for (int i = 0; i < inactiveTokens.Length; i++)
+                {
+                    if (!string.IsNullOrEmpty(inactiveTokens[i]) && labelText.Contains(inactiveTokens[i]))
+                    {
+                        isInactive = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isInactive)
                 target = showWarning ? text : new Color(text.r * 0.95f, text.g * 0.98f, text.b, 1f);
         }
 
@@ -479,10 +551,55 @@ public class RoverDashboardController : MonoBehaviour
         radioNextButton.Bind(binder, RoverDashboardRadioButton.ButtonAction.NextTrack);
     }
 
-    private RoverDashboardRadioButton CreateRadioButton(string name, Vector3 localPosition, string label, RoverDashboardRadioButton.ButtonAction action)
+    private void EnsureCheckpointControls(RoverUIBinder binder)
+    {
+        if (panelRoot == null)
+            return;
+
+        if (checkpointControlsRoot == null)
+        {
+            Transform existing = panelRoot.Find("CheckpointControlsRoot");
+            if (existing != null)
+            {
+                checkpointControlsRoot = existing;
+            }
+            else
+            {
+                GameObject root = new("CheckpointControlsRoot");
+                checkpointControlsRoot = root.transform;
+                checkpointControlsRoot.SetParent(panelRoot, false);
+                checkpointControlsRoot.localPosition = new Vector3(0.081f, -0.0005f, -0.003f);
+                checkpointControlsRoot.localRotation = Quaternion.identity;
+                checkpointControlsRoot.localScale = Vector3.one;
+            }
+        }
+        else
+        {
+            checkpointControlsRoot.localPosition = new Vector3(0.081f, -0.0005f, -0.003f);
+            checkpointControlsRoot.localRotation = Quaternion.identity;
+            checkpointControlsRoot.localScale = Vector3.one;
+        }
+
+        if (checkpointReturnButton == null)
+            checkpointReturnButton = CreateRadioButton("CheckpointButton", Vector3.zero, "RETURN", RoverDashboardRadioButton.ButtonAction.ReturnToRoverStart, checkpointControlsRoot);
+
+        if (checkpointControlsRoot != null)
+            checkpointControlsRoot.gameObject.SetActive(binder != null && binder.IsMounted);
+
+        checkpointReturnButton.transform.localPosition = Vector3.zero;
+        DestroyButtonLabel(checkpointReturnButton.transform);
+        checkpointReturnButton.Bind(binder, RoverDashboardRadioButton.ButtonAction.ReturnToRoverStart);
+    }
+
+    private RoverDashboardRadioButton CreateRadioButton(
+        string name,
+        Vector3 localPosition,
+        string label,
+        RoverDashboardRadioButton.ButtonAction action,
+        Transform parentOverride = null)
     {
         GameObject root = new(name);
-        root.transform.SetParent(radioControlsRoot, false);
+        root.transform.SetParent(parentOverride != null ? parentOverride : radioControlsRoot, false);
         root.transform.localPosition = localPosition;
         root.transform.localRotation = Quaternion.identity;
         root.transform.localScale = Vector3.one;

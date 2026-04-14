@@ -53,6 +53,7 @@ public class RoverUIBinder : MonoBehaviour
     public bool HasRadioTracks => roverRadioController != null && roverRadioController.HasTracks;
     public bool IsResetWarningActive => roverRoadFailSafe != null && roverRoadFailSafe.IsResetWarningActive;
     public bool IsRepositioning => roverRoadFailSafe != null && roverRoadFailSafe.IsResetting;
+    public bool CanReturnToRoverStart => roverRoadFailSafe != null && roverRoadFailSafe.CanReturnToRoverStart;
     public bool IsMounted => roverPhysicsController != null
         ? roverPhysicsController.IsMounted
         : legacyRoverDriver != null && legacyRoverDriver.IsMounted;
@@ -228,5 +229,10 @@ public class RoverUIBinder : MonoBehaviour
     public void NextRadioTrack()
     {
         roverRadioController?.NextTrackFromUi();
+    }
+
+    public bool ReturnToRoverStart()
+    {
+        return roverRoadFailSafe != null && roverRoadFailSafe.ReturnToRoverStartFromUi();
     }
 }

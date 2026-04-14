@@ -135,11 +135,11 @@ void Update()
         if (!rightDevice.isValid) return false;
 
         float val = 0f;
-        if (rightDevice.TryGetFeatureValue(CommonUsages.trigger, out val))
+        if (rightDevice.TryGetFeatureValue(UnityEngine.XR.CommonUsages.trigger, out val))
             return val > 0.5f;
 
         bool btn = false;
-        rightDevice.TryGetFeatureValue(CommonUsages.triggerButton, out btn);
+        rightDevice.TryGetFeatureValue(UnityEngine.XR.CommonUsages.triggerButton, out btn);
         return btn;
     }
 
