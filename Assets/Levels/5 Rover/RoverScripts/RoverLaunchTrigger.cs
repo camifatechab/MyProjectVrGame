@@ -5,8 +5,8 @@ using UnityEngine;
 /// Place on a GameObject with a trigger BoxCollider at the end of the ramp.
 /// When the rover enters the trigger, its velocity is set to a calibrated launch vector
 /// that produces a natural parabolic arc to the landing zone.
-/// During flight the rover is kept stable (no spinning, heavier feel).
-/// After landing, the rover is dampened so it doesn't bounce off the road.
+/// After landing, applies downforce briefly to prevent bouncing.
+/// In-flight stabilization is handled by <see cref="RoverAirborneStabilizer"/>.
 /// </summary>
 public class RoverLaunchTrigger : MonoBehaviour
 {
@@ -20,21 +20,11 @@ public class RoverLaunchTrigger : MonoBehaviour
     [Tooltip("World-space forward direction for the launch. If zero, uses this trigger's forward.")]
     public Vector3 launchDirectionOverride = Vector3.zero;
 
-    [Header("In-Flight Stability")]
-    [Tooltip("Extra gravity multiplier during flight (0 = normal gravity, 0.4 = 40% heavier). " +
-             "Makes the rover feel heavy without being a brick.")]
-    public float flightExtraGravity = 0.4f;
-
-    [Tooltip("Angular damping per physics step during flight (0.85 = strong, 0.95 = gentle). " +
-             "Prevents spinning in the air.")]
-    [Range(0.5f, 1f)]
-    public float flightAngularDamping = 0.85f;
-
     [Header("Landing Dampener")]
-    [Tooltip("How long after launch the dampener stays active waiting for landing (seconds).")]
+    [Tooltip("How long after launch to wait for landing (seconds).")]
     public float landingWindowDuration = 8f;
 
-    [Tooltip("Extra downforce applied for a few seconds after touchdown to keep the rover planted.")]
+    [Tooltip("Extra downforce applied after touchdown to keep the rover planted.")]
     public float landingDownforce = 2000f;
 
     [Tooltip("How long after first ground contact the downforce stays active (seconds).")]
@@ -100,7 +90,7 @@ public class RoverLaunchTrigger : MonoBehaviour
         if (forward.sqrMagnitude < 0.0001f)
             forward = Vector3.forward;
 
-        // Build launch velocity: preserve the rover's current speed if it exceeds the minimum.
+        // Build launch velocity.
         float currentSpeed = Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).magnitude;
         float speed = Mathf.Max(currentSpeed, minimumLaunchSpeed);
 
@@ -111,7 +101,7 @@ public class RoverLaunchTrigger : MonoBehaviour
         rb.angularVelocity = Vector3.zero;
         rb.WakeUp();
 
-        // Start tracking for in-flight stability + landing dampening.
+        // Start tracking for landing dampening.
         trackedRb = rb;
         trackedController = controller;
         landingWindowTimer = landingWindowDuration;
@@ -134,7 +124,7 @@ public class RoverLaunchTrigger : MonoBehaviour
         if (trackedRb == null)
             return;
 
-        // Phase 1: in-flight — waiting for the rover to land.
+        // Phase 1: waiting for the rover to land.
         if (waitingForLanding)
         {
             landingWindowTimer -= Time.fixedDeltaTime;
@@ -145,18 +135,10 @@ public class RoverLaunchTrigger : MonoBehaviour
                 return;
             }
 
-            // --- In-flight stability ---
-            // Kill spin so the rover stays flat and the player stays planted.
-            trackedRb.angularVelocity *= flightAngularDamping;
-
-            // Extra gravity so the rover feels heavy (not floaty).
-            if (flightExtraGravity > 0f)
-                trackedRb.AddForce(Physics.gravity * flightExtraGravity, ForceMode.Acceleration);
-
             // Check if any wheel has touched ground.
             if (trackedController != null && HasAnyWheelContact(trackedController))
             {
-                // Touchdown! Kill the vertical bounce.
+                // Touchdown — kill the vertical bounce.
                 Vector3 vel = trackedRb.linearVelocity;
                 if (vel.y > 0f)
                 {
@@ -169,13 +151,13 @@ public class RoverLaunchTrigger : MonoBehaviour
                 landingActive = true;
                 landingDownforceTimer = landingDownforceDuration;
 
-                Debug.Log($"<color=#88ff88>[RoverLaunchTrigger] Landing detected. Dampening active for {landingDownforceDuration:F1}s</color>");
+                Debug.Log($"<color=#88ff88>[RoverLaunchTrigger] Landing detected. Dampening for {landingDownforceDuration:F1}s</color>");
             }
 
             return;
         }
 
-        // Phase 2: post-touchdown downforce to keep the rover planted.
+        // Phase 2: post-touchdown downforce.
         if (landingActive)
         {
             landingDownforceTimer -= Time.fixedDeltaTime;
@@ -186,10 +168,8 @@ public class RoverLaunchTrigger : MonoBehaviour
                 return;
             }
 
-            // Apply extra downforce to stick the rover to the road.
             trackedRb.AddForce(Vector3.down * landingDownforce, ForceMode.Force);
 
-            // Keep killing upward bounces.
             Vector3 vel = trackedRb.linearVelocity;
             if (vel.y > 1f)
             {
@@ -224,7 +204,6 @@ public class RoverLaunchTrigger : MonoBehaviour
 
     private void OnDrawGizmos()
     {
-        // Trigger volume.
         BoxCollider box = GetComponent<BoxCollider>();
         if (box != null)
         {
@@ -235,7 +214,6 @@ public class RoverLaunchTrigger : MonoBehaviour
             Gizmos.DrawWireCube(box.center, box.size);
         }
 
-        // Launch arc preview.
         Gizmos.matrix = Matrix4x4.identity;
         Vector3 fwd = launchDirectionOverride.sqrMagnitude > 0.0001f
             ? Vector3.ProjectOnPlane(launchDirectionOverride, Vector3.up).normalized
@@ -246,10 +224,6 @@ public class RoverLaunchTrigger : MonoBehaviour
         Vector3 launchDir = (fwd * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch)).normalized;
         float speed = minimumLaunchSpeed;
 
-        // Account for extra flight gravity in preview.
-        Vector3 effectiveGravity = Physics.gravity * (1f + flightExtraGravity);
-
-        // Draw parabolic arc preview.
         Gizmos.color = new Color(1f, 0.85f, 0.2f, 0.9f);
         Vector3 vel = launchDir * speed;
         Vector3 pos = transform.position + Vector3.up * 1f;
@@ -258,7 +232,7 @@ public class RoverLaunchTrigger : MonoBehaviour
         for (int i = 0; i < 60; i++)
         {
             Vector3 next = pos + vel * dt;
-            vel += effectiveGravity * dt;
+            vel += Physics.gravity * dt;
             Gizmos.DrawLine(pos, next);
             pos = next;
         }
