@@ -32,7 +32,7 @@ public class RoverRoadFailSafe : MonoBehaviour
     public float fallBelowSafeDistance = 4f;
     public float minimumFallSpeed = 1.5f;
     public float resetFeedbackDuration = 0.9f;
-    public string[] safeColliderPrefixes = { "Road_", "Base_Road_" };
+    public string[] safeColliderPrefixes = { "Road_", "Base_Road_", "Terrain", "Platform_" };
     public string[] instantResetTriggerNames = { "Ocean" };
     [Tooltip("Prefixes of colliders to convert to triggers so rover can drive off the road.")]
     public string[] passableColliderPrefixes = { "Guide_", "Shelf_", "Edge_" };
@@ -41,6 +41,7 @@ public class RoverRoadFailSafe : MonoBehaviour
     public bool IsResetting { get; private set; }
     public bool CanReturnToCheckpoint => hasSafePosition || HasRespawnPoint();
     public bool CanReturnToRoverStart => hasRoverStartPose;
+    public bool IsSuspended => suspendTimer > 0f;
 
     private Vector3 lastSafePosition;
     private Quaternion lastSafeRotation;
@@ -50,6 +51,8 @@ public class RoverRoadFailSafe : MonoBehaviour
     private bool hasRoverStartPose;
     private float offRoadTimer;
     private float resetFeedbackTimer;
+    private float suspendTimer;
+    private string suspendReason;
 
     private void Reset()
     {
@@ -58,14 +61,17 @@ public class RoverRoadFailSafe : MonoBehaviour
     }
 
     private PlayerHealth cachedPlayerHealth;
+    private RoverStuckDiagnostics diagnostics;
 
     private void Awake()
     {
         rb ??= GetComponent<Rigidbody>();
         controller ??= GetComponent<RoverPhysicsController>();
+        diagnostics ??= GetComponent<RoverStuckDiagnostics>();
         offRoadResetDelay = Mathf.Clamp(offRoadResetDelay, 0.02f, MaxResponsiveOffRoadResetDelay);
         unsupportedResetDelay = Mathf.Clamp(unsupportedResetDelay, offRoadResetDelay, MaxResponsiveUnsupportedResetDelay);
         unsupportedHorizontalResetDistance = Mathf.Max(0.5f, unsupportedHorizontalResetDistance);
+        safeColliderPrefixes = EnsureRequiredPrefixes(safeColliderPrefixes, "Road_", "Base_Road_", "Terrain", "Platform_");
         passableColliderPrefixes = EnsureRequiredPrefixes(passableColliderPrefixes, "Guide_", "Shelf_", "Edge_");
         roverStartPosition = transform.position;
         roverStartRotation = transform.rotation;
@@ -115,6 +121,23 @@ public class RoverRoadFailSafe : MonoBehaviour
             IsResetting = false;
         }
 
+        // Honor explicit external suspensions (e.g. scripted ramp jumps).
+        if (suspendTimer > 0f)
+        {
+            suspendTimer = Mathf.Max(0f, suspendTimer - Time.fixedDeltaTime);
+            // Clear warning state so UI does not flash mid-jump.
+            IsResetWarningActive = false;
+            offRoadTimer = 0f;
+            // Still refresh safe-pose opportunistically if we happen to touch safe ground during the jump.
+            if (TryGetSafeHit(out RaycastHit suspendedHit))
+            {
+                lastSafePosition = suspendedHit.point + Vector3.up * safePositionLift;
+                lastSafeRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized, Vector3.up);
+                hasSafePosition = true;
+            }
+            return;
+        }
+
         if (TryGetSafeHit(out RaycastHit hit))
         {
             lastSafePosition = hit.point + Vector3.up * safePositionLift;
@@ -148,12 +171,22 @@ public class RoverRoadFailSafe : MonoBehaviour
 
         if (offRoadTimer >= offRoadResetDelay && fellTooLow && movingDown)
         {
+            diagnostics?.ReportFailSafeIntervention(
+                "Fell below the last safe surface while moving downward.",
+                transform.position,
+                lastSafePosition,
+                rb.linearVelocity);
             ResetToSafePosition();
             return;
         }
 
         if (driftedOffRoad && offRoadTimer >= unsupportedResetDelay)
         {
+            diagnostics?.ReportFailSafeIntervention(
+                "Moved too far away from the last recognized safe surface.",
+                transform.position,
+                lastSafePosition,
+                rb.linearVelocity);
             ResetToSafePosition();
         }
     }
@@ -234,6 +267,41 @@ public class RoverRoadFailSafe : MonoBehaviour
 
         ResetToRoverStartPosition();
         return true;
+    }
+
+    /// <summary>
+    /// Temporarily pause the failsafe (e.g. during scripted ramp jumps). While suspended the
+    /// rover is allowed to be airborne and far from any Road_* surface without being teleported back.
+    /// Calling this while already suspended extends the suspension (takes the max of the two timers).
+    /// </summary>
+    public void SuspendFailsafe(float duration, string reason = null)
+    {
+        if (duration <= 0f) return;
+        suspendTimer = Mathf.Max(suspendTimer, duration);
+        suspendReason = reason;
+        IsResetWarningActive = false;
+        offRoadTimer = 0f;
+        Debug.Log($"<color=yellow>[RoverRoadFailSafe] Suspended for {duration:F2}s ({reason ?? "no reason"}).</color>");
+    }
+
+    /// <summary>End any active suspension immediately.</summary>
+    public void ResumeFailsafe()
+    {
+        suspendTimer = 0f;
+        suspendReason = null;
+    }
+
+    /// <summary>
+    /// Force the failsafe to treat the rover's current pose as the new last-known-safe pose.
+    /// Useful after a successful scripted landing so the rover never gets kicked back to the ramp.
+    /// </summary>
+    public void MarkCurrentPoseSafe()
+    {
+        lastSafePosition = transform.position + Vector3.up * safePositionLift;
+        lastSafeRotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized, Vector3.up);
+        hasSafePosition = true;
+        offRoadTimer = 0f;
+        IsResetWarningActive = false;
     }
 
     private void OnTriggerEnter(Collider other)

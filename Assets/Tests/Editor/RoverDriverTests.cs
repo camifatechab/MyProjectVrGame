@@ -70,6 +70,7 @@ public class RoverPhysicsControllerTests
     private static readonly Type RoverRadioControllerType = Type.GetType("RoverRadioController, Assembly-CSharp");
     private static readonly Type RoverRoadFailSafeType = Type.GetType("RoverRoadFailSafe, Assembly-CSharp");
     private static readonly Type RoverEdgeRecoveryAssistType = Type.GetType("RoverEdgeRecoveryAssist, Assembly-CSharp");
+    private static readonly Type RoverStuckDiagnosticsType = Type.GetType("RoverStuckDiagnostics, Assembly-CSharp");
     private static readonly Type LaserShooterType = Type.GetType("LaserShooter, Assembly-CSharp");
 
     [Test]
@@ -84,6 +85,7 @@ public class RoverPhysicsControllerTests
         GameObject rover = new GameObject("RoverPhysics");
         GameObject player = new GameObject("Player");
         GameObject seat = new GameObject("Seat");
+        GameObject blocker = new GameObject("PlayerBlocker");
 
         try
         {
@@ -91,6 +93,7 @@ public class RoverPhysicsControllerTests
             Component jetpack = player.AddComponent(AutoJetpackControllerType);
             Component smokeTrail = player.AddComponent(FlightSmokeTrailType);
             Component xrOrigin = player.AddComponent(xrOriginType);
+            BoxCollider blockerCollider = blocker.AddComponent<BoxCollider>();
 
             FlightSmokeTrailType.GetField("jetpackController", BindingFlags.Instance | BindingFlags.Public)
                 ?.SetValue(smokeTrail, jetpack);
@@ -103,8 +106,11 @@ public class RoverPhysicsControllerTests
                 ?.SetValue(controller, xrOrigin);
             RoverPhysicsControllerType.GetField("seatAnchor", BindingFlags.Instance | BindingFlags.Public)
                 ?.SetValue(controller, seat.transform);
+            RoverPhysicsControllerType.GetField("playerBlocker", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(controller, blockerCollider);
 
             seat.transform.SetParent(rover.transform, false);
+            blocker.transform.SetParent(rover.transform, false);
 
             MethodInfo mountMethod = RoverPhysicsControllerType.GetMethod("Mount", BindingFlags.Instance | BindingFlags.NonPublic);
             MethodInfo dismountMethod = RoverPhysicsControllerType.GetMethod("Dismount", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -118,17 +124,22 @@ public class RoverPhysicsControllerTests
 
             Assert.That((bool)isMountedProperty.GetValue(controller), Is.True, "Mounting should put the rover into mounted state.");
             Assert.That(((Behaviour)jetpack).enabled, Is.False, "Mounting should disable AutoJetpackController.");
+            Assert.That(blockerCollider.enabled, Is.False,
+                "Mounting should disable the tall player blocker so it cannot snag roof or cliff colliders while driving.");
 
             dismountMethod.Invoke(controller, null);
 
             Assert.That((bool)isMountedProperty.GetValue(controller), Is.False, "Dismounting should clear the mounted state.");
             Assert.That(((Behaviour)jetpack).enabled, Is.True, "Dismounting should re-enable AutoJetpackController.");
+            Assert.That(blockerCollider.enabled, Is.True,
+                "Dismounting should restore the player blocker for on-foot interactions around the parked rover.");
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(rover);
             UnityEngine.Object.DestroyImmediate(player);
             UnityEngine.Object.DestroyImmediate(seat);
+            UnityEngine.Object.DestroyImmediate(blocker);
         }
     }
 
@@ -509,6 +520,66 @@ public class RoverPhysicsControllerTests
     }
 
     [Test]
+    public void MountedRigAnchor_SnapsToSeatWithoutLateUpdateLag()
+    {
+        Assert.That(RoverPhysicsControllerType, Is.Not.Null, "RoverPhysicsController type not found");
+
+        GameObject rover = new GameObject("RoverAnchor");
+        GameObject seat = new GameObject("Seat");
+        GameObject anchor = new GameObject("MountedRigAnchor");
+
+        try
+        {
+            Component controller = rover.AddComponent(RoverPhysicsControllerType);
+
+            seat.transform.SetParent(rover.transform, false);
+            anchor.transform.SetParent(rover.transform, false);
+
+            rover.transform.position = new Vector3(10f, 5f, -3f);
+            rover.transform.rotation = Quaternion.Euler(8f, 25f, -4f);
+            seat.transform.localPosition = new Vector3(-0.3f, 0.9f, 0.1f);
+            seat.transform.localRotation = Quaternion.Euler(0f, 35f, 0f);
+            anchor.transform.position = new Vector3(-50f, -50f, -50f);
+            anchor.transform.rotation = Quaternion.identity;
+
+            RoverPhysicsControllerType.GetField("seatAnchor", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(controller, seat.transform);
+            RoverPhysicsControllerType.GetField("useMountedSeatStabilization", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(controller, true);
+            RoverPhysicsControllerType.GetField("seatYawOffset", BindingFlags.Instance | BindingFlags.Public)
+                ?.SetValue(controller, 10f);
+
+            RoverPhysicsControllerType.GetField("mountedRigAnchor", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(controller, anchor.transform);
+            RoverPhysicsControllerType.GetField("isMounted", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?.SetValue(controller, true);
+
+            MethodInfo updateMountedRigAnchorMethod = RoverPhysicsControllerType.GetMethod(
+                "UpdateMountedRigAnchor",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+
+            Assert.That(updateMountedRigAnchorMethod, Is.Not.Null, "RoverPhysicsController.UpdateMountedRigAnchor not found");
+
+            updateMountedRigAnchorMethod.Invoke(controller, new object[] { 0.016f, false });
+
+            Vector3 expectedPosition = seat.transform.position;
+            Vector3 expectedForward = Quaternion.Euler(0f, 10f, 0f) * Vector3.ProjectOnPlane(seat.transform.forward, Vector3.up).normalized;
+            Quaternion expectedRotation = Quaternion.LookRotation(expectedForward, Vector3.up);
+
+            Assert.That(Vector3.Distance(anchor.transform.position, expectedPosition), Is.LessThan(0.0001f),
+                "Mounted rig anchor should stay locked to the seat instead of lagging behind it.");
+            Assert.That(Quaternion.Angle(anchor.transform.rotation, expectedRotation), Is.LessThan(0.0001f),
+                "Mounted rig anchor should use the seat's yaw-only rotation immediately each frame.");
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(rover);
+            UnityEngine.Object.DestroyImmediate(seat);
+            UnityEngine.Object.DestroyImmediate(anchor);
+        }
+    }
+
+    [Test]
     public void PassablePrefixes_AlwaysIncludeRequiredBarrierHelpers()
     {
         Assert.That(RoverRoadFailSafeType, Is.Not.Null, "RoverRoadFailSafe type not found");
@@ -524,5 +595,46 @@ public class RoverPhysicsControllerTests
         CollectionAssert.Contains(merged, "Guide_");
         CollectionAssert.Contains(merged, "Shelf_");
         CollectionAssert.Contains(merged, "Edge_");
+    }
+
+    [Test]
+    public void SafePrefixes_AlwaysIncludeRoadAndTerrainSurfaces()
+    {
+        Assert.That(RoverRoadFailSafeType, Is.Not.Null, "RoverRoadFailSafe type not found");
+
+        MethodInfo ensurePrefixesMethod = RoverRoadFailSafeType.GetMethod(
+            "EnsureRequiredPrefixes",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        Assert.That(ensurePrefixesMethod, Is.Not.Null, "RoverRoadFailSafe.EnsureRequiredPrefixes not found");
+
+        string[] merged = (string[])ensurePrefixesMethod.Invoke(null, new object[] { new[] { "Road_" }, new[] { "Road_", "Base_Road_", "Terrain" } });
+
+        CollectionAssert.Contains(merged, "Road_");
+        CollectionAssert.Contains(merged, "Base_Road_");
+        CollectionAssert.Contains(merged, "Terrain");
+    }
+
+    [Test]
+    public void StuckDiagnostics_PrefersForwardOrOverheadBlockers_NotFloorSupport()
+    {
+        Assert.That(RoverStuckDiagnosticsType, Is.Not.Null, "RoverStuckDiagnostics type not found");
+
+        MethodInfo evaluateScoreMethod = RoverStuckDiagnosticsType.GetMethod(
+            "EvaluateBlockerScore",
+            BindingFlags.Static | BindingFlags.NonPublic);
+
+        Assert.That(evaluateScoreMethod, Is.Not.Null, "RoverStuckDiagnostics.EvaluateBlockerScore not found");
+
+        float floorSupportScore = (float)evaluateScoreMethod.Invoke(null, new object[] { Vector3.up, Vector3.forward });
+        float forwardWallScore = (float)evaluateScoreMethod.Invoke(null, new object[] { -Vector3.forward, Vector3.forward });
+        float overheadBlockScore = (float)evaluateScoreMethod.Invoke(null, new object[] { Vector3.down, Vector3.forward });
+
+        Assert.That(floorSupportScore, Is.EqualTo(0f).Within(0.0001f),
+            "Floor support should not be misclassified as a blocker when diagnosing a stuck rover.");
+        Assert.That(forwardWallScore, Is.GreaterThan(0.9f),
+            "A forward-facing collision normal should be treated as a strong blocker candidate.");
+        Assert.That(overheadBlockScore, Is.GreaterThan(0.7f),
+            "An overhang or ceiling contact should still be reported as a likely blocker.");
     }
 }

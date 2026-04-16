@@ -323,6 +323,9 @@ public class RoverPhysicsController : MonoBehaviour
 
     private void ApplyDownforce()
     {
+        if (!HasGroundContact())
+            return;
+
         float appliedDownforce = GetAppliedDownforce();
         if (appliedDownforce <= 0f)
             return;
@@ -332,11 +335,28 @@ public class RoverPhysicsController : MonoBehaviour
 
     private void ApplyExtraGravity()
     {
+        // Keep normal gravity in the air so ramps can actually launch the rover.
+        if (!HasGroundContact())
+            return;
+
         float appliedExtraGravity = GetAppliedExtraGravity();
         if (appliedExtraGravity <= 0f)
             return;
 
         rb.AddForce(Physics.gravity * appliedExtraGravity, ForceMode.Acceleration);
+    }
+
+    private bool HasGroundContact()
+    {
+        return IsWheelGrounded(wheelFL)
+            || IsWheelGrounded(wheelFR)
+            || IsWheelGrounded(wheelRL)
+            || IsWheelGrounded(wheelRR);
+    }
+
+    private static bool IsWheelGrounded(WheelCollider wheel)
+    {
+        return wheel != null && wheel.isGrounded;
     }
 
     private void UpdateVisuals(float dt)
@@ -409,6 +429,17 @@ public class RoverPhysicsController : MonoBehaviour
         playerBlocker.center = playerBlockerCenter;
         playerBlocker.size = playerBlockerSize;
         playerBlocker.isTrigger = false;
+        UpdatePlayerBlockerState();
+    }
+
+    private void UpdatePlayerBlockerState()
+    {
+        if (playerBlocker == null)
+            return;
+
+        // Keep the blocker available while walking around the rover, but do not let it snag
+        // low ceilings or cliff overhangs while the player is actively driving.
+        playerBlocker.enabled = !isMounted;
     }
 
     private void AlignWheelCollidersToVisuals()
@@ -726,6 +757,7 @@ public class RoverPhysicsController : MonoBehaviour
         mountStabilizeTimer = mountStabilizeDuration;
         useKeyboardFallback = false;
         SetInput(0f, 0f, 1f);
+        UpdatePlayerBlockerState();
 
         if (rb != null)
         {
@@ -777,6 +809,7 @@ public class RoverPhysicsController : MonoBehaviour
         mountStabilizeTimer = 0f;
         useKeyboardFallback = restoreKeyboardFallbackOnDismount;
         SetInput(0f, 0f, 1f);
+        UpdatePlayerBlockerState();
 
         if (rb != null)
             rb.constraints = defaultConstraints;
@@ -1081,21 +1114,9 @@ public class RoverPhysicsController : MonoBehaviour
 
         Quaternion targetRotation = Quaternion.LookRotation(targetForward.normalized, Vector3.up);
 
-        if (!useMountedSeatStabilization || !isMounted || snapImmediately || deltaTime <= 0f)
-        {
-            mountedRigAnchor.SetPositionAndRotation(targetPosition, targetRotation);
-            return;
-        }
-
-        float horizontalLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatPositionSmooth) * deltaTime);
-        float verticalLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatVerticalSmooth) * deltaTime);
-        float rotationLerp = 1f - Mathf.Exp(-Mathf.Max(0f, mountedSeatYawSmooth) * deltaTime);
-
-        Vector3 smoothedPosition = mountedRigAnchor.position;
-        smoothedPosition.x = Mathf.Lerp(smoothedPosition.x, targetPosition.x, horizontalLerp);
-        smoothedPosition.z = Mathf.Lerp(smoothedPosition.z, targetPosition.z, horizontalLerp);
-        smoothedPosition.y = Mathf.Lerp(smoothedPosition.y, targetPosition.y, verticalLerp);
-        mountedRigAnchor.position = smoothedPosition;
-        mountedRigAnchor.rotation = Quaternion.Slerp(mountedRigAnchor.rotation, targetRotation, rotationLerp);
+        // The rover Rigidbody already uses interpolation. Adding another layer of damping to the
+        // XR rig parent makes the headset visibly wobble while driving, so keep the stabilized
+        // anchor locked to the seat every frame.
+        mountedRigAnchor.SetPositionAndRotation(targetPosition, targetRotation);
     }
 }

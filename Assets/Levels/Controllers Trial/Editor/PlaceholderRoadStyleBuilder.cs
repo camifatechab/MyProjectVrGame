@@ -18,19 +18,23 @@ internal static class PlaceholderRoadStyleBuilder
     private const string BaseTemplateName = "Base_Road_395";
     private const string EdgeTemplateName = "Edge_Road_395_L";
 
-    private const float SegmentMinLength = 1.6f;
-    private const float SegmentMaxLength = 3.4f;
+    private const float VisualSegmentMinLength = 0.45f;
+    private const float VisualSegmentMaxLength = 0.9f;
+    private const float ColliderSegmentMinLength = 1.2f;
+    private const float ColliderSegmentMaxLength = 2.2f;
     private const float RoadWidth = 9.6f;
     private const float RoadHeight = 0.42f;
     private const float BaseWidth = 10.176f;
     private const float BaseHeight = 0.6f;
     private const float BaseYOffset = -0.158f;
-    private const float BaseLengthPadding = 0.08f;
     private const float EdgeWidth = 0.34f;
     private const float EdgeHeight = 0.46f;
     private const float EdgeLateralOffset = 4.595f;
     private const float EdgeYOffset = 0.236f;
     private const float SegmentOverlap = 0.18f;
+    private const float RoadUvTileLength = 4f;
+    private const float BaseUvTileLength = 4f;
+    private const float EdgeUvTileLength = 2f;
 
     [MenuItem("Tools/Placeholder Road/Build Rover Style")]
     private static void BuildRoverStyle()
@@ -70,7 +74,7 @@ internal static class PlaceholderRoadStyleBuilder
         Transform baseRoot = CreateOrResetContainer("Base_Road_PlaceholderStyled", roverBaseParent.transform);
         Transform edgesRoot = CreateOrResetContainer("Edges_Road_PlaceholderStyled", roverEdgesParent.transform);
 
-        BuildSegments(splinePoints, roadRoot, baseRoot, edgesRoot,
+        BuildStyledMeshes(splinePoints, roadRoot, baseRoot, edgesRoot,
             roadTemplateRenderer.sharedMaterial,
             baseTemplateRenderer.sharedMaterial,
             edgeTemplateRenderer.sharedMaterial);
@@ -131,7 +135,7 @@ internal static class PlaceholderRoadStyleBuilder
         return container.transform;
     }
 
-    private static void BuildSegments(
+    private static void BuildStyledMeshes(
         List<Vector3> splinePoints,
         Transform roadRoot,
         Transform baseRoot,
@@ -140,59 +144,23 @@ internal static class PlaceholderRoadStyleBuilder
         Material baseMaterial,
         Material edgeMaterial)
     {
-        List<Vector3> sampled = ResamplePath(splinePoints, SegmentMinLength, SegmentMaxLength);
+        List<Vector3> visualPoints = ResamplePath(splinePoints, VisualSegmentMinLength, VisualSegmentMaxLength);
+        List<Vector3> colliderPoints = ResamplePath(splinePoints, ColliderSegmentMinLength, ColliderSegmentMaxLength);
 
-        for (int i = 0; i < sampled.Count - 1; i++)
-        {
-            Vector3 start = sampled[i];
-            Vector3 end = sampled[i + 1];
-            Vector3 direction = end - start;
-            float length = direction.magnitude;
-            if (length < 0.05f)
-                continue;
+        CreateOrUpdateStripObject("Road_PlaceholderSurface", roadRoot, visualPoints, RoadWidth, RoadHeight, 0f, 0f, roadMaterial, RoadUvTileLength);
+        CreateOrUpdateStripObject("Base_Road_PlaceholderSurface", baseRoot, visualPoints, BaseWidth, BaseHeight, BaseYOffset, 0f, baseMaterial, BaseUvTileLength);
+        CreateOrUpdateStripObject("Edge_Road_PlaceholderSurface_L", edgesRoot, visualPoints, EdgeWidth, EdgeHeight, EdgeYOffset, -EdgeLateralOffset, edgeMaterial, EdgeUvTileLength);
+        CreateOrUpdateStripObject("Edge_Road_PlaceholderSurface_R", edgesRoot, visualPoints, EdgeWidth, EdgeHeight, EdgeYOffset, EdgeLateralOffset, edgeMaterial, EdgeUvTileLength);
 
-            Vector3 forward = direction / length;
-            Vector3 up = Vector3.up;
-            Vector3 right = Vector3.Cross(up, forward).normalized;
-            Quaternion rotation = Quaternion.LookRotation(forward, up);
-            Vector3 center = (start + end) * 0.5f;
+        Transform roadColliderRoot = CreateOrResetContainer("Road_PlaceholderColliders", roadRoot);
+        Transform baseColliderRoot = CreateOrResetContainer("Base_Road_PlaceholderColliders", baseRoot);
+        Transform edgeColliderRootL = CreateOrResetContainer("Edge_Road_PlaceholderColliders_L", edgesRoot);
+        Transform edgeColliderRootR = CreateOrResetContainer("Edge_Road_PlaceholderColliders_R", edgesRoot);
 
-            CreateCubeSegment(
-                $"Road_Placeholder_{i:000}",
-                roadRoot,
-                center,
-                rotation,
-                new Vector3(RoadWidth, RoadHeight, length + SegmentOverlap),
-                roadMaterial,
-                true);
-
-            CreateCubeSegment(
-                $"Base_Road_Placeholder_{i:000}",
-                baseRoot,
-                center + (up * BaseYOffset),
-                rotation,
-                new Vector3(BaseWidth, BaseHeight, length + BaseLengthPadding),
-                baseMaterial,
-                true);
-
-            CreateCubeSegment(
-                $"Edge_Road_Placeholder_{i:000}_L",
-                edgesRoot,
-                center - (right * EdgeLateralOffset) + (up * EdgeYOffset),
-                rotation,
-                new Vector3(EdgeWidth, EdgeHeight, length),
-                edgeMaterial,
-                true);
-
-            CreateCubeSegment(
-                $"Edge_Road_Placeholder_{i:000}_R",
-                edgesRoot,
-                center + (right * EdgeLateralOffset) + (up * EdgeYOffset),
-                rotation,
-                new Vector3(EdgeWidth, EdgeHeight, length),
-                edgeMaterial,
-                true);
-        }
+        BuildColliderStrip(roadColliderRoot, colliderPoints, RoadWidth, RoadHeight, 0f, 0f);
+        BuildColliderStrip(baseColliderRoot, colliderPoints, BaseWidth, BaseHeight, BaseYOffset, 0f);
+        BuildColliderStrip(edgeColliderRootL, colliderPoints, EdgeWidth, EdgeHeight, EdgeYOffset, -EdgeLateralOffset);
+        BuildColliderStrip(edgeColliderRootR, colliderPoints, EdgeWidth, EdgeHeight, EdgeYOffset, EdgeLateralOffset);
     }
 
     private static List<Vector3> ResamplePath(List<Vector3> splinePoints, float minLength, float maxLength)
@@ -223,30 +191,200 @@ internal static class PlaceholderRoadStyleBuilder
         return result;
     }
 
-    private static GameObject CreateCubeSegment(
+    private static void CreateOrUpdateStripObject(
         string name,
         Transform parent,
-        Vector3 position,
-        Quaternion rotation,
-        Vector3 scale,
+        List<Vector3> points,
+        float width,
+        float height,
+        float verticalOffset,
+        float lateralOffset,
         Material material,
-        bool castShadows)
+        float uvTileLength)
     {
-        GameObject go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        Undo.RegisterCreatedObjectUndo(go, $"Create {name}");
-        go.name = name;
-        go.transform.SetParent(parent, true);
-        go.transform.position = position;
-        go.transform.rotation = rotation;
-        go.transform.localScale = scale;
+        Transform existing = parent.Find(name);
+        GameObject go;
+        MeshFilter meshFilter;
+        MeshRenderer renderer;
+
+        if (existing == null)
+        {
+            go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, $"Create {name}");
+            go.transform.SetParent(parent, false);
+            meshFilter = go.AddComponent<MeshFilter>();
+            renderer = go.AddComponent<MeshRenderer>();
+        }
+        else
+        {
+            go = existing.gameObject;
+            meshFilter = go.GetComponent<MeshFilter>() ?? go.AddComponent<MeshFilter>();
+            renderer = go.GetComponent<MeshRenderer>() ?? go.AddComponent<MeshRenderer>();
+        }
+
+        go.transform.localPosition = Vector3.zero;
+        go.transform.localRotation = Quaternion.identity;
+        go.transform.localScale = Vector3.one;
         go.isStatic = true;
 
-        MeshRenderer renderer = go.GetComponent<MeshRenderer>();
+        Mesh mesh = BuildStripMesh(points, width, height, verticalOffset, lateralOffset, uvTileLength);
+        mesh.name = $"{name}_Mesh";
+        meshFilter.sharedMesh = mesh;
         renderer.sharedMaterial = material;
-        renderer.shadowCastingMode = castShadows ? ShadowCastingMode.On : ShadowCastingMode.Off;
+        renderer.shadowCastingMode = ShadowCastingMode.On;
         renderer.receiveShadows = true;
+    }
 
-        return go;
+    private static void BuildColliderStrip(
+        Transform parent,
+        List<Vector3> points,
+        float width,
+        float height,
+        float verticalOffset,
+        float lateralOffset)
+    {
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            Vector3 start = points[i];
+            Vector3 end = points[i + 1];
+            Vector3 forward = end - start;
+            float length = forward.magnitude;
+            if (length < 0.05f)
+                continue;
+
+            forward /= length;
+            Vector3 right = ComputeRight(points, i);
+            Vector3 center = (start + end) * 0.5f + (Vector3.up * verticalOffset) + (right * lateralOffset);
+            Quaternion rotation = Quaternion.LookRotation(forward, Vector3.up);
+
+            GameObject colliderGo = new GameObject($"Collider_{i:000}");
+            Undo.RegisterCreatedObjectUndo(colliderGo, "Create placeholder collider");
+            colliderGo.transform.SetParent(parent, true);
+            colliderGo.transform.position = center;
+            colliderGo.transform.rotation = rotation;
+            colliderGo.transform.localScale = Vector3.one;
+            colliderGo.isStatic = true;
+
+            BoxCollider collider = colliderGo.AddComponent<BoxCollider>();
+            collider.size = new Vector3(width, height, length + SegmentOverlap);
+        }
+    }
+
+    private static Mesh BuildStripMesh(
+        List<Vector3> points,
+        float width,
+        float height,
+        float verticalOffset,
+        float lateralOffset,
+        float uvTileLength)
+    {
+        Mesh mesh = new Mesh();
+        mesh.indexFormat = points.Count > 1000 ? IndexFormat.UInt32 : IndexFormat.UInt16;
+
+        List<Vector3> vertices = new List<Vector3>();
+        List<Vector2> uvs = new List<Vector2>();
+        List<int> triangles = new List<int>();
+
+        float halfWidth = width * 0.5f;
+        float halfHeight = height * 0.5f;
+        float v0 = 0f;
+
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            Vector3 p0 = points[i];
+            Vector3 p1 = points[i + 1];
+            float segmentLength = Vector3.Distance(p0, p1);
+            if (segmentLength < 0.001f)
+                continue;
+
+            float v1 = v0 + (segmentLength / Mathf.Max(0.01f, uvTileLength));
+
+            Vector3 right0 = ComputeRight(points, i);
+            Vector3 right1 = ComputeRight(points, i + 1);
+
+            Vector3 c0 = p0 + (Vector3.up * verticalOffset) + (right0 * lateralOffset);
+            Vector3 c1 = p1 + (Vector3.up * verticalOffset) + (right1 * lateralOffset);
+
+            Vector3 tl0 = c0 - (right0 * halfWidth) + (Vector3.up * halfHeight);
+            Vector3 tr0 = c0 + (right0 * halfWidth) + (Vector3.up * halfHeight);
+            Vector3 bl0 = c0 - (right0 * halfWidth) - (Vector3.up * halfHeight);
+            Vector3 br0 = c0 + (right0 * halfWidth) - (Vector3.up * halfHeight);
+
+            Vector3 tl1 = c1 - (right1 * halfWidth) + (Vector3.up * halfHeight);
+            Vector3 tr1 = c1 + (right1 * halfWidth) + (Vector3.up * halfHeight);
+            Vector3 bl1 = c1 - (right1 * halfWidth) - (Vector3.up * halfHeight);
+            Vector3 br1 = c1 + (right1 * halfWidth) - (Vector3.up * halfHeight);
+
+            AddQuad(vertices, uvs, triangles, tl0, tl1, tr1, tr0, new Vector2(0f, v0), new Vector2(0f, v1), new Vector2(1f, v1), new Vector2(1f, v0));
+            AddQuad(vertices, uvs, triangles, bl0, br0, br1, bl1, new Vector2(0f, v0), new Vector2(1f, v0), new Vector2(1f, v1), new Vector2(0f, v1));
+            AddQuad(vertices, uvs, triangles, bl0, bl1, tl1, tl0, new Vector2(0f, v0), new Vector2(0f, v1), new Vector2(1f, v1), new Vector2(1f, v0));
+            AddQuad(vertices, uvs, triangles, br0, tr0, tr1, br1, new Vector2(0f, v0), new Vector2(1f, v0), new Vector2(1f, v1), new Vector2(0f, v1));
+
+            if (i == 0)
+                AddQuad(vertices, uvs, triangles, bl0, tl0, tr0, br0, new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f));
+
+            if (i == points.Count - 2)
+                AddQuad(vertices, uvs, triangles, bl1, br1, tr1, tl1, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f));
+
+            v0 = v1;
+        }
+
+        mesh.SetVertices(vertices);
+        mesh.SetUVs(0, uvs);
+        mesh.SetTriangles(triangles, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        return mesh;
+    }
+
+    private static Vector3 ComputeRight(List<Vector3> points, int index)
+    {
+        Vector3 tangent;
+        if (index <= 0)
+            tangent = points[1] - points[0];
+        else if (index >= points.Count - 1)
+            tangent = points[points.Count - 1] - points[points.Count - 2];
+        else
+            tangent = points[index + 1] - points[index - 1];
+
+        tangent.y = 0f;
+        if (tangent.sqrMagnitude < 0.0001f)
+            tangent = Vector3.forward;
+
+        tangent.Normalize();
+        return Vector3.Cross(Vector3.up, tangent).normalized;
+    }
+
+    private static void AddQuad(
+        List<Vector3> vertices,
+        List<Vector2> uvs,
+        List<int> triangles,
+        Vector3 a,
+        Vector3 b,
+        Vector3 c,
+        Vector3 d,
+        Vector2 uvA,
+        Vector2 uvB,
+        Vector2 uvC,
+        Vector2 uvD)
+    {
+        int start = vertices.Count;
+        vertices.Add(a);
+        vertices.Add(b);
+        vertices.Add(c);
+        vertices.Add(d);
+
+        uvs.Add(uvA);
+        uvs.Add(uvB);
+        uvs.Add(uvC);
+        uvs.Add(uvD);
+
+        triangles.Add(start);
+        triangles.Add(start + 1);
+        triangles.Add(start + 2);
+        triangles.Add(start);
+        triangles.Add(start + 2);
+        triangles.Add(start + 3);
     }
 
     private static void HidePlaceholderVisuals(GameObject placeholderRoad)
