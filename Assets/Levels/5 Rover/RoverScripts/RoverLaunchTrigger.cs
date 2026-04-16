@@ -1,52 +1,38 @@
 using UnityEngine;
 
 /// <summary>
-/// Simple launch trigger for the rover ramp jump.
-/// Place on a GameObject with a trigger BoxCollider at the end of the ramp.
-/// When the rover enters the trigger, its velocity is set to a calibrated launch vector
-/// that produces a natural parabolic arc to the landing zone.
-/// After landing, applies downforce briefly to prevent bouncing.
-/// In-flight stabilization is handled by <see cref="RoverAirborneStabilizer"/>.
+/// Launch trigger that can solve a deterministic ballistic jump to a landing target.
 /// </summary>
 public class RoverLaunchTrigger : MonoBehaviour
 {
     [Header("Launch")]
-    [Tooltip("Minimum launch speed (m/s). If the rover is already going faster, its speed is preserved.")]
+    [Tooltip("Minimum fallback launch speed (m/s) when target solve is unavailable.")]
     public float minimumLaunchSpeed = 28f;
 
-    [Tooltip("Launch pitch above horizontal (degrees). 18-22 works well for the volcano jump.")]
+    [Tooltip("Launch pitch above horizontal (degrees) used for ballistic solve.")]
     public float launchPitchDegrees = 20f;
 
-    [Tooltip("World-space forward direction for the launch. If zero, uses this trigger's forward.")]
+    [Tooltip("Fallback world-space forward direction when target solve is unavailable. If zero, uses this trigger's forward.")]
     public Vector3 launchDirectionOverride = Vector3.zero;
 
-    [Header("Landing Dampener")]
-    [Tooltip("How long after launch to wait for landing (seconds).")]
+    [Header("Launch Target")]
+    [Tooltip("Optional landing target. If assigned, launch velocity is solved from rover COM to this point.")]
+    public Transform landingTarget;
+
+    [Tooltip("Vertical offset added to the landing target point for tuning.")]
+    public float landingTargetYOffset = 0.75f;
+
+    [Header("Jump Window")]
+    [Tooltip("Maximum scripted launch duration (seconds).")]
     public float landingWindowDuration = 8f;
-
-    [Tooltip("Extra downforce applied after touchdown to keep the rover planted.")]
-    public float landingDownforce = 2000f;
-
-    [Tooltip("How long after first ground contact the downforce stays active (seconds).")]
-    public float landingDownforceDuration = 2f;
-
-    [Tooltip("How much of the vertical bounce velocity to kill on landing (0 = none, 1 = all).")]
-    [Range(0f, 1f)]
-    public float bounceDamping = 0.85f;
 
     [Header("Cooldown")]
     [Tooltip("Seconds before the trigger can fire again (prevents double-launches).")]
     public float cooldown = 4f;
 
     private float lastLaunchTime = -999f;
-
-    // Landing dampener state.
-    private Rigidbody trackedRb;
     private RoverPhysicsController trackedController;
-    private float landingWindowTimer;
-    private float landingDownforceTimer;
-    private bool waitingForLanding;
-    private bool landingActive;
+    private float scriptedWindowTimer;
 
     private void Reset()
     {
@@ -55,8 +41,7 @@ public class RoverLaunchTrigger : MonoBehaviour
 
     private void Awake()
     {
-        ConfigureCollider();
-        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] {name} ready at {transform.position}, dir={launchDirectionOverride}, speed={minimumLaunchSpeed}, pitch={launchPitchDegrees}</color>");
+        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] {name} ready at {transform.position}, target={(landingTarget != null ? landingTarget.name : "none")}, pitch={launchPitchDegrees:F1}</color>");
     }
 
     private void ConfigureCollider()
@@ -64,142 +49,119 @@ public class RoverLaunchTrigger : MonoBehaviour
         BoxCollider box = GetComponent<BoxCollider>();
         if (box == null)
             box = gameObject.AddComponent<BoxCollider>();
+
         box.isTrigger = true;
-        box.size = new Vector3(14f, 8f, 6f);
-        box.center = new Vector3(0f, 3f, 0f);
+        box.size = new Vector3(8f, 3f, 1.2f);
+        box.center = new Vector3(0f, 1.4f, 0f);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (other == null) return;
-        if (Time.time - lastLaunchTime < cooldown) return;
+        if (other == null || Time.time - lastLaunchTime < cooldown)
+            return;
 
         RoverPhysicsController controller = other.GetComponentInParent<RoverPhysicsController>();
-        if (controller == null) return;
+        if (controller == null)
+            return;
 
         Rigidbody rb = controller.rb != null ? controller.rb : controller.GetComponent<Rigidbody>();
-        if (rb == null) return;
+        if (rb == null)
+            return;
 
-        // Resolve horizontal launch direction.
-        Vector3 forward;
-        if (launchDirectionOverride.sqrMagnitude > 0.0001f)
-            forward = Vector3.ProjectOnPlane(launchDirectionOverride, Vector3.up).normalized;
+        Vector3 launchVelocity;
+        bool solved = false;
+        Vector3 launchOrigin = rb.worldCenterOfMass;
+
+        if (landingTarget != null)
+        {
+            Vector3 targetPoint = landingTarget.position + Vector3.up * landingTargetYOffset;
+            solved = TrySolveBallisticVelocity(
+                launchOrigin,
+                targetPoint,
+                launchPitchDegrees,
+                Physics.gravity.magnitude,
+                out launchVelocity);
+        }
         else
-            forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+        {
+            launchVelocity = Vector3.zero;
+        }
 
-        if (forward.sqrMagnitude < 0.0001f)
-            forward = Vector3.forward;
+        if (!solved)
+            launchVelocity = BuildFallbackLaunchVelocity(rb);
 
-        // Build launch velocity.
-        float currentSpeed = Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).magnitude;
-        float speed = Mathf.Max(currentSpeed, minimumLaunchSpeed);
-
-        float pitch = launchPitchDegrees * Mathf.Deg2Rad;
-        Vector3 launchDir = (forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch)).normalized;
-
-        rb.linearVelocity = launchDir * speed;
+        rb.linearVelocity = launchVelocity;
         rb.angularVelocity = Vector3.zero;
         rb.WakeUp();
 
-        // Start tracking for landing dampening.
-        trackedRb = rb;
         trackedController = controller;
-        landingWindowTimer = landingWindowDuration;
-        landingDownforceTimer = 0f;
-        waitingForLanding = true;
-        landingActive = false;
-
+        scriptedWindowTimer = Mathf.Max(landingWindowDuration, Time.fixedDeltaTime);
+        trackedController.BeginScriptedLaunch(scriptedWindowTimer);
         lastLaunchTime = Time.time;
 
-        // Tell the respawn system not to trigger during the jump.
         RoverCheckpointRespawn respawn = controller.GetComponent<RoverCheckpointRespawn>();
         if (respawn != null)
             respawn.SuppressAirborneCheck(landingWindowDuration);
 
-        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] Launched {controller.name} at {speed:F1} m/s, pitch {launchPitchDegrees:F0} deg</color>");
+        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] Launched {controller.name} at {launchVelocity.magnitude:F2} m/s ({(solved ? "target solve" : "fallback")})</color>");
     }
 
     private void FixedUpdate()
     {
-        if (trackedRb == null)
+        if (trackedController == null)
             return;
 
-        // Phase 1: waiting for the rover to land.
-        if (waitingForLanding)
+        scriptedWindowTimer -= Time.fixedDeltaTime;
+        if (scriptedWindowTimer <= 0f || !trackedController.IsScriptedLaunchActive)
         {
-            landingWindowTimer -= Time.fixedDeltaTime;
-
-            if (landingWindowTimer <= 0f)
-            {
-                ClearTracking();
-                return;
-            }
-
-            // Check if any wheel has touched ground.
-            if (trackedController != null && HasAnyWheelContact(trackedController))
-            {
-                // Touchdown — kill the vertical bounce.
-                Vector3 vel = trackedRb.linearVelocity;
-                if (vel.y > 0f)
-                {
-                    vel.y *= (1f - bounceDamping);
-                    trackedRb.linearVelocity = vel;
-                }
-                trackedRb.angularVelocity *= 0.2f;
-
-                waitingForLanding = false;
-                landingActive = true;
-                landingDownforceTimer = landingDownforceDuration;
-
-                Debug.Log($"<color=#88ff88>[RoverLaunchTrigger] Landing detected. Dampening for {landingDownforceDuration:F1}s</color>");
-            }
-
-            return;
-        }
-
-        // Phase 2: post-touchdown downforce.
-        if (landingActive)
-        {
-            landingDownforceTimer -= Time.fixedDeltaTime;
-
-            if (landingDownforceTimer <= 0f)
-            {
-                ClearTracking();
-                return;
-            }
-
-            trackedRb.AddForce(Vector3.down * landingDownforce, ForceMode.Force);
-
-            Vector3 vel = trackedRb.linearVelocity;
-            if (vel.y > 1f)
-            {
-                vel.y *= (1f - bounceDamping);
-                trackedRb.linearVelocity = vel;
-            }
+            trackedController.EndScriptedLaunch();
+            ClearTracking();
         }
     }
 
     private void ClearTracking()
     {
-        trackedRb = null;
         trackedController = null;
-        waitingForLanding = false;
-        landingActive = false;
-        landingWindowTimer = 0f;
-        landingDownforceTimer = 0f;
+        scriptedWindowTimer = 0f;
     }
 
-    private static bool HasAnyWheelContact(RoverPhysicsController controller)
+    public static bool TrySolveBallisticVelocity(
+        Vector3 origin,
+        Vector3 target,
+        float pitchDegrees,
+        float gravityMagnitude,
+        out Vector3 launchVelocity)
     {
-        return IsWheelGrounded(controller.wheelFL)
-            || IsWheelGrounded(controller.wheelFR)
-            || IsWheelGrounded(controller.wheelRL)
-            || IsWheelGrounded(controller.wheelRR);
-    }
+        launchVelocity = Vector3.zero;
 
-    private static bool IsWheelGrounded(WheelCollider wheel)
-    {
-        return wheel != null && wheel.isGrounded;
+        if (gravityMagnitude <= 0.0001f)
+            return false;
+
+        Vector3 toTarget = target - origin;
+        Vector3 planar = Vector3.ProjectOnPlane(toTarget, Vector3.up);
+        float horizontalDistance = planar.magnitude;
+        if (horizontalDistance <= 0.0001f)
+            return false;
+
+        float pitchRadians = pitchDegrees * Mathf.Deg2Rad;
+        float cosPitch = Mathf.Cos(pitchRadians);
+        if (cosPitch <= 0.0001f)
+            return false;
+
+        float tanPitch = Mathf.Tan(pitchRadians);
+        float verticalOffset = toTarget.y;
+        float denominator = 2f * cosPitch * cosPitch * (horizontalDistance * tanPitch - verticalOffset);
+        if (denominator <= 0.0001f)
+            return false;
+
+        float speedSquared = gravityMagnitude * horizontalDistance * horizontalDistance / denominator;
+        if (speedSquared <= 0f || float.IsNaN(speedSquared) || float.IsInfinity(speedSquared))
+            return false;
+
+        float speed = Mathf.Sqrt(speedSquared);
+        Vector3 forward = planar / horizontalDistance;
+        launchVelocity = forward * (speed * cosPitch) + Vector3.up * (speed * Mathf.Sin(pitchRadians));
+        return IsFinite(launchVelocity);
     }
 
     private void OnDrawGizmos()
@@ -215,18 +177,22 @@ public class RoverLaunchTrigger : MonoBehaviour
         }
 
         Gizmos.matrix = Matrix4x4.identity;
-        Vector3 fwd = launchDirectionOverride.sqrMagnitude > 0.0001f
-            ? Vector3.ProjectOnPlane(launchDirectionOverride, Vector3.up).normalized
-            : Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
-        if (fwd.sqrMagnitude < 0.0001f) fwd = Vector3.forward;
+        Vector3 start = transform.position + Vector3.up * 1f;
+        Vector3 previewVelocity = BuildFallbackPreviewVelocity();
 
-        float pitch = launchPitchDegrees * Mathf.Deg2Rad;
-        Vector3 launchDir = (fwd * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch)).normalized;
-        float speed = minimumLaunchSpeed;
+        if (landingTarget != null)
+        {
+            Vector3 previewTarget = landingTarget.position + Vector3.up * landingTargetYOffset;
+            if (TrySolveBallisticVelocity(start, previewTarget, launchPitchDegrees, Physics.gravity.magnitude, out Vector3 solvedVelocity))
+                previewVelocity = solvedVelocity;
+
+            Gizmos.color = new Color(0.4f, 1f, 0.4f, 0.8f);
+            Gizmos.DrawSphere(previewTarget, 0.45f);
+        }
 
         Gizmos.color = new Color(1f, 0.85f, 0.2f, 0.9f);
-        Vector3 vel = launchDir * speed;
-        Vector3 pos = transform.position + Vector3.up * 1f;
+        Vector3 vel = previewVelocity;
+        Vector3 pos = start;
         float dt = 0.1f;
 
         for (int i = 0; i < 60; i++)
@@ -236,5 +202,40 @@ public class RoverLaunchTrigger : MonoBehaviour
             Gizmos.DrawLine(pos, next);
             pos = next;
         }
+    }
+
+    private Vector3 BuildFallbackLaunchVelocity(Rigidbody rb)
+    {
+        float currentSpeed = rb == null ? 0f : Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up).magnitude;
+        float speed = Mathf.Max(currentSpeed, minimumLaunchSpeed);
+        return BuildFallbackDirection() * speed;
+    }
+
+    private Vector3 BuildFallbackPreviewVelocity()
+    {
+        return BuildFallbackDirection() * minimumLaunchSpeed;
+    }
+
+    private Vector3 BuildFallbackDirection()
+    {
+        Vector3 forward = launchDirectionOverride.sqrMagnitude > 0.0001f
+            ? Vector3.ProjectOnPlane(launchDirectionOverride, Vector3.up).normalized
+            : Vector3.ProjectOnPlane(transform.forward, Vector3.up).normalized;
+
+        if (forward.sqrMagnitude < 0.0001f)
+            forward = Vector3.forward;
+
+        float pitch = launchPitchDegrees * Mathf.Deg2Rad;
+        return (forward * Mathf.Cos(pitch) + Vector3.up * Mathf.Sin(pitch)).normalized;
+    }
+
+    private static bool IsFinite(Vector3 value)
+    {
+        return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
+    }
+
+    private static bool IsFinite(float value)
+    {
+        return !float.IsNaN(value) && !float.IsInfinity(value);
     }
 }

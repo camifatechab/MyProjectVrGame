@@ -505425,10 +505425,9 @@ MonoBehaviour:
   minimumLaunchSpeed: 28
   launchPitchDegrees: 20
   launchDirectionOverride: {x: -0.127, y: 0, z: 0.992}
+  landingTarget: {fileID: 925892007}
+  landingTargetYOffset: 0.75
   landingWindowDuration: 8
-  landingDownforce: 2000
-  landingDownforceDuration: 2
-  bounceDamping: 0.85
   cooldown: 4
 --- !u!65 &1768950118
 BoxCollider:
@@ -505449,8 +505448,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 14, y: 8, z: 6}
-  m_Center: {x: 0, y: 3, z: 0}
+  m_Size: {x: 8, y: 3, z: 1.2}
+  m_Center: {x: 0, y: 1.4, z: 0}
 --- !u!4 &1768950119
 Transform:
   m_ObjectHideFlags: 0

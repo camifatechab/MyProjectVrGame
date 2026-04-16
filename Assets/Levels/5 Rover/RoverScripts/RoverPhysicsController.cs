@@ -92,6 +92,11 @@ public class RoverPhysicsController : MonoBehaviour
     public float mountedSeatVerticalSmooth = 2.5f;
     public float mountedSeatYawSmooth = 12f;
 
+    [Header("Scripted Launch")]
+    public float scriptedLaunchPitchFollowSpeed = 90f;
+    public float scriptedLaunchMaxPitchDown = 25f;
+    public float scriptedLaunchMaxPitchUp = 15f;
+
     [Header("Runtime Input")]
     [Range(-1f, 1f)] public float throttleInput;
     [Range(-1f, 1f)] public float steerInput;
@@ -134,8 +139,17 @@ public class RoverPhysicsController : MonoBehaviour
     private Rigidbody[] mountedRigRigidbodies;
     private bool[] mountedRigRigidbodyDetectCollisionStates;
     private bool[] mountedRigRigidbodyKinematicStates;
+    private bool scriptedLaunchActive;
+    private float scriptedLaunchTimer;
+    private bool scriptedLaunchSawAirborne;
+    private float scriptedLaunchLockedYaw;
+    private float scriptedLaunchCurrentPitch;
+    private RoverAirborneStabilizer scriptedLaunchStabilizer;
+    private bool scriptedLaunchStabilizerWasEnabled;
+    private bool scriptedLaunchStabilizerCaptured;
     public bool IsMounted => isMounted;
     public bool IsMountStabilizing => isMounted && mountStabilizeTimer > 0f;
+    public bool IsScriptedLaunchActive => scriptedLaunchActive;
     public bool CanMount => canMount;
     public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
@@ -159,6 +173,40 @@ public class RoverPhysicsController : MonoBehaviour
         throttleInput = Mathf.Clamp(throttle, -1f, 1f);
         steerInput = Mathf.Clamp(steer, -1f, 1f);
         brakeInput = Mathf.Clamp01(brake);
+    }
+
+    public void BeginScriptedLaunch(float duration)
+    {
+        if (scriptedLaunchActive)
+            EndScriptedLaunchInternal(landed: false);
+
+        scriptedLaunchActive = true;
+        scriptedLaunchTimer = Mathf.Max(duration, Time.fixedDeltaTime);
+        scriptedLaunchSawAirborne = !HasGroundContact();
+        scriptedLaunchLockedYaw = transform.eulerAngles.y;
+        scriptedLaunchCurrentPitch = 0f;
+
+        SetInput(0f, 0f, 0f);
+        NeutralizeWheelForces();
+
+        if (rb != null)
+        {
+            rb.angularVelocity = Vector3.zero;
+            rb.WakeUp();
+        }
+
+        scriptedLaunchStabilizer = GetComponent<RoverAirborneStabilizer>();
+        scriptedLaunchStabilizerCaptured = scriptedLaunchStabilizer != null;
+        if (scriptedLaunchStabilizerCaptured)
+        {
+            scriptedLaunchStabilizerWasEnabled = scriptedLaunchStabilizer.enabled;
+            scriptedLaunchStabilizer.enabled = false;
+        }
+    }
+
+    public void EndScriptedLaunch()
+    {
+        EndScriptedLaunchInternal(landed: false);
     }
 
     private void Reset()
@@ -198,6 +246,13 @@ public class RoverPhysicsController : MonoBehaviour
     {
         if (rb == null)
             return;
+
+        if (scriptedLaunchActive)
+        {
+            UpdateScriptedLaunch();
+            ApplyRideComfortSettings();
+            return;
+        }
 
         if (isMounted)
         {
@@ -357,6 +412,117 @@ public class RoverPhysicsController : MonoBehaviour
     private static bool IsWheelGrounded(WheelCollider wheel)
     {
         return wheel != null && wheel.isGrounded;
+    }
+
+    private void UpdateScriptedLaunch()
+    {
+        scriptedLaunchTimer -= Time.fixedDeltaTime;
+
+        bool hasGroundContact = HasGroundContact();
+        if (!scriptedLaunchSawAirborne && !hasGroundContact)
+            scriptedLaunchSawAirborne = true;
+
+        SetInput(0f, 0f, 0f);
+        NeutralizeWheelForces();
+
+        if (rb != null)
+            rb.angularVelocity = Vector3.zero;
+
+        if (!hasGroundContact)
+            ApplyScriptedAirborneRotation();
+
+        if (scriptedLaunchSawAirborne && hasGroundContact)
+        {
+            EndScriptedLaunchInternal(landed: true);
+            return;
+        }
+
+        if (scriptedLaunchTimer <= 0f)
+            EndScriptedLaunchInternal(landed: hasGroundContact);
+    }
+
+    private void ApplyScriptedAirborneRotation()
+    {
+        if (rb == null)
+            return;
+
+        Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up);
+        if (planarVelocity.sqrMagnitude > 0.0001f)
+            scriptedLaunchLockedYaw = Mathf.Atan2(planarVelocity.x, planarVelocity.z) * Mathf.Rad2Deg;
+
+        float targetPitch = 0f;
+        if (rb.linearVelocity.sqrMagnitude > 0.0001f)
+        {
+            float normalizedY = Mathf.Clamp(rb.linearVelocity.normalized.y, -1f, 1f);
+            targetPitch = -Mathf.Asin(normalizedY) * Mathf.Rad2Deg;
+            targetPitch = Mathf.Clamp(targetPitch, -scriptedLaunchMaxPitchUp, scriptedLaunchMaxPitchDown);
+        }
+
+        scriptedLaunchCurrentPitch = Mathf.MoveTowards(
+            scriptedLaunchCurrentPitch,
+            targetPitch,
+            scriptedLaunchPitchFollowSpeed * Time.fixedDeltaTime);
+
+        Quaternion targetRotation = Quaternion.Euler(scriptedLaunchCurrentPitch, scriptedLaunchLockedYaw, 0f);
+        rb.MoveRotation(targetRotation);
+    }
+
+    private void EndScriptedLaunchInternal(bool landed)
+    {
+        if (!scriptedLaunchActive && !scriptedLaunchStabilizerCaptured)
+            return;
+
+        scriptedLaunchActive = false;
+        scriptedLaunchTimer = 0f;
+        scriptedLaunchSawAirborne = false;
+        scriptedLaunchCurrentPitch = 0f;
+
+        if (landed)
+            ForceUprightLanding();
+
+        SetInput(0f, 0f, 0f);
+        NeutralizeWheelForces();
+        RestoreScriptedLaunchStabilizer();
+    }
+
+    private void ForceUprightLanding()
+    {
+        if (rb == null)
+            return;
+
+        Vector3 forward = Vector3.ProjectOnPlane(transform.forward, Vector3.up);
+        if (forward.sqrMagnitude < 0.0001f)
+        {
+            Vector3 planarVelocity = Vector3.ProjectOnPlane(rb.linearVelocity, Vector3.up);
+            if (planarVelocity.sqrMagnitude > 0.0001f)
+                forward = planarVelocity.normalized;
+            else
+                forward = Quaternion.Euler(0f, scriptedLaunchLockedYaw, 0f) * Vector3.forward;
+        }
+
+        Quaternion upright = Quaternion.LookRotation(forward.normalized, Vector3.up);
+        rb.rotation = upright;
+
+        Vector3 velocity = rb.linearVelocity;
+        if (velocity.y > 0f)
+            velocity.y = 0f;
+        rb.linearVelocity = velocity;
+        rb.angularVelocity = Vector3.zero;
+    }
+
+    private void RestoreScriptedLaunchStabilizer()
+    {
+        if (scriptedLaunchStabilizerCaptured && scriptedLaunchStabilizer != null)
+            scriptedLaunchStabilizer.enabled = scriptedLaunchStabilizerWasEnabled;
+
+        scriptedLaunchStabilizer = null;
+        scriptedLaunchStabilizerCaptured = false;
+        scriptedLaunchStabilizerWasEnabled = false;
+    }
+
+    private void NeutralizeWheelForces()
+    {
+        ApplyWheelTorque(0f, 0f);
     }
 
     private void UpdateVisuals(float dt)
