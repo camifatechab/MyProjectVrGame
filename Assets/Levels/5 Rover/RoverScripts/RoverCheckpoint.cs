@@ -21,14 +21,25 @@ public class RoverCheckpoint : MonoBehaviour
 
     private void Reset()
     {
-        // Auto-configure the collider as a trigger when the component is first added.
+        ConfigureCollider();
+    }
+
+    private void Awake()
+    {
+        // Force-configure every time so it works regardless of scene serialization.
+        ConfigureCollider();
+        Debug.Log($"<color=#44ff88>[RoverCheckpoint] {name} ready at Y={transform.position.y:F1}, fallDistance={fallDistance}</color>");
+    }
+
+    private void ConfigureCollider()
+    {
         BoxCollider box = GetComponent<BoxCollider>();
         if (box == null)
             box = gameObject.AddComponent<BoxCollider>();
 
         box.isTrigger = true;
-        box.size = new Vector3(14f, 6f, 2f); // wide enough for any road, tall enough to catch the rover
-        box.center = new Vector3(0f, 3f, 0f); // lift center so it sits above the road surface
+        box.size = new Vector3(14f, 6f, 6f); // wide enough for any road, tall + deep enough to catch the rover
+        box.center = new Vector3(0f, 2f, 0f); // lift center so it sits above the road surface
     }
 
     private void OnDrawGizmos()
