@@ -133,7 +133,7 @@ public class RoverCheckpointRespawn : MonoBehaviour
         rb.rotation = activeCheckpoint.RespawnRotation;
 
         offRoadTimer = 0f;
-        suppressionTimer = 0f;
+        suppressionTimer = Mathf.Max(suppressionTimer, 2f); // 2s grace — off-road check won't fire immediately after respawn
 
         if (controller != null)
             controller.SetInput(0f, 0f, 1f);

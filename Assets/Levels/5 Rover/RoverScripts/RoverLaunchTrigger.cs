@@ -22,6 +22,9 @@ public class RoverLaunchTrigger : MonoBehaviour
     [Tooltip("Vertical offset added to the landing target point for tuning.")]
     public float landingTargetYOffset = 0.75f;
 
+    [Tooltip("If true, force-sets the landing target's RoverCheckpoint as the active respawn checkpoint at the moment of launch.")]
+    public bool forceActivateLandingCheckpoint = true;
+
     [Header("Jump Window")]
     [Tooltip("Maximum scripted launch duration (seconds).")]
     public float landingWindowDuration = 8f;
@@ -34,6 +37,11 @@ public class RoverLaunchTrigger : MonoBehaviour
     private RoverPhysicsController trackedController;
     private float scriptedWindowTimer;
 
+    // Precomputed at startup from a fixed reference point so every launch
+    // uses the exact same velocity regardless of the rover's incoming speed.
+    private Vector3 precomputedLaunchVelocity;
+    private bool hasPrecomputedVelocity;
+
     private void Reset()
     {
         ConfigureCollider();
@@ -41,7 +49,37 @@ public class RoverLaunchTrigger : MonoBehaviour
 
     private void Awake()
     {
-        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] {name} ready at {transform.position}, target={(landingTarget != null ? landingTarget.name : "none")}, pitch={launchPitchDegrees:F1}</color>");
+        PrecomputeLaunchVelocity();
+        Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] {name} ready at {transform.position}, target={(landingTarget != null ? landingTarget.name : "none")}, pitch={launchPitchDegrees:F1}, precomputed={hasPrecomputedVelocity}</color>");
+    }
+
+    /// <summary>
+    /// Solves the ballistic velocity once from the trigger's own center to the landing target.
+    /// Because the origin is fixed, every launch produces an identical arc no matter the rover's entry speed.
+    /// </summary>
+    private void PrecomputeLaunchVelocity()
+    {
+        hasPrecomputedVelocity = false;
+        precomputedLaunchVelocity = Vector3.zero;
+
+        if (landingTarget == null)
+            return;
+
+        // Use the trigger collider's world-space center as the fixed launch origin.
+        BoxCollider box = GetComponent<BoxCollider>();
+        Vector3 origin = box != null
+            ? transform.TransformPoint(box.center)
+            : transform.position;
+
+        Vector3 targetPoint = landingTarget.position + Vector3.up * landingTargetYOffset;
+        hasPrecomputedVelocity = TrySolveBallisticVelocity(
+            origin, targetPoint, launchPitchDegrees, Physics.gravity.magnitude,
+            out precomputedLaunchVelocity);
+
+        if (hasPrecomputedVelocity)
+            Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] Precomputed launch velocity: {precomputedLaunchVelocity.magnitude:F2} m/s toward {landingTarget.name}</color>");
+        else
+            Debug.LogWarning($"[RoverLaunchTrigger] Could not precompute ballistic toward {landingTarget.name} — will fall back to runtime solve");
     }
 
     private void ConfigureCollider()
@@ -69,14 +107,20 @@ public class RoverLaunchTrigger : MonoBehaviour
             return;
 
         Vector3 launchVelocity;
-        bool solved = false;
-        Vector3 launchOrigin = rb.worldCenterOfMass;
+        bool solved;
 
-        if (landingTarget != null)
+        if (hasPrecomputedVelocity)
         {
+            // Always use the same precomputed velocity — arc is identical every launch.
+            launchVelocity = precomputedLaunchVelocity;
+            solved = true;
+        }
+        else if (landingTarget != null)
+        {
+            // Fallback: solve at runtime from the rover's current COM.
             Vector3 targetPoint = landingTarget.position + Vector3.up * landingTargetYOffset;
             solved = TrySolveBallisticVelocity(
-                launchOrigin,
+                rb.worldCenterOfMass,
                 targetPoint,
                 launchPitchDegrees,
                 Physics.gravity.magnitude,
@@ -85,6 +129,7 @@ public class RoverLaunchTrigger : MonoBehaviour
         else
         {
             launchVelocity = Vector3.zero;
+            solved = false;
         }
 
         if (!solved)
@@ -102,6 +147,17 @@ public class RoverLaunchTrigger : MonoBehaviour
         RoverCheckpointRespawn respawn = controller.GetComponent<RoverCheckpointRespawn>();
         if (respawn != null)
             respawn.SuppressAirborneCheck(landingWindowDuration);
+
+        if (forceActivateLandingCheckpoint && landingTarget != null && respawn != null)
+        {
+            RoverCheckpoint cp = landingTarget.GetComponent<RoverCheckpoint>();
+            if (cp == null) cp = landingTarget.GetComponentInParent<RoverCheckpoint>();
+            if (cp != null)
+            {
+                respawn.activeCheckpoint = cp;
+                Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] Force-activated checkpoint: {cp.name}</color>");
+            }
+        }
 
         Debug.Log($"<color=#77ddff>[RoverLaunchTrigger] Launched {controller.name} at {launchVelocity.magnitude:F2} m/s ({(solved ? "target solve" : "fallback")})</color>");
     }

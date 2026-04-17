@@ -96,6 +96,9 @@ public class RoverPhysicsController : MonoBehaviour
     public float scriptedLaunchPitchFollowSpeed = 90f;
     public float scriptedLaunchMaxPitchDown = 25f;
     public float scriptedLaunchMaxPitchUp = 15f;
+    [Tooltip("If true, ForceUprightLanding is skipped on scripted-launch landing. " +
+             "Use for sloped landing zones (e.g. volcano road) where snapping to flat clips into geometry.")]
+    public bool skipForceUprightOnLanding = false;
 
     [Header("Runtime Input")]
     [Range(-1f, 1f)] public float throttleInput;
@@ -478,7 +481,18 @@ public class RoverPhysicsController : MonoBehaviour
         scriptedLaunchCurrentPitch = 0f;
 
         if (landed)
-            ForceUprightLanding();
+        {
+            if (skipForceUprightOnLanding)
+            {
+                // Just kill spin; let physics settle naturally on sloped surfaces.
+                if (rb != null)
+                    rb.angularVelocity = Vector3.zero;
+            }
+            else
+            {
+                ForceUprightLanding();
+            }
+        }
 
         SetInput(0f, 0f, 0f);
         NeutralizeWheelForces();
