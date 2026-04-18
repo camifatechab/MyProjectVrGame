@@ -6,7 +6,7 @@ public static class FixRoadPlaceholderGaps
     [MenuItem("Tools/Fix Road Placeholder Gaps")]
     static void Fix()
     {
-        int count = 176;
+        int count = 83;
 
         // Each prefix lives under a different parent object
         // suffix: "" for center segments, "_L" / "_R" for edge pairs
