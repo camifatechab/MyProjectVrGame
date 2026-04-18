@@ -1,17 +1,23 @@
 using UnityEngine;
 using UnityEditor;
+using System.Linq;
 
 public class TriggerFuelUISetup : MonoBehaviour
 {
     [MenuItem("Tools/Setup Fuel UI Now")]
     static void SetupFuelUI()
     {
-        // Find the VR UI Canvas
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        Canvas canvas = Resources.FindObjectsOfTypeAll<Canvas>()
+            .FirstOrDefault(c => c != null && c.gameObject.name == "VR UI Canvas");
+
+        if (canvas == null)
+            canvas = Resources.FindObjectsOfTypeAll<AutoFuelUISetup>()
+                .Select(setup => setup != null ? setup.GetComponent<Canvas>() : null)
+                .FirstOrDefault(c => c != null);
         
         if (canvas == null)
         {
-            Debug.LogError("Could not find Canvas!");
+            Debug.LogError("Could not find VR UI Canvas!");
             return;
         }
         
