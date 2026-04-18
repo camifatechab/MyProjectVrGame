@@ -45,6 +45,24 @@ public class AutoJetpackController : MonoBehaviour
     [Tooltip("Enable fuel recharge when grounded")]
     [SerializeField] private bool enableRecharge = true;
 
+    [Header("Surface Rules")]
+    [Tooltip("Only these named floating islands count as recharge platforms.")]
+    [SerializeField] private string[] rechargePlatformRoots =
+    {
+        "Floating_Island_4_Bioma2",
+        "Floating_Island_4_Bioma2 (1)",
+        "Floating_Island_3_Bioma2",
+    };
+
+    [Tooltip("Grounded contact on these surface prefixes triggers an immediate respawn.")]
+    [SerializeField] private string[] hazardSurfacePrefixes =
+    {
+        "Lava_plane",
+    };
+
+    [SerializeField] private float groundSurfaceProbeDistance = 1.5f;
+    [SerializeField] private float groundSurfaceProbeRadius = 0.2f;
+
     [Header("Air Resistance / Momentum")]
     [Tooltip("How quickly you slow down when not thrusting (lower = glide longer)")]
     [SerializeField] private float airDrag = 2f;
@@ -84,6 +102,10 @@ public class AutoJetpackController : MonoBehaviour
     [Header("Physics")]
     private float gravity = 9.81f;
 
+    [Header("Debug")]
+    [Tooltip("Logs per-second grip/arm/flight telemetry to the console. Leave OFF in normal play.")]
+    [SerializeField] private bool verboseLogging = false;
+
     // Onboarding hint support
     public bool WasFiredThisSession { get; private set; } = false;
     // Set by RoverDriver.Dismount() via field access — blocks jetpack briefly after dismount
@@ -109,9 +131,13 @@ public class AutoJetpackController : MonoBehaviour
     private float previousVerticalVelocity = 0f;
     private RoverDriver roverDriver;
     private RoverPhysicsController roverPhysicsController;
+    private PlayerRespawnManager playerRespawnManager;
 
     // Track previous grounded state
     private bool wasGrounded = true;
+    private bool isGroundedOnRechargePlatform = false;
+    private bool isGroundedOnHazardSurface = false;
+    private string currentGroundSurfaceName = string.Empty;
 
     void Start()
     {
@@ -148,6 +174,7 @@ public class AutoJetpackController : MonoBehaviour
 
         roverDriver = FindAnyObjectByType<RoverDriver>();
         roverPhysicsController = FindAnyObjectByType<RoverPhysicsController>();
+        playerRespawnManager = GetComponent<PlayerRespawnManager>();
         Debug.Log($"AutoJetpack Ready! Controllers found: Left={leftControllerTransform != null}, Right={rightControllerTransform != null}");
 
         if (jetpackAudioSource != null && flyingSound != null)
@@ -268,6 +295,9 @@ public class AutoJetpackController : MonoBehaviour
         if (!leftDevice.isValid || !rightDevice.isValid)
             InitializeXRDevices();
 
+        UpdateGroundSurfaceState();
+        HandleHazardSurfaceRespawn();
+
         if (externalFlightLock)
         {
             if (isFlying)
@@ -301,7 +331,7 @@ public class AutoJetpackController : MonoBehaviour
         bool bothGripsPressed = leftGripPressed && rightGripPressed;
         bool armsDown = AreArmsDown();
 
-        if (Time.frameCount % 60 == 0)
+        if (verboseLogging && Time.frameCount % 60 == 0)
             Debug.Log($"[AutoJetpack] Left Grip: {leftGripPressed}, Right Grip: {rightGripPressed}, Arms Down: {armsDown}, Flying: {isFlying}, Fuel: {GetFuelPercentage():F1}%");
 
         bool inRover = (roverDriver != null && roverDriver.IsMounted)
@@ -388,7 +418,7 @@ public class AutoJetpackController : MonoBehaviour
 
     void UpdateFuelRecharge()
     {
-        bool shouldRecharge = characterController.isGrounded && !isFlying && enableRecharge && currentFuel < maxFuel;
+        bool shouldRecharge = isGroundedOnRechargePlatform && !isFlying && enableRecharge && currentFuel < maxFuel;
 
         if (shouldRecharge)
         {
@@ -493,12 +523,14 @@ public class AutoJetpackController : MonoBehaviour
     {
         if (moveProvider == null) return;
 
-        bool shouldEnableGroundMovement = characterController.isGrounded && !isFlying;
+        bool shouldEnableGroundMovement = externalFlightLock || (characterController.isGrounded && !isFlying);
 
         if (moveProvider.enabled != shouldEnableGroundMovement)
         {
             moveProvider.enabled = shouldEnableGroundMovement;
-            string reason = isFlying ? "FLYING" : (!characterController.isGrounded ? "IN AIR" : "GROUNDED");
+            string reason = externalFlightLock
+                ? "JETPACK LOCKED"
+                : (isFlying ? "FLYING" : (!characterController.isGrounded ? "IN AIR" : "GROUNDED"));
             Debug.Log($"<color=yellow>Ground Movement {(shouldEnableGroundMovement ? "ENABLED" : "DISABLED")} - {reason}</color>");
         }
 
@@ -522,6 +554,77 @@ public class AutoJetpackController : MonoBehaviour
         return false;
     }
 
+    private void UpdateGroundSurfaceState()
+    {
+        isGroundedOnRechargePlatform = false;
+        isGroundedOnHazardSurface = false;
+        currentGroundSurfaceName = string.Empty;
+
+        if (characterController == null)
+            return;
+
+        Vector3 feet = transform.position + characterController.center;
+        feet.y -= Mathf.Max(0f, (characterController.height * 0.5f) - characterController.radius);
+
+        Vector3 origin = feet + Vector3.up * 0.25f;
+        float radius = Mathf.Min(groundSurfaceProbeRadius, characterController.radius * 0.95f);
+
+        if (!Physics.SphereCast(origin, radius, Vector3.down, out RaycastHit hit, groundSurfaceProbeDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            return;
+
+        currentGroundSurfaceName = hit.collider != null ? hit.collider.gameObject.name : string.Empty;
+        isGroundedOnRechargePlatform = MatchesNamedRoot(hit.collider.transform, rechargePlatformRoots);
+        isGroundedOnHazardSurface = MatchesSurfacePrefix(hit.collider.transform, hazardSurfacePrefixes);
+    }
+
+    private void HandleHazardSurfaceRespawn()
+    {
+        if (!isGroundedOnHazardSurface || playerRespawnManager == null)
+            return;
+
+        bool inRover = (roverDriver != null && roverDriver.IsMounted)
+            || (roverPhysicsController != null && roverPhysicsController.IsMounted);
+
+        if (inRover)
+            return;
+
+        playerRespawnManager.TriggerRespawn($"Touched hazard surface '{currentGroundSurfaceName}'");
+    }
+
+    private static bool MatchesNamedRoot(Transform surface, string[] validNames)
+    {
+        if (surface == null || validNames == null)
+            return false;
+
+        for (Transform current = surface; current != null; current = current.parent)
+        {
+            for (int i = 0; i < validNames.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(validNames[i]) && current.name == validNames[i])
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool MatchesSurfacePrefix(Transform surface, string[] prefixes)
+    {
+        if (surface == null || prefixes == null)
+            return false;
+
+        for (Transform current = surface; current != null; current = current.parent)
+        {
+            for (int i = 0; i < prefixes.Length; i++)
+            {
+                if (!string.IsNullOrEmpty(prefixes[i]) && current.name.StartsWith(prefixes[i]))
+                    return true;
+            }
+        }
+
+        return false;
+    }
+
     bool AreArmsDown()
     {
         if (leftControllerTransform == null || rightControllerTransform == null) return false;
@@ -529,7 +632,7 @@ public class AutoJetpackController : MonoBehaviour
         float leftAngle = Vector3.Angle(leftControllerTransform.forward, Vector3.down);
         float rightAngle = Vector3.Angle(rightControllerTransform.forward, Vector3.down);
 
-        if (Time.frameCount % 60 == 0)
+        if (verboseLogging && Time.frameCount % 60 == 0)
             Debug.Log($"[AutoJetpack] Arm Angles - Left: {leftAngle:F1}, Right: {rightAngle:F1} (Threshold: {armDownAngleThreshold})");
 
         return leftAngle < armDownAngleThreshold && rightAngle < armDownAngleThreshold;

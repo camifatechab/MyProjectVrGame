@@ -126,6 +126,7 @@ public class RoverPhysicsController : MonoBehaviour
     private InputDevice rightDevice;
     private MonoBehaviour[] locomotionProviders;
     private bool isMounted;
+    private bool canDismount = true;
     private bool gripsLastFrame;
     private float dismountCooldown;
     private float dismountHoldTimer;
@@ -154,6 +155,7 @@ public class RoverPhysicsController : MonoBehaviour
     public bool IsMountStabilizing => isMounted && mountStabilizeTimer > 0f;
     public bool IsScriptedLaunchActive => scriptedLaunchActive;
     public bool CanMount => canMount;
+    public bool CanDismount => canDismount;
     public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
     private Vector3 SeatWorldPosition =>
@@ -898,14 +900,14 @@ public class RoverPhysicsController : MonoBehaviour
         }
         else
         {
-            if (Input.GetKeyDown(KeyCode.Escape))
+            if (canDismount && Input.GetKeyDown(KeyCode.Escape))
             {
                 Dismount();
                 gripsLastFrame = bothGrips;
                 return;
             }
 
-            if (bothGrips && dismountCooldown <= 0f)
+            if (canDismount && bothGrips && dismountCooldown <= 0f)
             {
                 dismountHoldTimer += Time.deltaTime;
                 if (dismountHoldTimer >= dismountHoldDuration)
@@ -997,9 +999,14 @@ public class RoverPhysicsController : MonoBehaviour
         if (xrOrigin != null)
         {
             xrOrigin.transform.SetParent(null, worldPositionStays: true);
-            xrOrigin.transform.position = transform.position
+            Vector3 targetPosition = transform.position
                 + transform.right * (2.5f * transform.lossyScale.x)
-                + Vector3.up * 0.1f;
+                + Vector3.up * 1.2f;
+
+            if (TryFindGroundedDismountPosition(targetPosition, out Vector3 groundedPosition))
+                targetPosition = groundedPosition;
+
+            xrOrigin.transform.position = targetPosition;
         }
 
         if (locomotionProviders != null)
@@ -1020,9 +1027,32 @@ public class RoverPhysicsController : MonoBehaviour
         RestoreMountedRigPhysics();
     }
 
+    private bool TryFindGroundedDismountPosition(Vector3 probeOrigin, out Vector3 groundedPosition)
+    {
+        groundedPosition = probeOrigin;
+
+        float castDistance = 6f;
+        if (!Physics.Raycast(probeOrigin, Vector3.down, out RaycastHit hit, castDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+            return false;
+
+        float heightOffset = 0.05f;
+        if (charController != null)
+            heightOffset = Mathf.Max(heightOffset, charController.skinWidth + 0.02f);
+
+        groundedPosition = hit.point + Vector3.up * heightOffset;
+        return true;
+    }
+
     public void SetMountEnabled(bool enabled)
     {
         canMount = enabled;
+    }
+
+    public void SetDismountEnabled(bool enabled)
+    {
+        canDismount = enabled;
+        if (!enabled)
+            dismountHoldTimer = 0f;
     }
 
     private void AlignRigToSeat()

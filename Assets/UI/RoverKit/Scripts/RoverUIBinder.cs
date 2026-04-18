@@ -19,6 +19,7 @@ public class RoverUIBinder : MonoBehaviour
     [SerializeField] private RoverPhysicsController roverPhysicsController;
     [SerializeField] private RoverDriver legacyRoverDriver;
     [SerializeField] private RoverRoadFailSafe roverRoadFailSafe;
+    [SerializeField] private RoverCheckpointRespawn roverCheckpointRespawn;
     [SerializeField] private RoverRadioController roverRadioController;
     [SerializeField] private PlayerHealth playerHealth;
 
@@ -54,6 +55,8 @@ public class RoverUIBinder : MonoBehaviour
     public bool IsResetWarningActive => roverRoadFailSafe != null && roverRoadFailSafe.IsResetWarningActive;
     public bool IsRepositioning => roverRoadFailSafe != null && roverRoadFailSafe.IsResetting;
     public bool CanReturnToRoverStart => roverRoadFailSafe != null && roverRoadFailSafe.CanReturnToRoverStart;
+    public bool CanReturnToLastCheckpoint => roverCheckpointRespawn != null && roverCheckpointRespawn.HasActiveCheckpoint;
+    public string LastCheckpointName => roverCheckpointRespawn != null ? roverCheckpointRespawn.ActiveCheckpointName : null;
     public bool IsMounted => roverPhysicsController != null
         ? roverPhysicsController.IsMounted
         : legacyRoverDriver != null && legacyRoverDriver.IsMounted;
@@ -102,6 +105,12 @@ public class RoverUIBinder : MonoBehaviour
 
         if (roverRoadFailSafe == null)
             roverRoadFailSafe = GetComponent<RoverRoadFailSafe>();
+
+        if (roverCheckpointRespawn == null)
+            roverCheckpointRespawn = GetComponent<RoverCheckpointRespawn>();
+
+        if (roverCheckpointRespawn == null)
+            roverCheckpointRespawn = FindFirstObjectByType<RoverCheckpointRespawn>();
 
         if (roverRadioController == null)
             roverRadioController = GetComponent<RoverRadioController>();
@@ -234,5 +243,10 @@ public class RoverUIBinder : MonoBehaviour
     public bool ReturnToRoverStart()
     {
         return roverRoadFailSafe != null && roverRoadFailSafe.ReturnToRoverStartFromUi();
+    }
+
+    public bool ReturnToLastCheckpoint()
+    {
+        return roverCheckpointRespawn != null && roverCheckpointRespawn.RespawnAtActiveCheckpoint();
     }
 }

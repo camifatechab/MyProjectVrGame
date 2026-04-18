@@ -286,10 +286,15 @@ public class RoverDashboardController : MonoBehaviour
             radioValueLabel.text = binder.RadioDisplayText;
 
         if (checkpointValueLabel != null)
-            checkpointValueLabel.text = binder.CanReturnToRoverStart ? "ROVER START" : "START LOCKED";
+        {
+            string cpName = binder.LastCheckpointName;
+            checkpointValueLabel.text = binder.CanReturnToLastCheckpoint
+                ? (string.IsNullOrEmpty(cpName) ? "LAST CP" : cpName.ToUpperInvariant())
+                : "NO CP YET";
+        }
 
         if (checkpointHintLabel != null)
-            checkpointHintLabel.text = binder.CanReturnToRoverStart ? "RETURN" : "UNAVAILABLE";
+            checkpointHintLabel.text = binder.CanReturnToLastCheckpoint ? "RETURN" : "UNAVAILABLE";
 
         if (radioToggleButton != null)
             radioPressFeedback = Mathf.Max(radioPressFeedback, radioToggleButton.PressedStrength);
@@ -581,14 +586,14 @@ public class RoverDashboardController : MonoBehaviour
         }
 
         if (checkpointReturnButton == null)
-            checkpointReturnButton = CreateRadioButton("CheckpointButton", Vector3.zero, "RETURN", RoverDashboardRadioButton.ButtonAction.ReturnToRoverStart, checkpointControlsRoot);
+            checkpointReturnButton = CreateRadioButton("CheckpointButton", Vector3.zero, "RETURN", RoverDashboardRadioButton.ButtonAction.ReturnToLastCheckpoint, checkpointControlsRoot);
 
         if (checkpointControlsRoot != null)
             checkpointControlsRoot.gameObject.SetActive(binder != null && binder.IsMounted);
 
         checkpointReturnButton.transform.localPosition = Vector3.zero;
         DestroyButtonLabel(checkpointReturnButton.transform);
-        checkpointReturnButton.Bind(binder, RoverDashboardRadioButton.ButtonAction.ReturnToRoverStart);
+        checkpointReturnButton.Bind(binder, RoverDashboardRadioButton.ButtonAction.ReturnToLastCheckpoint);
     }
 
     private RoverDashboardRadioButton CreateRadioButton(

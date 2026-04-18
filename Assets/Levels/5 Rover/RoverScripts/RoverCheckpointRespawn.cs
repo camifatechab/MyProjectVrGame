@@ -58,6 +58,29 @@ public class RoverCheckpointRespawn : MonoBehaviour
     // Keep old name working so LaunchTrigger doesn't break.
     public void SuppressAirborneCheck(float duration) => SuppressOffRoadCheck(duration);
 
+    /// <summary>True if a checkpoint has been activated and respawn is possible.</summary>
+    public bool HasActiveCheckpoint => activeCheckpoint != null && rb != null;
+
+    /// <summary>Human-readable name of the current respawn checkpoint, or null.</summary>
+    public string ActiveCheckpointName => activeCheckpoint != null ? activeCheckpoint.name : null;
+
+    /// <summary>
+    /// Public entry point for UI — teleport the rover back to the last activated checkpoint.
+    /// Returns true if the respawn actually happened.
+    /// </summary>
+    public bool RespawnAtActiveCheckpoint()
+    {
+        if (!HasActiveCheckpoint)
+        {
+            Debug.Log("<color=#ff8844>[RoverCheckpointRespawn] UI return requested but no active checkpoint yet.</color>");
+            return false;
+        }
+
+        Debug.Log($"<color=#ff8844>[RoverCheckpointRespawn] UI-triggered respawn at {activeCheckpoint.name}</color>");
+        Respawn();
+        return true;
+    }
+
     private void FixedUpdate()
     {
         if (activeCheckpoint == null || rb == null)

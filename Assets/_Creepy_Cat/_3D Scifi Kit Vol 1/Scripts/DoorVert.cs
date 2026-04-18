@@ -18,7 +18,8 @@ public class DoorVert : MonoBehaviour {
 		
 	public void OpenDoor(){
 		OTween.ValueTo( gameObject,ease,0.0f,-translateValue,easeTime,0.0f,"StartOpen","UpdateOpenDoor","EndOpen");
-		GetComponent<AudioSource>().Play();
+		AudioSource src = GetComponent<AudioSource>();
+		if (src != null && src.enabled && src.isActiveAndEnabled) src.Play();
 	}
 	
 	private void UpdateOpenDoor(float f){		
@@ -42,6 +43,7 @@ public class DoorVert : MonoBehaviour {
 		
 		yield return new WaitForSeconds(waitTime);
 		OTween.ValueTo( gameObject,ease,0.0f,translateValue,easeTime,0.0f,"StartClose","UpdateCloseDoor","EndClose");
-		GetComponent<AudioSource>().Play();
+		AudioSource src = GetComponent<AudioSource>();
+		if (src != null && src.enabled && src.isActiveAndEnabled) src.Play();
 	}
 }

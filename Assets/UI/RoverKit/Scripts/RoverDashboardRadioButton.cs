@@ -9,7 +9,8 @@ public class RoverDashboardRadioButton : MonoBehaviour
     {
         ToggleRadio,
         NextTrack,
-        ReturnToRoverStart
+        ReturnToRoverStart,
+        ReturnToLastCheckpoint
     }
 
     [SerializeField] private ButtonAction buttonAction;
@@ -100,6 +101,9 @@ public class RoverDashboardRadioButton : MonoBehaviour
                 break;
             case ButtonAction.ReturnToRoverStart:
                 handled = binder.ReturnToRoverStart();
+                break;
+            case ButtonAction.ReturnToLastCheckpoint:
+                handled = binder.ReturnToLastCheckpoint();
                 break;
         }
 
