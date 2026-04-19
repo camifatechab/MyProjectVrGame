@@ -22,9 +22,13 @@ public class CrystalDestructible : MonoBehaviour
     public float  beaconRingRadius = 1.8f;
     public float  beaconLightRange = 8f;
 
-    [Header("Danger Zone (drains player HP when near crystal target)")]
-    public float drainRadius     = 15f;   // world units
-    public float drainPerSecond  = 8f;    // HP / second
+    [Header("Danger Zone — Outer (mild, always-on in volcano area)")]
+    public float outerDrainRadius    = 40f;  // world units — covers the whole approach
+    public float mildDrainPerSecond  = 1f;   // HP/s — subtle pressure, ~100s to die
+
+    [Header("Danger Zone — Inner (heavy, only once crystal is targeted)")]
+    public float innerDrainRadius    = 15f;  // world units — close to crystal
+    public float heavyDrainPerSecond = 4f;   // HP/s — ~25s to die, forces action
 
     [Header("Win Sequence Timing")]
     public float pauseBeforeFade  = 1.2f;
@@ -35,9 +39,13 @@ public class CrystalDestructible : MonoBehaviour
     public AudioClip winStingerSound;
 
     // ── State ────────────────────────────────────────────────────
-    private float currentHealth;
-    private bool  winTriggered;
-    private bool  beaconActive;
+    private float        currentHealth;
+    private bool         winTriggered;
+    private bool         beaconActive;
+
+    // ── Cached refs for drain (set lazily) ───────────────────────
+    private PlayerHealth cachedHealth;
+    private XROrigin     cachedPlayer;
 
     // ── Beacon visuals ───────────────────────────────────────────
     private LineRenderer beaconRing;
@@ -58,26 +66,53 @@ public class CrystalDestructible : MonoBehaviour
         currentHealth = maxHealth;
         BuildBeaconVisuals();
         BuildHPBar();
-        BuildDrainZone();
+        FitBoxCollider();
         SetCrystalBeaconActive(false);
     }
 
     private void Update()
     {
-        if (!beaconActive || winTriggered) return;
-
-        float pulse = (Mathf.Sin(Time.time * beaconPulseSpeed * Mathf.PI) + 1f) * 0.5f;
-
-        if (beaconRing != null)
+        // ── Beacon pulse ─────────────────────────────────────────
+        if (beaconActive && !winTriggered)
         {
-            Color c = beaconColor;
-            c.a = Mathf.Lerp(0.2f, 0.95f, pulse);
-            beaconRing.startColor = c;
-            beaconRing.endColor   = c;
+            float pulse = (Mathf.Sin(Time.time * beaconPulseSpeed * Mathf.PI) + 1f) * 0.5f;
+
+            if (beaconRing != null)
+            {
+                Color c = beaconColor;
+                c.a = Mathf.Lerp(0.2f, 0.95f, pulse);
+                beaconRing.startColor = c;
+                beaconRing.endColor   = c;
+            }
+
+            if (beaconLight != null)
+                beaconLight.intensity = Mathf.Lerp(1.2f, 3.5f, pulse);
         }
 
-        if (beaconLight != null)
-            beaconLight.intensity = Mathf.Lerp(1.2f, 3.5f, pulse);
+        // ── Volcano drain (distance-based, no trigger needed) ────
+        if (!winTriggered)
+            ApplyVolcanoDrain();
+    }
+
+    private void ApplyVolcanoDrain()
+    {
+        // Lazy-cache references
+        if (cachedHealth == null) cachedHealth = FindFirstObjectByType<PlayerHealth>();
+        if (cachedPlayer == null) cachedPlayer = FindFirstObjectByType<XROrigin>();
+        if (cachedHealth == null || cachedPlayer == null) return;
+
+        float dist = Vector3.Distance(transform.position, cachedPlayer.transform.position);
+
+        // Inner heavy drain — only once the crystal is the active target
+        if (beaconActive && dist < innerDrainRadius)
+        {
+            cachedHealth.TakeDamage(heavyDrainPerSecond * Time.deltaTime);
+        }
+        // Outer mild drain — always on once the player is in the volcano zone
+        else if (dist < outerDrainRadius)
+        {
+            cachedHealth.TakeDamage(mildDrainPerSecond * Time.deltaTime);
+        }
     }
 
     // ── Public API ───────────────────────────────────────────────
@@ -111,37 +146,25 @@ public class CrystalDestructible : MonoBehaviour
         if (beaconLight != null) beaconLight.enabled = active;
     }
 
-    // ── Danger Zone ──────────────────────────────────────────────
-    private void BuildDrainZone()
+    // ── Collider fit ─────────────────────────────────────────────
+    private void FitBoxCollider()
     {
-        // Compensate for crystal's world scale so the radius is in world units
-        float worldScale = Mathf.Max(transform.lossyScale.x, transform.lossyScale.z, 0.01f);
-        SphereCollider col = gameObject.AddComponent<SphereCollider>();
-        col.isTrigger = true;
-        col.radius    = drainRadius / worldScale;
-        col.center    = Vector3.zero;
-    }
+        BoxCollider box = GetComponent<BoxCollider>();
+        if (box == null) return;
 
-    private void OnTriggerStay(Collider other)
-    {
-        // Only drain once the crystal is the active target
-        if (!beaconActive || winTriggered) return;
-
-        bool isPlayer =
-            other.GetComponentInParent<AutoJetpackController>()        != null ||
-            other.GetComponentInParent<Unity.XR.CoreUtils.XROrigin>() != null;
-
-        if (!isPlayer) return;
-
-        PlayerHealth health = other.GetComponentInParent<PlayerHealth>();
-        if (health == null) health = FindFirstObjectByType<PlayerHealth>();
-        if (health != null)
-            health.TakeDamage(drainPerSecond * Time.deltaTime);
+        MeshFilter mf = GetComponent<MeshFilter>();
+        if (mf != null && mf.sharedMesh != null)
+        {
+            box.center = mf.sharedMesh.bounds.center;
+            box.size   = mf.sharedMesh.bounds.size;
+            Debug.Log($"<color=orange>[Crystal] BoxCollider fitted: center={box.center}, size={box.size}</color>");
+        }
     }
 
     // ── Win Sequence ─────────────────────────────────────────────
     private IEnumerator WinSequence()
     {
+        Debug.Log("<color=cyan>[Crystal] WinSequence started!</color>");
         SetCrystalBeaconActive(false);
         if (barRoot != null) barRoot.gameObject.SetActive(false);
 
@@ -175,8 +198,8 @@ public class CrystalDestructible : MonoBehaviour
         }
         if (winGroup != null) winGroup.alpha = 1f;
 
-        // Hold briefly, then fade out and teleport to CP6
-        yield return new WaitForSeconds(2.5f);
+        // Hold, then fade out and teleport to CP6
+        yield return new WaitForSeconds(5f);
 
         elapsed = 0f;
         while (elapsed < fadeInDuration)
@@ -365,7 +388,11 @@ public class CrystalDestructible : MonoBehaviour
         beaconRing.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         beaconRing.receiveShadows  = false;
         beaconRing.alignment       = LineAlignment.View;
-        beaconRing.material        = new Material(Shader.Find("Sprites/Default")) { color = beaconColor };
+        Shader ringSh = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+        Material ringMat = new Material(ringSh);
+        ringMat.color = beaconColor;
+        if (ringMat.HasProperty("_BaseColor")) ringMat.SetColor("_BaseColor", beaconColor);
+        beaconRing.material = ringMat;
 
         for (int i = 0; i < seg; i++)
         {
@@ -443,9 +470,9 @@ public class CrystalDestructible : MonoBehaviour
         // Head-locked canvas — same technique as PlayerHealth overlay
         GameObject cGO = new GameObject("WinCanvas");
         cGO.transform.SetParent(cam.transform);
-        cGO.transform.localPosition = new Vector3(0f, 0f, 0.45f);
+        cGO.transform.localPosition = new Vector3(0f, 0f, 1.4f);
         cGO.transform.localRotation = Quaternion.identity;
-        cGO.transform.localScale    = Vector3.one * 0.001f;
+        cGO.transform.localScale    = Vector3.one * 0.0005f;
 
         winCanvas             = cGO.AddComponent<Canvas>();
         winCanvas.renderMode  = RenderMode.WorldSpace;

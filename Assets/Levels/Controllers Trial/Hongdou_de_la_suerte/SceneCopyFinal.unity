@@ -56225,8 +56225,10 @@ MonoBehaviour:
   beaconPulseSpeed: 3
   beaconRingRadius: 1.8
   beaconLightRange: 8
-  drainRadius: 15
-  drainPerSecond: 8
+  outerDrainRadius: 40
+  mildDrainPerSecond: 1
+  innerDrainRadius: 15
+  heavyDrainPerSecond: 4
   pauseBeforeFade: 1.2
   fadeInDuration: 1
   holdOnScreen: 4
@@ -99829,13 +99831,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   beaconColor: {r: 0.2, g: 0.95, b: 1, a: 1}
-  beamHeight: 60
-  beamRadius: 0.6
-  particleRate: 40
+  ringRadius: 3.5
+  ringWidth: 0.09
+  ringSegments: 64
+  ringYOffset: 0.3
   pulseSpeed: 2.2
+  ringMinAlpha: 0.18
+  ringMaxAlpha: 0.88
   lightRange: 20
-  lightMinInt: 1
-  lightMaxInt: 3
   triggerRadius: 9
   healPerSecond: 6
   healDuration: 5
@@ -203187,13 +203190,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   beaconColor: {r: 0.2, g: 0.95, b: 1, a: 1}
-  beamHeight: 60
-  beamRadius: 0.6
-  particleRate: 40
+  ringRadius: 3.5
+  ringWidth: 0.09
+  ringSegments: 64
+  ringYOffset: 0.3
   pulseSpeed: 2.2
+  ringMinAlpha: 0.18
+  ringMaxAlpha: 0.88
   lightRange: 20
-  lightMinInt: 1
-  lightMaxInt: 3
   triggerRadius: 9
   healPerSecond: 6
   healDuration: 5
@@ -222885,13 +222889,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   beaconColor: {r: 0.2, g: 0.95, b: 1, a: 1}
-  beamHeight: 60
-  beamRadius: 0.6
-  particleRate: 40
+  ringRadius: 3.5
+  ringWidth: 0.09
+  ringSegments: 64
+  ringYOffset: 0.3
   pulseSpeed: 2.2
+  ringMinAlpha: 0.18
+  ringMaxAlpha: 0.88
   lightRange: 20
-  lightMinInt: 1
-  lightMaxInt: 3
   triggerRadius: 9
   healPerSecond: 6
   healDuration: 5
