@@ -14,7 +14,7 @@ public class CP06JetpackPromptUI : MonoBehaviour
     [SerializeField] private AutoJetpackController jetpackController;
 
     [Header("World Prompt Placement")]
-    [SerializeField] private float canvasScale = 0.00215f;
+    [SerializeField] private float canvasScale = 0.0042f;
     [SerializeField] private Vector2 panelSize = new(320f, 108f);
     [SerializeField] private float sideOffset = 0.7f;
     [SerializeField] private float promptMoveSpeed = 8f;

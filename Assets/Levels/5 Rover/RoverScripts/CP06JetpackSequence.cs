@@ -100,8 +100,9 @@ public class CP06JetpackSequence : MonoBehaviour
             playerRespawnManager.SetRespawnEnabled(true);
         }
 
+        // Pickup is enabled only after the player dismounts (see ParkRoverForOnFootSequence)
         if (jetpackPickup != null)
-            jetpackPickup.SetPickupEnabled(true);
+            jetpackPickup.SetPickupEnabled(false);
 
         if (jetpackHighlight != null)
             jetpackHighlight.SetHighlighted(true);
@@ -127,6 +128,9 @@ public class CP06JetpackSequence : MonoBehaviour
         RoverStuckDetector stuckDetector = rover.GetComponent<RoverStuckDetector>();
         if (stuckDetector != null)
             stuckDetector.enabled = false;
+
+        if (jetpackPickup != null)
+            jetpackPickup.SetPickupEnabled(true);
 
         Debug.Log("<color=#44ff88>[CP06JetpackSequence] Rover parked for on-foot jetpack transition.</color>");
     }

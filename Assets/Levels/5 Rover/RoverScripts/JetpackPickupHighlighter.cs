@@ -19,7 +19,16 @@ public class JetpackPickupHighlighter : MonoBehaviour
     public float lightIntensityMin = 0.8f;
     public float lightIntensityMax = 2.1f;
 
+    [Header("Beacon Beam")]
+    public float beamHeight = 10f;
+    public float beamBaseWidth = 0.18f;
+    public Color beamColor = new Color(0.2f, 0.95f, 1f, 0.5f);
+    public float beamPulseSpeed = 1.2f;
+    public float beamMinAlpha = 0.08f;
+    public float beamMaxAlpha = 0.45f;
+
     private LineRenderer ring;
+    private LineRenderer beam;
     private Light feedbackLight;
     private bool isHighlighted;
 
@@ -31,19 +40,33 @@ public class JetpackPickupHighlighter : MonoBehaviour
 
     private void Update()
     {
-        if (!isHighlighted || ring == null)
+        if (!isHighlighted)
             return;
 
         float pulse = (Mathf.Sin(Time.time * pulseSpeed * Mathf.PI) + 1f) * 0.5f;
-        Color color = ringColor;
-        color.a = Mathf.Lerp(pulseMinAlpha, pulseMaxAlpha, pulse);
-        ring.startColor = color;
-        ring.endColor = color;
+
+        if (ring != null)
+        {
+            Color color = ringColor;
+            color.a = Mathf.Lerp(pulseMinAlpha, pulseMaxAlpha, pulse);
+            ring.startColor = color;
+            ring.endColor = color;
+        }
 
         if (feedbackLight != null)
         {
             feedbackLight.intensity = Mathf.Lerp(lightIntensityMin, lightIntensityMax, pulse);
             feedbackLight.color = ringColor;
+        }
+
+        if (beam != null)
+        {
+            float beamPulse = (Mathf.Sin(Time.time * beamPulseSpeed * Mathf.PI) + 1f) * 0.5f;
+            Color bc = beamColor;
+            bc.a = Mathf.Lerp(beamMinAlpha, beamMaxAlpha, beamPulse);
+            beam.startColor = bc;
+            bc.a = 0f;
+            beam.endColor = bc;
         }
     }
 
@@ -52,6 +75,9 @@ public class JetpackPickupHighlighter : MonoBehaviour
         isHighlighted = highlighted;
         if (ring != null)
             ring.gameObject.SetActive(highlighted);
+
+        if (beam != null)
+            beam.gameObject.SetActive(highlighted);
 
         if (feedbackLight != null)
             feedbackLight.enabled = highlighted;
@@ -95,6 +121,44 @@ public class JetpackPickupHighlighter : MonoBehaviour
         }
 
         EnsureFeedbackLight();
+        EnsureBeam();
+    }
+
+    private void EnsureBeam()
+    {
+        Transform beamTransform = transform.Find("JetpackHighlightBeam");
+        if (beamTransform == null)
+        {
+            GameObject beamObject = new GameObject("JetpackHighlightBeam");
+            beamTransform = beamObject.transform;
+            beamTransform.SetParent(transform, false);
+            beamTransform.localPosition = Vector3.up * yOffset;
+        }
+
+        beam = beamTransform.GetComponent<LineRenderer>();
+        if (beam == null)
+            beam = beamTransform.gameObject.AddComponent<LineRenderer>();
+
+        beam.useWorldSpace = false;
+        beam.loop = false;
+        beam.positionCount = 2;
+        beam.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        beam.receiveShadows = false;
+        beam.alignment = LineAlignment.View;
+
+        beam.SetPosition(0, Vector3.zero);
+        beam.SetPosition(1, Vector3.up * beamHeight);
+
+        // Taper from wide at base to zero at top
+        AnimationCurve widthCurve = new AnimationCurve();
+        widthCurve.AddKey(0f, beamBaseWidth);
+        widthCurve.AddKey(1f, 0f);
+        beam.widthCurve = widthCurve;
+        beam.widthMultiplier = 1f;
+
+        Material beamMat = new Material(Shader.Find("Sprites/Default"));
+        beamMat.color = beamColor;
+        beam.material = beamMat;
     }
 
     private void EnsureFeedbackLight()

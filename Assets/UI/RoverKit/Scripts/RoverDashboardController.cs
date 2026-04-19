@@ -9,7 +9,7 @@ public class RoverDashboardController : MonoBehaviour
     [SerializeField] private Transform panelRoot;
 
     [Header("Fallback Layout")]
-    [SerializeField] private Vector2 panelSize = new(216f, 94f);
+    [SerializeField] private Vector2 panelSize = new(220f, 112f);
     [SerializeField] private float canvasScale = 0.00145f;
     [SerializeField] private Vector3 fallbackDashboardOffset = Vector3.zero;
 
@@ -34,14 +34,17 @@ public class RoverDashboardController : MonoBehaviour
     private TextMeshProUGUI compassEastLabel;
     private TextMeshProUGUI compassSouthLabel;
     private TextMeshProUGUI compassWestLabel;
+    private TextMeshProUGUI radioHeaderLabel;
     private TextMeshProUGUI radioValueLabel;
     private TextMeshProUGUI radioToggleHintLabel;
     private TextMeshProUGUI radioNextHintLabel;
+    private TextMeshProUGUI checkpointHeaderLabel;
     private TextMeshProUGUI checkpointValueLabel;
     private TextMeshProUGUI checkpointHintLabel;
     private TextMeshProUGUI statusLabel;
     private TextMeshProUGUI speedValueLabel;
     private TextMeshProUGUI speedUnitLabel;
+    private TextMeshProUGUI exitHintLabel;
     private RectTransform compassRoot;
     private Transform radioControlsRoot;
     private Transform checkpointControlsRoot;
@@ -53,6 +56,7 @@ public class RoverDashboardController : MonoBehaviour
     private float currentHealthNormalized = 1f;
     private float confirmationTimer;
     private bool wasMounted;
+    private CP06JetpackSequence jetpackSequence;
     private float currentHeadingAngle;
     private float radioPressFeedback;
     private float checkpointPressFeedback;
@@ -79,6 +83,7 @@ public class RoverDashboardController : MonoBehaviour
         if (!initialized)
             Awake();
 
+        jetpackSequence ??= Object.FindFirstObjectByType<CP06JetpackSequence>();
         RoverTheme theme = binder.Theme;
         bool visible = binder.IsMounted;
         bool justMounted = binder.IsMounted && !wasMounted;
@@ -144,47 +149,52 @@ public class RoverDashboardController : MonoBehaviour
         RectTransform panelRect = CreateRect("Panel", canvasRect, panelSize, Vector2.zero);
         glowImage = CreateImage("Glow", panelRect, panelSize + new Vector2(10f, 10f), new Color(0.8f, 0.84f, 0.9f, 0.1f));
         backgroundImage = CreateImage("Background", panelRect, panelSize, new Color(0.06f, 0.09f, 0.11f, 0.9f));
-        accentImage = CreateImage("Accent", panelRect, new Vector2(124f, 2f), new Color(0.76f, 0.8f, 0.85f, 1f));
-        accentImage.rectTransform.anchoredPosition = new Vector2(0f, 30f);
+        // Full-width accent divider below the status header
+        accentImage = CreateImage("Accent", panelRect, new Vector2(196f, 2f), new Color(0.76f, 0.8f, 0.85f, 1f));
+        accentImage.rectTransform.anchoredPosition = new Vector2(0f, 42f);
 
-        RectTransform radioCardRect = CreateRect("RadioCard", panelRect, new Vector2(66f, 34f), new Vector2(-58f, 6f));
-        radioCardImage = CreateImage("RadioCardFill", radioCardRect, new Vector2(66f, 34f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
-        radioCardOutline = CreateImage("RadioCardOutline", radioCardRect, new Vector2(68f, 36f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
+        // Left card — radio
+        RectTransform radioCardRect = CreateRect("RadioCard", panelRect, new Vector2(70f, 36f), new Vector2(-66f, 8f));
+        radioCardImage = CreateImage("RadioCardFill", radioCardRect, new Vector2(70f, 36f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
+        radioCardOutline = CreateImage("RadioCardOutline", radioCardRect, new Vector2(72f, 38f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
 
-        RectTransform checkpointCardRect = CreateRect("CheckpointCard", panelRect, new Vector2(66f, 34f), new Vector2(58f, 6f));
-        checkpointCardImage = CreateImage("CheckpointCardFill", checkpointCardRect, new Vector2(66f, 34f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
-        checkpointCardOutline = CreateImage("CheckpointCardOutline", checkpointCardRect, new Vector2(68f, 36f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
+        // Right card — checkpoint
+        RectTransform checkpointCardRect = CreateRect("CheckpointCard", panelRect, new Vector2(70f, 36f), new Vector2(66f, 8f));
+        checkpointCardImage = CreateImage("CheckpointCardFill", checkpointCardRect, new Vector2(70f, 36f), new Color(0.09f, 0.13f, 0.16f, 0.82f));
+        checkpointCardOutline = CreateImage("CheckpointCardOutline", checkpointCardRect, new Vector2(72f, 38f), new Color(0.76f, 0.8f, 0.85f, 0.18f));
 
-        healthLabel = CreateText("HealthLabel", panelRect, new Vector2(-86f, -29f), new Vector2(22f, 12f), 6f, FontStyles.Normal);
+        // HP row — label tight against bar
+        healthLabel = CreateText("HealthLabel", panelRect, new Vector2(-96f, -32f), new Vector2(22f, 12f), 6f, FontStyles.Normal);
         healthLabel.alignment = TextAlignmentOptions.MidlineLeft;
         healthLabel.text = "HP";
 
-        healthBarBack = CreateImage("HealthBarBack", panelRect, new Vector2(92f, 4f), new Color(1f, 1f, 1f, 0.08f));
-        healthBarBack.rectTransform.anchoredPosition = new Vector2(-25f, -29f);
+        healthBarBack = CreateImage("HealthBarBack", panelRect, new Vector2(96f, 5f), new Color(1f, 1f, 1f, 0.08f));
+        healthBarBack.rectTransform.anchoredPosition = new Vector2(-36f, -32f);
 
-        healthBarFill = CreateImage("HealthBarFill", healthBarBack.rectTransform, new Vector2(92f, 4f), new Color(0.76f, 0.8f, 0.85f, 1f));
+        healthBarFill = CreateImage("HealthBarFill", healthBarBack.rectTransform, new Vector2(96f, 5f), new Color(0.76f, 0.8f, 0.85f, 1f));
         healthBarFill.rectTransform.anchorMin = new Vector2(0f, 0.5f);
         healthBarFill.rectTransform.anchorMax = new Vector2(0f, 0.5f);
         healthBarFill.rectTransform.pivot = new Vector2(0f, 0.5f);
         healthBarFill.rectTransform.anchoredPosition = Vector2.zero;
 
-        compassRoot = CreateRect("CompassRoot", panelRect, new Vector2(30f, 30f), new Vector2(74f, -25f));
-        compassAxisVertical = CreateImage("CompassAxisVertical", compassRoot, new Vector2(1.1f, 20f), new Color(1f, 1f, 1f, 0.08f));
-        compassAxisHorizontal = CreateImage("CompassAxisHorizontal", compassRoot, new Vector2(20f, 1.1f), new Color(1f, 1f, 1f, 0.08f));
+        // Compass — smaller, sits right of center-right
+        compassRoot = CreateRect("CompassRoot", panelRect, new Vector2(26f, 26f), new Vector2(82f, -28f));
+        compassAxisVertical = CreateImage("CompassAxisVertical", compassRoot, new Vector2(1.1f, 18f), new Color(1f, 1f, 1f, 0.08f));
+        compassAxisHorizontal = CreateImage("CompassAxisHorizontal", compassRoot, new Vector2(18f, 1.1f), new Color(1f, 1f, 1f, 0.08f));
 
-        compassNeedlePrimary = CreateImage("CompassNeedlePrimary", compassRoot, new Vector2(1.4f, 18f), new Color(0.76f, 0.8f, 0.85f, 1f));
+        compassNeedlePrimary = CreateImage("CompassNeedlePrimary", compassRoot, new Vector2(1.4f, 16f), new Color(0.76f, 0.8f, 0.85f, 1f));
         compassNeedlePrimary.rectTransform.anchoredPosition = Vector2.zero;
         compassNeedlePrimary.rectTransform.pivot = new Vector2(0.5f, 0.72f);
 
-        compassNeedleSecondary = CreateImage("CompassNeedleSecondary", compassRoot, new Vector2(1.4f, 10f), new Color(1f, 1f, 1f, 0.18f));
+        compassNeedleSecondary = CreateImage("CompassNeedleSecondary", compassRoot, new Vector2(1.4f, 9f), new Color(1f, 1f, 1f, 0.18f));
         compassNeedleSecondary.rectTransform.anchoredPosition = Vector2.zero;
         compassNeedleSecondary.rectTransform.pivot = new Vector2(0.5f, 0.28f);
 
         compassCenterDot = CreateImage("CompassCenterDot", compassRoot, new Vector2(3f, 3f), new Color(0.76f, 0.8f, 0.85f, 1f));
 
-        compassNorthLabel = CreateText("CompassNorth", compassRoot, new Vector2(0f, 11f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
+        compassNorthLabel = CreateText("CompassNorth", compassRoot, new Vector2(0f, 10f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
         compassEastLabel = CreateText("CompassEast", compassRoot, new Vector2(10f, 0f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
-        compassSouthLabel = CreateText("CompassSouth", compassRoot, new Vector2(0f, -11f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
+        compassSouthLabel = CreateText("CompassSouth", compassRoot, new Vector2(0f, -10f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
         compassWestLabel = CreateText("CompassWest", compassRoot, new Vector2(-10f, 0f), new Vector2(10f, 10f), 4.8f, FontStyles.Normal);
 
         compassNorthLabel.text = "N";
@@ -192,26 +202,40 @@ public class RoverDashboardController : MonoBehaviour
         compassSouthLabel.text = "S";
         compassWestLabel.text = "W";
 
-        radioValueLabel = CreateText("RadioValue", panelRect, new Vector2(-58f, 16f), new Vector2(52f, 12f), 5.4f, FontStyles.Normal);
+        // Radio card labels — header at top, value below, hints at bottom
+        radioHeaderLabel = CreateText("RadioHeader", panelRect, new Vector2(-66f, 22f), new Vector2(58f, 8f), 4.4f, FontStyles.Normal);
+        radioHeaderLabel.alignment = TextAlignmentOptions.Center;
+        radioHeaderLabel.text = "RADIO";
+        radioValueLabel = CreateText("RadioValue", panelRect, new Vector2(-66f, 11f), new Vector2(58f, 12f), 5.4f, FontStyles.Normal);
         radioValueLabel.alignment = TextAlignmentOptions.Center;
-        radioToggleHintLabel = CreateText("RadioToggleHint", panelRect, new Vector2(-66f, -6f), new Vector2(20f, 12f), 5.4f, FontStyles.Normal);
+        radioToggleHintLabel = CreateText("RadioToggleHint", panelRect, new Vector2(-74f, -4f), new Vector2(22f, 12f), 5.4f, FontStyles.Normal);
         radioToggleHintLabel.alignment = TextAlignmentOptions.Center;
         radioToggleHintLabel.text = "ON";
-        radioNextHintLabel = CreateText("RadioNextHint", panelRect, new Vector2(-48f, -6f), new Vector2(24f, 12f), 5.4f, FontStyles.Normal);
+        radioNextHintLabel = CreateText("RadioNextHint", panelRect, new Vector2(-56f, -4f), new Vector2(26f, 12f), 5.4f, FontStyles.Normal);
         radioNextHintLabel.alignment = TextAlignmentOptions.Center;
         radioNextHintLabel.text = "NEXT";
 
-        checkpointValueLabel = CreateText("CheckpointValue", panelRect, new Vector2(58f, 16f), new Vector2(52f, 12f), 5.2f, FontStyles.Normal);
+        // Checkpoint card labels — header at top, value below, hint at bottom
+        checkpointHeaderLabel = CreateText("CheckpointHeader", panelRect, new Vector2(66f, 22f), new Vector2(62f, 8f), 4.4f, FontStyles.Normal);
+        checkpointHeaderLabel.alignment = TextAlignmentOptions.Center;
+        checkpointHeaderLabel.text = "CHECKPOINT";
+        checkpointValueLabel = CreateText("CheckpointValue", panelRect, new Vector2(66f, 11f), new Vector2(58f, 12f), 5.2f, FontStyles.Normal);
         checkpointValueLabel.alignment = TextAlignmentOptions.Center;
-        checkpointValueLabel.text = "ROVER START";
-        checkpointHintLabel = CreateText("CheckpointHint", panelRect, new Vector2(58f, -6f), new Vector2(44f, 12f), 5.4f, FontStyles.Normal);
+        checkpointValueLabel.text = "— NONE —";
+        checkpointHintLabel = CreateText("CheckpointHint", panelRect, new Vector2(66f, -4f), new Vector2(58f, 12f), 5.4f, FontStyles.Normal);
         checkpointHintLabel.alignment = TextAlignmentOptions.Center;
         checkpointHintLabel.text = "RETURN";
 
-        statusLabel = CreateText("Status", panelRect, new Vector2(0f, 24f), new Vector2(108f, 14f), 6.9f, FontStyles.Normal);
+        // Central speed display — perfectly centred between the two cards
+        statusLabel = CreateText("Status", panelRect, new Vector2(0f, 35f), new Vector2(124f, 14f), 6.9f, FontStyles.Normal);
         statusLabel.alignment = TextAlignmentOptions.Center;
-        speedValueLabel = CreateText("SpeedValue", panelRect, new Vector2(-4f, 1f), new Vector2(98f, 30f), 21f, FontStyles.Bold);
-        speedUnitLabel = CreateText("SpeedUnit", panelRect, new Vector2(-4f, -15f), new Vector2(64f, 12f), 6.2f, FontStyles.Normal);
+        speedValueLabel = CreateText("SpeedValue", panelRect, new Vector2(0f, 6f), new Vector2(90f, 30f), 21f, FontStyles.Bold);
+        speedUnitLabel = CreateText("SpeedUnit", panelRect, new Vector2(0f, -13f), new Vector2(64f, 12f), 6.2f, FontStyles.Normal);
+
+        // Exit hint — thin muted strip at the very bottom
+        exitHintLabel = CreateText("ExitHint", panelRect, new Vector2(0f, -48f), new Vector2(196f, 10f), 5.0f, FontStyles.Normal);
+        exitHintLabel.alignment = TextAlignmentOptions.Center;
+        exitHintLabel.text = "· hold both grips to exit ·";
     }
 
     private void UpdatePlacement(RoverUIBinder binder, RoverTheme theme)
@@ -289,8 +313,8 @@ public class RoverDashboardController : MonoBehaviour
         {
             string cpName = binder.LastCheckpointName;
             checkpointValueLabel.text = binder.CanReturnToLastCheckpoint
-                ? (string.IsNullOrEmpty(cpName) ? "LAST CP" : cpName.ToUpperInvariant())
-                : "NO CP YET";
+                ? (string.IsNullOrEmpty(cpName) ? "SET" : cpName.ToUpperInvariant())
+                : "— NONE —";
         }
 
         if (checkpointHintLabel != null)
@@ -308,9 +332,13 @@ public class RoverDashboardController : MonoBehaviour
         if (healthBarFill != null)
         {
             Vector2 size = healthBarFill.rectTransform.sizeDelta;
-            size.x = Mathf.Lerp(10f, 92f, currentHealthNormalized);
+            size.x = Mathf.Lerp(10f, 96f, currentHealthNormalized);
             healthBarFill.rectTransform.sizeDelta = size;
         }
+
+        bool showExitHint = binder.IsMounted && (jetpackSequence == null || !jetpackSequence.PickupComplete);
+        if (exitHintLabel != null)
+            exitHintLabel.gameObject.SetActive(showExitHint);
     }
 
     private void ApplyTheme(RoverTheme theme, float alpha, DashboardState state)
@@ -422,6 +450,13 @@ public class RoverDashboardController : MonoBehaviour
             healthLabel.color = c;
         }
 
+        if (radioHeaderLabel != null)
+        {
+            Color c = muted;
+            c.a = 0.55f * alpha;
+            radioHeaderLabel.color = c;
+        }
+
         if (radioValueLabel != null)
         {
             Color c = GetValueLabelColor(radioValueLabel.text, text, muted, alpha, showWarning, "OFF", "EMPTY");
@@ -442,9 +477,16 @@ public class RoverDashboardController : MonoBehaviour
             radioNextHintLabel.color = c;
         }
 
+        if (checkpointHeaderLabel != null)
+        {
+            Color c = muted;
+            c.a = 0.55f * alpha;
+            checkpointHeaderLabel.color = c;
+        }
+
         if (checkpointValueLabel != null)
         {
-            Color c = GetValueLabelColor(checkpointValueLabel.text, text, muted, alpha, showWarning, "NO", "UNAVAILABLE");
+            Color c = GetValueLabelColor(checkpointValueLabel.text, text, muted, alpha, showWarning, "NONE");
             checkpointValueLabel.color = c;
         }
 
@@ -469,6 +511,13 @@ public class RoverDashboardController : MonoBehaviour
             Color c = text;
             c.a *= alpha;
             speedValueLabel.color = c;
+        }
+
+        if (exitHintLabel != null)
+        {
+            Color c = muted;
+            c.a = 0.45f * alpha;
+            exitHintLabel.color = c;
         }
     }
 
@@ -526,14 +575,14 @@ public class RoverDashboardController : MonoBehaviour
                 GameObject root = new("RadioControlsRoot");
                 radioControlsRoot = root.transform;
                 radioControlsRoot.SetParent(panelRoot, false);
-                radioControlsRoot.localPosition = new Vector3(-0.081f, -0.0005f, -0.003f);
+                radioControlsRoot.localPosition = new Vector3(-0.0957f, 0.008f, -0.003f);
                 radioControlsRoot.localRotation = Quaternion.identity;
                 radioControlsRoot.localScale = Vector3.one;
             }
         }
         else
         {
-            radioControlsRoot.localPosition = new Vector3(-0.081f, -0.0005f, -0.003f);
+            radioControlsRoot.localPosition = new Vector3(-0.0957f, 0.008f, -0.003f);
             radioControlsRoot.localRotation = Quaternion.identity;
             radioControlsRoot.localScale = Vector3.one;
         }
@@ -573,14 +622,14 @@ public class RoverDashboardController : MonoBehaviour
                 GameObject root = new("CheckpointControlsRoot");
                 checkpointControlsRoot = root.transform;
                 checkpointControlsRoot.SetParent(panelRoot, false);
-                checkpointControlsRoot.localPosition = new Vector3(0.081f, -0.0005f, -0.003f);
+                checkpointControlsRoot.localPosition = new Vector3(0.0957f, 0.008f, -0.003f);
                 checkpointControlsRoot.localRotation = Quaternion.identity;
                 checkpointControlsRoot.localScale = Vector3.one;
             }
         }
         else
         {
-            checkpointControlsRoot.localPosition = new Vector3(0.081f, -0.0005f, -0.003f);
+            checkpointControlsRoot.localPosition = new Vector3(0.0957f, 0.008f, -0.003f);
             checkpointControlsRoot.localRotation = Quaternion.identity;
             checkpointControlsRoot.localScale = Vector3.one;
         }
