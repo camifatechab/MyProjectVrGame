@@ -26,11 +26,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     [SerializeField] private RoverPhysicsController rover;
     [SerializeField] private PlayerHealth playerHealth;
 
-    [Header("Legacy Objectives (Disabled)")]
-    [SerializeField] private CrystalCollectible targetCrystal;
-    [SerializeField] private List<CrystalCollectible> requiredCrystals = new();
-    [SerializeField] private bool hideCrystalsUntilLanding = true;
-
     [Header("Anchors")]
     [SerializeField] private Transform playerStartAnchor;
     [SerializeField] private Transform playerSpawnAnchor;
@@ -60,7 +55,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
 
     private readonly List<Transform> firstFlightWaypoints = new();
     private readonly List<Transform> secondFlightWaypoints = new();
-    private readonly List<CrystalCollectible> resolvedCrystals = new();
     private SequenceStage stage = SequenceStage.WaitingForInitialMount;
 
     public bool IsWaitingForFinalDismount => stage == SequenceStage.WaitingForFinalDismount;
@@ -129,11 +123,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         playerHealth ??= FindFirstObjectByType<PlayerHealth>();
         flightPathRoot ??= FindSceneTransform("FlightPath");
 
-        ResolveRequiredCrystals();
-        targetCrystal ??= ResolveTargetCrystal();
-        if (targetCrystal != null && !resolvedCrystals.Contains(targetCrystal))
-            resolvedCrystals.Add(targetCrystal);
-
         BuildFlightPaths();
 
         if (HasTestingStartWaypointOverride())
@@ -181,8 +170,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
         if (snapDragonToStartOnPlay)
             SnapDragonToStart();
 
-        DisableLegacyObjectives();
-
         dragon.SetScriptedSequenceActive(true, lockJetpackWhileUnmounted: true);
         dragon.allowManualParkingInput = false;
         dragon.autoDismountAfterParking = true;
@@ -199,7 +186,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
     private void ConfigureRoverOnlyMode()
     {
         stage = SequenceStage.Completed;
-        DisableLegacyObjectives();
 
         if (dragon != null)
         {
@@ -435,78 +421,6 @@ public class FloatingIslandIntroSequence : MonoBehaviour
             rover.SetMountEnabled(true);
 
         DisableRespawnManager();
-    }
-
-    private void ResolveRequiredCrystals()
-    {
-        resolvedCrystals.Clear();
-
-        foreach (CrystalCollectible crystal in requiredCrystals.Where(crystal => crystal != null))
-            resolvedCrystals.Add(crystal);
-
-        if (targetCrystal != null && !resolvedCrystals.Contains(targetCrystal))
-            resolvedCrystals.Add(targetCrystal);
-
-        Transform batteryRoot = FindSceneTransform("BatteryForRover");
-        if (batteryRoot != null)
-        {
-            CrystalCollectible batteryCrystal = batteryRoot.GetComponentInChildren<CrystalCollectible>(true);
-            if (batteryCrystal != null && !resolvedCrystals.Contains(batteryCrystal))
-                resolvedCrystals.Add(batteryCrystal);
-        }
-
-        Transform crystalsRoot = FindSceneTransform("Crystals");
-        if (crystalsRoot != null)
-        {
-            foreach (CrystalCollectible crystal in crystalsRoot.GetComponentsInChildren<CrystalCollectible>(true))
-            {
-                if (crystal != null && !resolvedCrystals.Contains(crystal))
-                    resolvedCrystals.Add(crystal);
-            }
-        }
-
-        requiredCrystals.Clear();
-        requiredCrystals.AddRange(resolvedCrystals);
-    }
-
-    private CrystalCollectible ResolveTargetCrystal()
-    {
-        Transform batteryRoot = FindSceneTransform("BatteryForRover");
-        if (batteryRoot != null)
-        {
-            CrystalCollectible batteryCrystal = batteryRoot.GetComponentInChildren<CrystalCollectible>(true);
-            if (batteryCrystal != null)
-                return batteryCrystal;
-        }
-
-        Transform crystalTransform = FindSceneTransform("Crystal1") ?? FindSceneTransform("Crystal01");
-        return crystalTransform != null ? crystalTransform.GetComponent<CrystalCollectible>() : null;
-    }
-
-    private void DisableLegacyObjectives()
-    {
-        SetObjectiveCrystalsActive(false);
-        SetObjectiveCrystalCollectionEnabled(false);
-    }
-
-    private void SetObjectiveCrystalsActive(bool active)
-    {
-        for (int i = 0; i < resolvedCrystals.Count; i++)
-        {
-            CrystalCollectible crystal = resolvedCrystals[i];
-            if (crystal != null)
-                crystal.gameObject.SetActive(active && !hideCrystalsUntilLanding);
-        }
-    }
-
-    private void SetObjectiveCrystalCollectionEnabled(bool enabled)
-    {
-        for (int i = 0; i < resolvedCrystals.Count; i++)
-        {
-            CrystalCollectible crystal = resolvedCrystals[i];
-            if (crystal != null)
-                crystal.SetCollectionEnabled(enabled);
-        }
     }
 
     private void PrepareForFinalDismount()

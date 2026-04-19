@@ -216,6 +216,27 @@ void FireLaser()
                 if (wasAlive && target.IsDead() && HapticsManager.Instance != null)
                     HapticsManager.Instance.PulseRight(killHapticIntensity, killHapticDuration);
             }
+            else
+            {
+                // Check for the final crystal
+                CrystalDestructible crystal = hit.collider.GetComponent<CrystalDestructible>()
+                                           ?? hit.collider.GetComponentInParent<CrystalDestructible>();
+                if (crystal != null && !crystal.IsDead())
+                {
+                    hittingTarget = true;
+                    hitMarkerTimer = HitMarkerDuration;
+                    if (hitMarkerRoot != null) hitMarkerRoot.SetActive(true);
+
+                    if (hitSoundCooldown <= 0f && gunAudio != null && hitSound != null)
+                    {
+                        gunAudio.PlayOneShot(hitSound, 0.7f);
+                        hitSoundCooldown = 0.15f;
+                    }
+                    crystal.OnLaserHit();
+                    if (crystal.IsDead() && HapticsManager.Instance != null)
+                        HapticsManager.Instance.PulseRight(killHapticIntensity, killHapticDuration);
+                }
+            }
         }
         else
         {
