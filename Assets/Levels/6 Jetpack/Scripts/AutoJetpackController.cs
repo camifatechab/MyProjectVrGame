@@ -46,14 +46,6 @@ public class AutoJetpackController : MonoBehaviour
     [SerializeField] private bool enableRecharge = true;
 
     [Header("Surface Rules")]
-    [Tooltip("Only these named floating islands count as recharge platforms.")]
-    [SerializeField] private string[] rechargePlatformRoots =
-    {
-        "Floating_Island_4_Bioma2",
-        "Floating_Island_4_Bioma2 (1)",
-        "Floating_Island_3_Bioma2",
-    };
-
     [Tooltip("Grounded contact on these surface prefixes triggers an immediate respawn.")]
     [SerializeField] private string[] hazardSurfacePrefixes =
     {
@@ -135,7 +127,7 @@ public class AutoJetpackController : MonoBehaviour
 
     // Track previous grounded state
     private bool wasGrounded = true;
-    private bool isGroundedOnRechargePlatform = false;
+    private bool canRechargeOnCurrentSurface = false;
     private bool isGroundedOnHazardSurface = false;
     private string currentGroundSurfaceName = string.Empty;
 
@@ -418,7 +410,7 @@ public class AutoJetpackController : MonoBehaviour
 
     void UpdateFuelRecharge()
     {
-        bool shouldRecharge = isGroundedOnRechargePlatform && !isFlying && enableRecharge && currentFuel < maxFuel;
+        bool shouldRecharge = canRechargeOnCurrentSurface && !isFlying && enableRecharge && currentFuel < maxFuel;
 
         if (shouldRecharge)
         {
@@ -556,7 +548,7 @@ public class AutoJetpackController : MonoBehaviour
 
     private void UpdateGroundSurfaceState()
     {
-        isGroundedOnRechargePlatform = false;
+        canRechargeOnCurrentSurface = false;
         isGroundedOnHazardSurface = false;
         currentGroundSurfaceName = string.Empty;
 
@@ -573,8 +565,8 @@ public class AutoJetpackController : MonoBehaviour
             return;
 
         currentGroundSurfaceName = hit.collider != null ? hit.collider.gameObject.name : string.Empty;
-        isGroundedOnRechargePlatform = MatchesNamedRoot(hit.collider.transform, rechargePlatformRoots);
         isGroundedOnHazardSurface = MatchesSurfacePrefix(hit.collider.transform, hazardSurfacePrefixes);
+        canRechargeOnCurrentSurface = characterController.isGrounded && !isGroundedOnHazardSurface;
     }
 
     private void HandleHazardSurfaceRespawn()
@@ -589,23 +581,6 @@ public class AutoJetpackController : MonoBehaviour
             return;
 
         playerRespawnManager.TriggerRespawn($"Touched hazard surface '{currentGroundSurfaceName}'");
-    }
-
-    private static bool MatchesNamedRoot(Transform surface, string[] validNames)
-    {
-        if (surface == null || validNames == null)
-            return false;
-
-        for (Transform current = surface; current != null; current = current.parent)
-        {
-            for (int i = 0; i < validNames.Length; i++)
-            {
-                if (!string.IsNullOrEmpty(validNames[i]) && current.name == validNames[i])
-                    return true;
-            }
-        }
-
-        return false;
     }
 
     private static bool MatchesSurfacePrefix(Transform surface, string[] prefixes)

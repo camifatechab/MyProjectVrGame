@@ -11,7 +11,7 @@ public class AutoFuelUISetup : MonoBehaviour
 {
     [Header("Layout")]
     [SerializeField] private Vector2 gaugePosition = new(188f, -84f);
-    [SerializeField] private Vector2 gaugeSize = new(220f, 124f);
+    [SerializeField] private Vector2 gaugeSize = new(220f, 136f);
     [SerializeField] private bool isSetupComplete;
 
     [Header("Theme")]
@@ -45,13 +45,13 @@ public class AutoFuelUISetup : MonoBehaviour
 
         Image panelGlow = CreateImage("Glow", fuelGaugePanel.transform, Vector2.zero, gaugeSize + new Vector2(16f, 16f), new Color(glowColor.r, glowColor.g, glowColor.b, 0.14f));
         Image panelBackground = CreateImage("BackgroundPanel", fuelGaugePanel.transform, Vector2.zero, gaugeSize, panelTint);
-        Image accentLine = CreateImage("AccentLine", fuelGaugePanel.transform, new Vector2(18f, 42f), new Vector2(130f, 3f), glowColor);
+        Image accentLine = CreateImage("AccentLine", fuelGaugePanel.transform, new Vector2(18f, 47f), new Vector2(130f, 3f), glowColor);
 
-        TextMeshProUGUI titleText = CreateText("TitleText", fuelGaugePanel.transform, new Vector2(34f, 24f), new Vector2(126f, 18f), 11f, FontStyles.Bold, titleColor);
+        TextMeshProUGUI titleText = CreateText("TitleText", fuelGaugePanel.transform, new Vector2(34f, 29f), new Vector2(126f, 18f), 11f, FontStyles.Bold, titleColor);
         titleText.text = "JETPACK FUEL";
         titleText.alignment = TextAlignmentOptions.Left;
 
-        Image barFrame = CreateImage("FuelBarFrame", fuelGaugePanel.transform, new Vector2(-74f, -4f), new Vector2(36f, 76f), barFrameColor);
+        Image barFrame = CreateImage("FuelBarFrame", fuelGaugePanel.transform, new Vector2(-74f, -1f), new Vector2(36f, 78f), barFrameColor);
         Image fuelBarBackground = CreateImage("FuelBarBackground", barFrame.transform, Vector2.zero, new Vector2(28f, 62f), barBackgroundColor);
 
         Image fuelBarFill = CreateImage("FuelBarFill", fuelBarBackground.transform, Vector2.zero, new Vector2(20f, 54f), glowColor);
@@ -60,20 +60,31 @@ public class AutoFuelUISetup : MonoBehaviour
         fuelBarFill.fillOrigin = (int)Image.OriginVertical.Bottom;
         fuelBarFill.fillAmount = 1f;
 
-        TextMeshProUGUI fuelText = CreateText("FuelPercentageText", fuelGaugePanel.transform, new Vector2(42f, 2f), new Vector2(120f, 30f), 19f, FontStyles.Bold, textColor);
+        TextMeshProUGUI fuelText = CreateText("FuelPercentageText", fuelGaugePanel.transform, new Vector2(42f, 8f), new Vector2(120f, 30f), 19f, FontStyles.Bold, textColor);
         fuelText.text = "100%";
         fuelText.alignment = TextAlignmentOptions.Left;
 
-        TextMeshProUGUI statusText = CreateText("StatusText", fuelGaugePanel.transform, new Vector2(42f, -22f), new Vector2(120f, 16f), 10f, FontStyles.Normal, mutedTextColor);
+        TextMeshProUGUI statusText = CreateText("StatusText", fuelGaugePanel.transform, new Vector2(42f, -14f), new Vector2(120f, 16f), 10f, FontStyles.Normal, mutedTextColor);
         statusText.text = "READY";
         statusText.alignment = TextAlignmentOptions.Left;
 
-        TextMeshProUGUI hintText = CreateText("HintText", fuelGaugePanel.transform, new Vector2(42f, -42f), new Vector2(128f, 18f), 7.5f, FontStyles.Normal, mutedTextColor);
+        TextMeshProUGUI hintText = CreateText("HintText", fuelGaugePanel.transform, new Vector2(42f, -32f), new Vector2(128f, 18f), 7.5f, FontStyles.Normal, mutedTextColor);
         hintText.text = "LAND TO RECHARGE";
         hintText.alignment = TextAlignmentOptions.Left;
 
+        TextMeshProUGUI healthLabelText = CreateText("HealthLabelText", fuelGaugePanel.transform, new Vector2(4f, -52f), new Vector2(52f, 14f), 9f, FontStyles.Normal, mutedTextColor);
+        healthLabelText.text = "HP 100";
+        healthLabelText.alignment = TextAlignmentOptions.Left;
+
+        Image healthBarBack = CreateImage("HealthBarBack", fuelGaugePanel.transform, new Vector2(56f, -52f), new Vector2(76f, 4f), barBackgroundColor);
+        Image healthBarFill = CreateImage("HealthBarFill", healthBarBack.transform, Vector2.zero, new Vector2(88f, 4f), textColor);
+        healthBarFill.type = Image.Type.Filled;
+        healthBarFill.fillMethod = Image.FillMethod.Horizontal;
+        healthBarFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+        healthBarFill.fillAmount = 1f;
+
         JetpackFuelUI fuelUi = fuelGaugePanel.AddComponent<JetpackFuelUI>();
-        AssignFuelUiReferences(fuelUi, fuelBarFill, fuelBarBackground, fuelText, statusText, panelBackground, panelGlow, accentLine, barFrame, titleText, panelCanvasGroup);
+        AssignFuelUiReferences(fuelUi, fuelBarFill, fuelBarBackground, fuelText, statusText, panelBackground, panelGlow, accentLine, barFrame, titleText, healthBarFill, healthLabelText, panelCanvasGroup);
 
         isSetupComplete = true;
     }
@@ -89,6 +100,8 @@ public class AutoFuelUISetup : MonoBehaviour
         Image accentLine,
         Image barFrame,
         TextMeshProUGUI titleText,
+        Image healthBarFill,
+        TextMeshProUGUI healthLabelText,
         CanvasGroup panelCanvasGroup)
     {
         var flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
@@ -102,6 +115,8 @@ public class AutoFuelUISetup : MonoBehaviour
         type.GetField("accentLine", flags)?.SetValue(fuelUi, accentLine);
         type.GetField("barFrame", flags)?.SetValue(fuelUi, barFrame);
         type.GetField("titleText", flags)?.SetValue(fuelUi, titleText);
+        type.GetField("healthBarFill", flags)?.SetValue(fuelUi, healthBarFill);
+        type.GetField("healthLabelText", flags)?.SetValue(fuelUi, healthLabelText);
         type.GetField("panelCanvasGroup", flags)?.SetValue(fuelUi, panelCanvasGroup);
     }
 

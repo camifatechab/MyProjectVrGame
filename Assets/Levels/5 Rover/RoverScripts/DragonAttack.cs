@@ -76,6 +76,12 @@ public class DragonAttack : MonoBehaviour
     [Tooltip("Seconds to reach full aggression from zero")]
     public float aggressionRampTime = 120f;
 
+    [Header("Volcano Area Overrides")]
+    [Tooltip("Skip the shared Attack_Area zone and use patrol waypoints as the engagement zone instead.")]
+    public bool ignoreAttackArea = false;
+    [Tooltip("Max dragons that can attack simultaneously. Overrides the default scale of 2-4.")]
+    public int maxSimultaneousAttackers = 4;
+
     // --- shared aggression / grace timers (all dragons read from same static clock) ---
     private static float s_aggressionTimer = 0f;
     private static float s_rampTime        = 120f;
@@ -87,8 +93,8 @@ public class DragonAttack : MonoBehaviour
     // Aggression 0..1
     private static float Aggression => Mathf.Clamp01(s_aggressionTimer / s_rampTime);
 
-    // Max simultaneous attackers: 2 at 0 aggression → 4 at full
-    private int MaxAttackers => Mathf.RoundToInt(Mathf.Lerp(2f, 4f, GetBehaviorPressure()));
+    // Max simultaneous attackers: 2 at 0 aggression → maxSimultaneousAttackers at full
+    private int MaxAttackers => Mathf.RoundToInt(Mathf.Lerp(2f, maxSimultaneousAttackers, GetBehaviorPressure()));
 
     // Rest time: long at low aggression → short at high
     private float RestTimeMin => Mathf.Lerp(4f, 1f, GetBehaviorPressure());
@@ -184,7 +190,7 @@ public class DragonAttack : MonoBehaviour
         instanceAttackCooldownMult = Random.Range(0.7f, 1.3f);
         instanceSpeedMult = Random.Range(0.85f, 1.15f);
         instanceOrbitSpeedMult = Random.Range(0.8f, 1.2f);
-        alwaysChasePlayer = gameObject.name.StartsWith("Target_");
+        alwaysChasePlayer = gameObject.name.StartsWith("Target_") || gameObject.name.StartsWith("VolcanoTarget");
         TryInitializeEngagementZoneBounds();
         SnapTargetIntoWaypointRouteIfNeeded();
 
@@ -561,16 +567,19 @@ public class DragonAttack : MonoBehaviour
             return;
 
         // Prefer Attack_Area bounds directly — independent of Start ordering
-        GameObject attackArea = GameObject.Find("Attack_Area");
-        if (attackArea != null && attackArea.activeInHierarchy)
+        if (!ignoreAttackArea)
         {
-            BoxCollider attackBounds = attackArea.GetComponent<BoxCollider>();
-            if (attackBounds != null && attackBounds.enabled)
+            GameObject attackArea = GameObject.Find("Attack_Area");
+            if (attackArea != null && attackArea.activeInHierarchy)
             {
-                engagementZoneBounds = attackBounds.bounds;
-                engagementZoneBounds.Expand(Vector3.one * EngagementZonePadding);
-                hasEngagementZoneBounds = true;
-                return;
+                BoxCollider attackBounds = attackArea.GetComponent<BoxCollider>();
+                if (attackBounds != null && attackBounds.enabled)
+                {
+                    engagementZoneBounds = attackBounds.bounds;
+                    engagementZoneBounds.Expand(Vector3.one * EngagementZonePadding);
+                    hasEngagementZoneBounds = true;
+                    return;
+                }
             }
         }
 

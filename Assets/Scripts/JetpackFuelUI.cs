@@ -11,6 +11,8 @@ public class JetpackFuelUI : MonoBehaviour
     [Header("Auto-Setup (Leave Empty)")]
     [Tooltip("Will automatically find the AutoJetpackController")]
     [SerializeField] private AutoJetpackController jetpackController;
+    [Tooltip("Will automatically find the PlayerHealth component used by the rover HUD.")]
+    [SerializeField] private PlayerHealth playerHealth;
 
     [Header("UI References")]
     [SerializeField] private Image fuelBarFill;
@@ -22,6 +24,8 @@ public class JetpackFuelUI : MonoBehaviour
     [SerializeField] private Image accentLine;
     [SerializeField] private Image barFrame;
     [SerializeField] private TextMeshProUGUI titleText;
+    [SerializeField] private Image healthBarFill;
+    [SerializeField] private TextMeshProUGUI healthLabelText;
     [SerializeField] private CanvasGroup panelCanvasGroup;
 
     [Header("Visibility")]
@@ -50,6 +54,9 @@ public class JetpackFuelUI : MonoBehaviour
     private float currentFillAmount = 1f;
     private bool isFlashing;
     private bool isVisible;
+    private readonly Color healthyColor = new(0.78f, 0.81f, 0.85f, 1f);
+    private readonly Color damagedColor = new(1f, 0.76f, 0.29f, 1f);
+    private readonly Color criticalColor = new(1f, 0.38f, 0.32f, 1f);
 
     private void Start()
     {
@@ -59,6 +66,9 @@ public class JetpackFuelUI : MonoBehaviour
             if (jetpackController == null)
                 Debug.LogError("JetpackFuelUI: Could not find AutoJetpackController!");
         }
+
+        if (playerHealth == null)
+            playerHealth = FindFirstObjectByType<PlayerHealth>();
 
         if (fuelBarFill == null)
             Debug.LogWarning("JetpackFuelUI: Fuel Bar Fill not assigned!");
@@ -79,6 +89,7 @@ public class JetpackFuelUI : MonoBehaviour
         UpdateVisibility();
         UpdateFuelDisplay();
         UpdateStatusDisplay();
+        UpdateHealthDisplay();
     }
 
     private void UpdateFuelDisplay()
@@ -197,6 +208,28 @@ public class JetpackFuelUI : MonoBehaviour
 
         if (statusText != null)
             statusText.color = mutedTextColor;
+
+        if (healthLabelText != null)
+            healthLabelText.color = mutedTextColor;
+    }
+
+    private void UpdateHealthDisplay()
+    {
+        if (playerHealth == null)
+            return;
+
+        float normalized = playerHealth.HealthNormalized;
+
+        if (healthBarFill != null)
+        {
+            healthBarFill.fillAmount = normalized;
+            healthBarFill.color = normalized > 0.5f
+                ? Color.Lerp(damagedColor, healthyColor, (normalized - 0.5f) * 2f)
+                : Color.Lerp(criticalColor, damagedColor, normalized * 2f);
+        }
+
+        if (healthLabelText != null)
+            healthLabelText.text = $"HP {Mathf.RoundToInt(playerHealth.currentHealth)}";
     }
 
     private void UpdateVisibility(bool force = false)
