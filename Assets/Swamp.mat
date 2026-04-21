@@ -86,13 +86,13 @@ Material:
     - _TilingFlowMap: 1
     - _heightMapStrength: 1
     m_Colors:
-    - _BackgroundColor: {r: 0.055133194, g: 0.40304255, b: 0.07157847, a: 0}
+    - _BackgroundColor: {r: 0.5707547, g: 0.41362518, b: 0.04038358, a: 0}
     - _ColorForeground: {r: 0.8666667, g: 0.7672725, b: 0.10196077, a: 0}
-    - _ForegroundTextureColor: {r: 0.015218942, g: 0.05660379, b: 0.015218942, a: 0}
-    - _HeightColor: {r: 0.003381983, g: 0.03773582, b: 0.003381983, a: 0}
+    - _ForegroundTextureColor: {r: 0.0002834307, g: 0.014150947, b: 0.00006674991, a: 0}
+    - _HeightColor: {r: 0.19774947, g: 0.6698113, b: 0.08846565, a: 0}
     - _HeigthColor: {r: 0.9528302, g: 0.60673326, b: 0, a: 0}
-    - _MiddleGroundTextureColor: {r: 0.12471288, g: 0.4339623, b: 0.079832695, a: 1}
-    - _MiddlegroundTextureColor2: {r: 0.03172837, g: 0.21698111, b: 0.037230913, a: 1}
+    - _MiddleGroundTextureColor: {r: 0.004665145, g: 0.035377353, b: 0, a: 1}
+    - _MiddlegroundTextureColor2: {r: 0.00756497, g: 0.16037738, b: 0.010816315, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1
 --- !u!114 &4515964500267287150

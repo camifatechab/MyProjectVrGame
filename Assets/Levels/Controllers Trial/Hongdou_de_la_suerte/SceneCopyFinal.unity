@@ -26,7 +26,7 @@ RenderSettings:
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 2100000, guid: b87cacf51931a5841b5931a664fd0730, type: 2}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 71a09f6170bf41f43a7a2a74abda1a77, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -12705,7 +12705,7 @@ MonoBehaviour:
   legacyHeightController: {fileID: 79786887}
   blendedSkyboxMaterial: {fileID: 2100000, guid: 8ac56c2b9025d7f4b8cb38dbdffefe7b, type: 2}
   startCubemap: {fileID: 8900000, guid: 9b33ce33d0e234241b75cf478c1f68a8, type: 3}
-  endCubemap: {fileID: 0}
+  endCubemap: {fileID: 8900000, guid: f86f4c0578b601b4da6cbf230ef698ef, type: 3}
   waypoint06: {fileID: 238391078}
   waypoint07: {fileID: 1073803889}
   waypoint08: {fileID: 557212850}
@@ -105883,6 +105883,18 @@ PrefabInstance:
     - target: {fileID: 408278, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
       objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -211790,6 +211802,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
+      objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -233177,7 +233201,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1322029272
 Transform:
   m_ObjectHideFlags: 0
@@ -245013,6 +245037,18 @@ PrefabInstance:
     - target: {fileID: 408278, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
       objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -270333,6 +270369,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
+      objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -279418,7 +279466,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1589022621
 Transform:
   m_ObjectHideFlags: 0
@@ -300417,6 +300465,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
+      objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
       value: 
@@ -303539,6 +303599,18 @@ PrefabInstance:
     - target: {fileID: 408278, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
       objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -320486,7 +320558,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1831798167
 Transform:
   m_ObjectHideFlags: 0
@@ -332489,6 +332561,18 @@ PrefabInstance:
     - target: {fileID: 408278, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.g
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 19825450, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
+      propertyPath: InitialModule.startColor.maxColor.r
+      value: 0.16409636
       objectReference: {fileID: 0}
     - target: {fileID: 19970458, guid: 2d0b118bb00c92b4db672fa5722c29e7, type: 3}
       propertyPath: 'm_Materials.Array.data[0]'
@@ -357973,7 +358057,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2053481206
 Transform:
   m_ObjectHideFlags: 0
