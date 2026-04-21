@@ -12703,31 +12703,16 @@ MonoBehaviour:
   blendController: {fileID: 79786886}
   rideableCreature: {fileID: 675485922}
   legacyHeightController: {fileID: 79786887}
+  blendedSkyboxMaterial: {fileID: 2100000, guid: 8ac56c2b9025d7f4b8cb38dbdffefe7b, type: 2}
+  startCubemap: {fileID: 8900000, guid: 9b33ce33d0e234241b75cf478c1f68a8, type: 3}
+  endCubemap: {fileID: 0}
   waypoint06: {fileID: 238391078}
   waypoint07: {fileID: 1073803889}
   waypoint08: {fileID: 557212850}
   waypoint09: {fileID: 1591902065}
   waypoint10: {fileID: 2081201967}
   blendStartOnWp06ToWp07: 0.45
-  blendedSkyboxMaterial: {fileID: 2100000, guid: 8ac56c2b9025d7f4b8cb38dbdffefe7b, type: 2}
-  finalSkyboxMaterial: {fileID: 2100000, guid: 5d133deeaa66ed445853e946ff25e073, type: 2}
-  finalBlendCubemap: {fileID: 8900000, guid: a3de28b69b48944438c87668bd722ae7, type: 3}
   manualBlendResponse: 2.25
-  startSkyColor: {r: 0.8307701, g: 0.63075733, b: 0.36130688, a: 1}
-  startEquatorColor: {r: 0.78353804, g: 0.9386859, b: 0.57758063, a: 1}
-  startGroundColor: {r: 0.78353804, g: 0.4341537, b: 0.4341537, a: 1}
-  startFogEnabled: 0
-  startFogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
-  startFogStartDistance: 0
-  startFogEndDistance: 300
-  endSkyColor: {r: 0.62, g: 0.24, b: 0.18, a: 1}
-  endEquatorColor: {r: 0.8, g: 0.34, b: 0.18, a: 1}
-  endGroundColor: {r: 0.38, g: 0.12, b: 0.09, a: 1}
-  endFogEnabled: 1
-  endFogColor: {r: 0.66, g: 0.2, b: 0.1, a: 1}
-  endFogStartDistance: 45
-  endFogEndDistance: 150
-  fogMode: 1
 --- !u!114 &79786886
 MonoBehaviour:
   m_ObjectHideFlags: 0
