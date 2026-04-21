@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: dcc43dda5874c704591590c2d81bbb6c
+DefaultImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225988
+  packageName: Magma Shader
+  packageVersion: 1.0
+  assetPath: Assets/MagmaShader/Scenes/Demo.unity
+  uploadId: 510189

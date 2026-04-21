@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 4b5a391092216624fbb38763e9b91d8b
+ScriptedImporter:
+  internalIDToNameTable: []
+  externalObjects: {}
+  serializedVersion: 2
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+  script: {fileID: 11500000, guid: 625f186215c104763be7675aa2d941aa, type: 3}
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225988
+  packageName: Magma Shader
+  packageVersion: 1.0
+  assetPath: Assets/MagmaShader/Shaders/Magma.shadergraph
+  uploadId: 510189

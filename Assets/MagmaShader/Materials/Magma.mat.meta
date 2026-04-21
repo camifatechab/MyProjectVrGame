@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 14302028eee74c24c891be4c17b8e428
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225988
+  packageName: Magma Shader
+  packageVersion: 1.0
+  assetPath: Assets/MagmaShader/Materials/Magma.mat
+  uploadId: 510189

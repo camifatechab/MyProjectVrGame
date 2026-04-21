@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 4bb8facdb0ff1fb4cb53e3250f9a6548
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225988
+  packageName: Magma Shader
+  packageVersion: 1.0
+  assetPath: Assets/MagmaShader/Volume/Global Volume Profile.asset
+  uploadId: 510189

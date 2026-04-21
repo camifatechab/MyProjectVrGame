@@ -8,39 +8,48 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/Scenes/SampleScene.unity
     guid: 55daccc09a3b69647bbab145b54a3ab3
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/1 Menu/Menu.unity
     guid: 29487592446173a42bbd78cab308a256
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/2 CrashToPlanet/CrashToPlanet.unity
     guid: c2715acdcd802684792333b42dd8c564
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/1CampfireHub.unity
     guid: 7b9349c5a945efc4d9666b68cf3036b8
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/2CampfireHub.unity
     guid: ae2290e2157d4974b80811ee172f7ed7
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/4 Swimming/Swimming.unity
     guid: 955480ec454296c4ea67133e24a324a6
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/3CampfireHub.unity
     guid: 729fa5d42c18eae469defa5bf4c9de10
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/5 Rover/Scene/Rover Level.unity
     guid: b68bc99657527084c96f1c75f2d4eb5e
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/4CampfireHub.unity
     guid: 54a6dc6876e47334da49099475207211
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/6 Jetpack/Jetpack.unity
     guid: 9329348c3953ea34c8ccd52a7e2c1b35
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/5CampfireHub.unity
     guid: 3a268b1672eae5b4c875c3000d02a1d6
-  - enabled: 1
+  - enabled: 0
     path: Assets/Levels/3 CampfireHub/CampfireHub.unity
     guid: af8adeb4609a77949bd71a4a23f1b514
+  - enabled: 1
+    path: Assets/Levels/Controllers Trial/Hongdou_de_la_suerte/Menu.unity
+    guid: d9cb7aafe7de0cc42aa16dcf2012e0e8
+  - enabled: 1
+    path: Assets/Levels/Controllers Trial/Hongdou_de_la_suerte/Introduction.unity
+    guid: 79e9da03bb1a14c40a10c98eb8e4b84e
+  - enabled: 1
+    path: Assets/Levels/Controllers Trial/Hongdou_de_la_suerte/SceneCopyFinal.unity
+    guid: 178d88cec45b99c4792abba840865a9a
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: b284ceffb50260048982b6c563785417
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2655988077585873504
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 225988
+  packageName: Magma Shader
+  packageVersion: 1.0
+  assetPath: Assets/MagmaShader/Presets/MagmaV1.preset
+  uploadId: 510189
