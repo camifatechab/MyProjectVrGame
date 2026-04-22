@@ -15,14 +15,14 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 1
-  m_FogColor: {r: 0.48235297, g: 0.2392157, b: 0.2509804, a: 0.6509804}
+  m_FogColor: {r: 0.6415094, g: 0.33340493, b: 0.21484515, a: 0.6509804}
   m_FogMode: 3
   m_FogDensity: 0.0002
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
-  m_AmbientEquatorColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
-  m_AmbientGroundColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
+  m_AmbientSkyColor: {r: 0.4714597, g: 0.36973348, b: 0.37225875, a: 1}
+  m_AmbientEquatorColor: {r: 0.4714597, g: 0.36973348, b: 0.37225875, a: 1}
+  m_AmbientGroundColor: {r: 0.4714597, g: 0.36973348, b: 0.37225875, a: 1}
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -48733,13 +48733,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 253740174}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
-  m_LocalPosition: {x: 0.287, y: 0.433, z: 1.139}
+  m_LocalRotation: {x: 0.09796162, y: -0.0005875752, z: -0.0044630393, w: 0.99518}
+  m_LocalPosition: {x: 0.568, y: 0.433, z: 1.178}
   m_LocalScale: {x: 0.8333332, y: 0.8333333, z: 0.8333332}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1167741837}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 11.243, y: -0.119, z: -0.526}
 --- !u!114 &253740176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -48774,8 +48774,8 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 1, g: 0.95, b: 0.85, a: 1}
-  m_Intensity: 3
-  m_Range: 60
+  m_Intensity: 70
+  m_Range: 100
   m_SpotAngle: 35
   m_InnerSpotAngle: 18
   m_CookieSize: 10
@@ -88586,8 +88586,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 481558481}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.04644862, y: 0.70574427, z: 0.044496436, w: 0.70554066}
-  m_LocalPosition: {x: 66.81613, y: -339.12717, z: 229.64397}
+  m_LocalRotation: {x: -0.036153562, y: 0.04988155, z: -0.00061502826, w: -0.9981004}
+  m_LocalPosition: {x: 229.87636, y: -275.84116, z: 751.078}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -144904,9 +144904,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1 &844667393
 GameObject:
   m_ObjectHideFlags: 0
@@ -145274,9 +145277,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1 &845269259
 GameObject:
   m_ObjectHideFlags: 0
@@ -187342,10 +187348,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   azureCoreSystem: {fileID: 0}
-  orderedCheckpoints: []
+  rideableCreature: {fileID: 675485922}
   startTimeline: 22.7
   endTimeline: 22.9
   transitionSpeed: 0.05
+  debugOverride: 1
+  debugProgress: 1
 --- !u!4 &1094981815
 Transform:
   m_ObjectHideFlags: 0
@@ -290008,9 +290016,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1 &1648744247
 GameObject:
   m_ObjectHideFlags: 0
@@ -291284,7 +291295,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_minute
-      value: 20
+      value: 43
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_dawnTime
@@ -291304,7 +291315,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_timeline
-      value: 22.8
+      value: 22.92
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_dayLength
@@ -291320,11 +291331,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_timeOfDay
-      value: 17.339409
+      value: 17.73265
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_evaluationTime
-      value: 17.339409
+      value: 17.73265
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_minLightAltitude
@@ -291332,7 +291343,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_weatherSystem.m_evaluationTime
-      value: 17.339409
+      value: 17.73265
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_selectedCalendarDay
@@ -291340,7 +291351,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_weatherSystem.m_evaluationTimeGradient
-      value: 0.72247535
+      value: 0.7388604
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: 'm_timeSystem.m_dayNumberList.Array.data[0]'
@@ -291556,19 +291567,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.051696472
+      value: -0.0008262031
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.98735446
+      value: -0.9887065
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.06441138
+      value: 0.05736383
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.13531402
+      value: -0.1384489
       objectReference: {fileID: 0}
     - target: {fileID: 4055571998922016943, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_cloudMode
@@ -291620,35 +291631,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.051696472
+      value: -0.0008262031
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.98735446
+      value: -0.9887065
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.06441138
+      value: 0.05736383
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.13531402
+      value: -0.1384489
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.b
-      value: 0.075309455
+      value: 0.09095094
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.g
-      value: 0.5535977
+      value: 0.47036743
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.r
-      value: 1
+      value: 0.834567
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Intensity
-      value: 1
+      value: 0.5967678
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_BoundingSphereOverride.y
@@ -291668,19 +291679,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.06441138
+      value: 0.057363834
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.13531397
+      value: -0.13844885
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.05169647
+      value: 0.00082620064
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.98735446
+      value: 0.9887065
       objectReference: {fileID: 0}
     - target: {fileID: 7953403546012018190, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalPosition.x
@@ -291724,19 +291735,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.1321412
+      value: 0.13817415
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0.007924964
+      value: 0.0017002594
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.9894214
+      value: 0.99033153
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.059339006
+      value: -0.01218622
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -318386,9 +318397,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1001 &1807786902
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -320052,13 +320066,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1819434076}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
-  m_LocalPosition: {x: -0.43, y: 0.525, z: 1.137}
+  m_LocalRotation: {x: 0.09796162, y: -0.0005875752, z: -0.0044630393, w: 0.99518}
+  m_LocalPosition: {x: -0.83, y: 0.525, z: 1.08}
   m_LocalScale: {x: 0.8333332, y: 0.8333333, z: 0.8333332}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1167741837}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 11.243, y: -0.119, z: -0.526}
 --- !u!108 &1819434078
 Light:
   m_ObjectHideFlags: 0
@@ -320070,8 +320084,8 @@ Light:
   serializedVersion: 11
   m_Type: 0
   m_Color: {r: 1, g: 0.95, b: 0.85, a: 1}
-  m_Intensity: 3
-  m_Range: 60
+  m_Intensity: 70
+  m_Range: 100
   m_SpotAngle: 35
   m_InnerSpotAngle: 18
   m_CookieSize: 10
@@ -333106,9 +333120,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1 &1892189032
 GameObject:
   m_ObjectHideFlags: 0
@@ -361286,9 +361303,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1001 &2068180433
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -375212,9 +375232,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rockPrefab: {fileID: 1371598241635088, guid: 3a33ce58c20826a4ea7253f84444654b, type: 3}
   poolSize: 10
-  dropInterval: 1
+  dropIntervalMin: 1.5
+  dropIntervalMax: 3.5
   startDelay: 1
+  rockLifetime: 5
   areaSize: {x: 5, y: 0, z: 5}
+  damage: 15
 --- !u!1 &2145425352
 GameObject:
   m_ObjectHideFlags: 0
