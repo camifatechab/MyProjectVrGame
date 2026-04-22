@@ -20,9 +20,9 @@ RenderSettings:
   m_FogDensity: 0.0002
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.31992084, g: 0.26929653, b: 0.32346207, a: 1}
-  m_AmbientEquatorColor: {r: 0.31992084, g: 0.26929653, b: 0.32346207, a: 1}
-  m_AmbientGroundColor: {r: 0.31992084, g: 0.26929653, b: 0.32346207, a: 1}
+  m_AmbientSkyColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
+  m_AmbientEquatorColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
+  m_AmbientGroundColor: {r: 0.69435686, g: 0.51746535, b: 0.44403335, a: 1}
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
@@ -48707,6 +48707,127 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 458390, guid: 164efb1c8a75bc6469b87f8ff23e6ba8, type: 3}
   m_PrefabInstance: {fileID: 253637549}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &253740174
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 253740175}
+  - component: {fileID: 253740177}
+  - component: {fileID: 253740176}
+  m_Layer: 0
+  m_Name: Headlight_R
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &253740175
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 253740174}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
+  m_LocalPosition: {x: 0.287, y: 0.433, z: 1.139}
+  m_LocalScale: {x: 0.8333332, y: 0.8333333, z: 0.8333332}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1167741837}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &253740176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 253740174}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+--- !u!108 &253740177
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 253740174}
+  m_Enabled: 1
+  serializedVersion: 11
+  m_Type: 0
+  m_Color: {r: 1, g: 0.95, b: 0.85, a: 1}
+  m_Intensity: 3
+  m_Range: 60
+  m_SpotAngle: 35
+  m_InnerSpotAngle: 18
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ForceVisible: 0
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
+  m_LightUnit: 1
+  m_LuxAtDistance: 1
+  m_EnableSpotReflector: 1
 --- !u!1001 &254079457
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -90102,12 +90223,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 1121180656}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -90120,16 +90241,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -90181,7 +90302,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -92348,12 +92469,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 1316531204}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -92366,16 +92487,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -92427,7 +92548,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -145819,12 +145940,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 676506027}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -145837,16 +145958,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 120
+  aggressionRampTime: 300
   ignoreAttackArea: 0
-  maxSimultaneousAttackers: 4
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -145902,7 +146023,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -152501,12 +152622,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 421653545}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -152519,16 +152640,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -152580,7 +152701,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -155518,7 +155639,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.x
-      value: 390
+      value: 389.5
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.y
@@ -155526,23 +155647,23 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 478
+      value: 475.8
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.99620664
+      value: 0.9885685
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.07276207
+      value: -0.07310993
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.047185645
+      value: 0.13185777
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.007184324
+      value: -0.00096135784
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.x
@@ -155550,11 +155671,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.y
-      value: 5.513
+      value: 15.284
       objectReference: {fileID: 0}
     - target: {fileID: 1717954561962503726, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
-      value: -1.226
+      value: -1.227
       objectReference: {fileID: 0}
     - target: {fileID: 6232745470614056090, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
       propertyPath: m_Material
@@ -155753,7 +155874,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1c786f71ef6489243a17805d1ba61f28, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHealth: 100
+  maxHealth: 300
   currentHealth: 0
   respawnPoint: {fileID: 0}
   respawnDelay: 3
@@ -187191,6 +187312,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 400000, guid: 6a28afa19b9bd0a4f994ce05e9fccfda, type: 3}
   m_PrefabInstance: {fileID: 1094897505}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1094981813
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1094981815}
+  - component: {fileID: 1094981814}
+  m_Layer: 0
+  m_Name: SkyTimeProgressManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1094981814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1094981813}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cff1b43587495774da4c4553ba53b9e3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  azureCoreSystem: {fileID: 0}
+  orderedCheckpoints: []
+  startTimeline: 22.7
+  endTimeline: 22.9
+  transitionSpeed: 0.05
+--- !u!4 &1094981815
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1094981813}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1095372751
 GameObject:
   m_ObjectHideFlags: 0
@@ -204552,6 +204722,8 @@ Transform:
   - {fileID: 889903112}
   - {fileID: 751626229}
   - {fileID: 150614843}
+  - {fileID: 1819434077}
+  - {fileID: 253740175}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 7.821, z: 0}
 --- !u!114 &1167741838
@@ -243244,12 +243416,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 941503185}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -243262,16 +243434,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 120
+  aggressionRampTime: 300
   ignoreAttackArea: 0
-  maxSimultaneousAttackers: 4
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -243327,7 +243499,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -256297,12 +256469,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 2055297436}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -256315,16 +256487,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 120
+  aggressionRampTime: 300
   ignoreAttackArea: 0
-  maxSimultaneousAttackers: 4
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -256380,7 +256552,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -267948,12 +268120,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 1746591041}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -267966,16 +268138,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -268027,7 +268199,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -291104,7 +291276,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_hour
-      value: 18
+      value: 17
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_year
@@ -291112,7 +291284,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_minute
-      value: 0
+      value: 20
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_dawnTime
@@ -291132,7 +291304,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_timeline
-      value: 23
+      value: 22.8
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_dayLength
@@ -291148,11 +291320,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_timeOfDay
-      value: 18
+      value: 17.339409
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_evaluationTime
-      value: 18
+      value: 17.339409
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_minLightAltitude
@@ -291160,7 +291332,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_weatherSystem.m_evaluationTime
-      value: 18
+      value: 17.339409
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_timeSystem.m_selectedCalendarDay
@@ -291168,7 +291340,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_weatherSystem.m_evaluationTimeGradient
-      value: 0.75
+      value: 0.72247535
       objectReference: {fileID: 0}
     - target: {fileID: 1974823580454898308, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: 'm_timeSystem.m_dayNumberList.Array.data[0]'
@@ -291384,19 +291556,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.03376793
+      value: -0.051696472
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.9881301
+      value: -0.98735446
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.05248455
+      value: 0.06441138
       objectReference: {fileID: 0}
     - target: {fileID: 3701604041762352059, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.14037122
+      value: -0.13531402
       objectReference: {fileID: 0}
     - target: {fileID: 4055571998922016943, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_cloudMode
@@ -291448,35 +291620,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.03376793
+      value: -0.051696472
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.9881301
+      value: -0.98735446
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.05248455
+      value: 0.06441138
       objectReference: {fileID: 0}
     - target: {fileID: 4103551949178911760, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.14037122
+      value: -0.13531402
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.b
-      value: 0.20538543
+      value: 0.075309455
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.g
-      value: 0.41139066
+      value: 0.5535977
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Color.r
-      value: 0.6264192
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_Intensity
-      value: 0.1
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6157664555825808682, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_BoundingSphereOverride.y
@@ -291496,19 +291668,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.05248455
+      value: 0.06441138
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.14037117
+      value: -0.13531397
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: -0.033767935
+      value: 0.05169647
       objectReference: {fileID: 0}
     - target: {fileID: 6255840395601179683, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: 0.9881301
+      value: 0.98735446
       objectReference: {fileID: 0}
     - target: {fileID: 7953403546012018190, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalPosition.x
@@ -291552,19 +291724,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.w
-      value: -0.9895161
+      value: 0.1321412
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.025744632
+      value: 0.007924964
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.y
-      value: 0.14206178
+      value: 0.9894214
       objectReference: {fileID: 0}
     - target: {fileID: 9063230162086782788, guid: baab2c6cc48d21b47bc6c4965fcefccd, type: 3}
       propertyPath: m_LocalRotation.z
-      value: -0.0036960777
+      value: -0.059339006
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -319854,6 +320026,127 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1818976905}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1819434076
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1819434077}
+  - component: {fileID: 1819434078}
+  - component: {fileID: 1819434079}
+  m_Layer: 0
+  m_Name: Headlight_L
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1819434077
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819434076}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.1305262, y: 0, z: 0, w: 0.9914449}
+  m_LocalPosition: {x: -0.43, y: 0.525, z: 1.137}
+  m_LocalScale: {x: 0.8333332, y: 0.8333333, z: 0.8333332}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1167741837}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!108 &1819434078
+Light:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819434076}
+  m_Enabled: 1
+  serializedVersion: 11
+  m_Type: 0
+  m_Color: {r: 1, g: 0.95, b: 0.85, a: 1}
+  m_Intensity: 3
+  m_Range: 60
+  m_SpotAngle: 35
+  m_InnerSpotAngle: 18
+  m_CookieSize: 10
+  m_Shadows:
+    m_Type: 0
+    m_Resolution: -1
+    m_CustomResolution: -1
+    m_Strength: 1
+    m_Bias: 0.05
+    m_NormalBias: 0.4
+    m_NearPlane: 0.2
+    m_CullingMatrixOverride:
+      e00: 1
+      e01: 0
+      e02: 0
+      e03: 0
+      e10: 0
+      e11: 1
+      e12: 0
+      e13: 0
+      e20: 0
+      e21: 0
+      e22: 1
+      e23: 0
+      e30: 0
+      e31: 0
+      e32: 0
+      e33: 1
+    m_UseCullingMatrixOverride: 0
+  m_Cookie: {fileID: 0}
+  m_DrawHalo: 0
+  m_Flare: {fileID: 0}
+  m_RenderMode: 0
+  m_CullingMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  m_RenderingLayerMask: 1
+  m_Lightmapping: 4
+  m_LightShadowCasterMode: 0
+  m_AreaSize: {x: 1, y: 1}
+  m_BounceIntensity: 1
+  m_ColorTemperature: 6570
+  m_UseColorTemperature: 0
+  m_BoundingSphereOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_UseBoundingSphereOverride: 0
+  m_UseViewFrustumForShadowCasterCull: 1
+  m_ForceVisible: 0
+  m_ShadowRadius: 0
+  m_ShadowAngle: 0
+  m_LightUnit: 1
+  m_LuxAtDistance: 1
+  m_EnableSpotReflector: 1
+--- !u!114 &1819434079
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1819434076}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_Version: 3
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_LightLayerMask: 1
+  m_RenderingLayers: 1
+  m_CustomShadowLayers: 0
+  m_ShadowLayerMask: 1
+  m_ShadowRenderingLayers: 1
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
 --- !u!1001 &1820335523
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -322971,12 +323264,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 251684817}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -322989,16 +323282,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -323050,7 +323343,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -340346,12 +340639,12 @@ MonoBehaviour:
   detectionRange: 80
   attackRange: 8
   minDistance: 10
-  attackCooldownMin: 1.5
-  attackCooldownMax: 4.5
+  attackCooldownMin: 4
+  attackCooldownMax: 10
   projectilePrefab: {fileID: 9015301231819394273, guid: 0942dd06671181445b75a3037f6590fb, type: 3}
   firePoint: {fileID: 1796089409}
   moveSpeedMin: 5
-  moveSpeedMax: 10
+  moveSpeedMax: 7
   turnSpeed: 3.5
   bobAmplitude: 0.8
   bobSpeed: 1.2
@@ -340364,16 +340657,16 @@ MonoBehaviour:
   rageMoveSpeed: 9
   rageTurnSpeed: 3.5
   rageDuration: 5
-  rageExtraSwoops: 3
-  spreadCount: 3
+  rageExtraSwoops: 1
+  spreadCount: 1
   spreadAngle: 15
   spawnHeight: 35
   spawnRadius: 50
   separationRadius: 6
   separationWeight: 3
-  aggressionRampTime: 5
+  aggressionRampTime: 300
   ignoreAttackArea: 1
-  maxSimultaneousAttackers: 6
+  maxSimultaneousAttackers: 2
   audioSource: {fileID: 0}
   roarSound: {fileID: 0}
   fireSound: {fileID: 0}
@@ -340425,7 +340718,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3e2f7fb12966333428cf2e42376d22be, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  maxHP: 100
+  maxHP: 30
   damagePerSecond: 20
   barWidth: 1.5
   barHeight: 0.15
@@ -375371,3 +375664,4 @@ SceneRoots:
   - {fileID: 1356756435}
   - {fileID: 481558485}
   - {fileID: 1658769356}
+  - {fileID: 1094981815}

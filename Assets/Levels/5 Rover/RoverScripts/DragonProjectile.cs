@@ -4,7 +4,7 @@ public class DragonProjectile : MonoBehaviour
 {
     [Header("Settings")]
     public float speed         = 18f;
-    public float damage        = 20f;
+    public float damage        = 8f;
     public float lifetime      = 6f;
     public float homingStrength = 5f;
 
