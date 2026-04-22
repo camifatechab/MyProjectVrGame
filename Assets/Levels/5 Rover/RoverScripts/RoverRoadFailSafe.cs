@@ -32,10 +32,10 @@ public class RoverRoadFailSafe : MonoBehaviour
     public float fallBelowSafeDistance = 4f;
     public float minimumFallSpeed = 1.5f;
     public float resetFeedbackDuration = 0.9f;
-    public string[] safeColliderPrefixes = { "Road_", "Base_Road_", "Terrain", "Platform_" };
+    public string[] safeColliderPrefixes = { "Road_", "Base_Road_", "Edge_Road", "Edge_Placeholder_", "Terrain", "Platform_" };
     public string[] instantResetTriggerNames = { "Ocean" };
-    [Tooltip("Prefixes of colliders to convert to triggers so rover can drive off the road.")]
-    public string[] passableColliderPrefixes = { "Guide_", "Shelf_", "Edge_" };
+    [Tooltip("Prefixes of colliders to convert to triggers (guide rails only — NOT road edges).")]
+    public string[] passableColliderPrefixes = { "Guide_", "Shelf_" };
 
     public bool IsResetWarningActive { get; private set; }
     public bool IsResetting { get; private set; }
@@ -71,8 +71,8 @@ public class RoverRoadFailSafe : MonoBehaviour
         offRoadResetDelay = Mathf.Clamp(offRoadResetDelay, 0.02f, MaxResponsiveOffRoadResetDelay);
         unsupportedResetDelay = Mathf.Clamp(unsupportedResetDelay, offRoadResetDelay, MaxResponsiveUnsupportedResetDelay);
         unsupportedHorizontalResetDistance = Mathf.Max(0.5f, unsupportedHorizontalResetDistance);
-        safeColliderPrefixes = EnsureRequiredPrefixes(safeColliderPrefixes, "Road_", "Base_Road_", "Terrain", "Platform_");
-        passableColliderPrefixes = EnsureRequiredPrefixes(passableColliderPrefixes, "Guide_", "Shelf_", "Edge_");
+        safeColliderPrefixes = EnsureRequiredPrefixes(safeColliderPrefixes, "Road_", "Base_Road_", "Edge_Road", "Edge_Placeholder_", "Terrain", "Platform_");
+        passableColliderPrefixes = EnsureRequiredPrefixes(passableColliderPrefixes, "Guide_", "Shelf_");
         roverStartPosition = transform.position;
         roverStartRotation = transform.rotation;
         hasRoverStartPose = true;
