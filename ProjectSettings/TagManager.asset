@@ -9,6 +9,8 @@ TagManager:
   - SlowTerrain
   - LandingPlatform
   - Rover
+  - Ground
+  - DragonCamera
   layers:
   - Default
   - TransparentFX
