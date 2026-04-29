@@ -144,6 +144,10 @@ public class RoverLaunchTrigger : MonoBehaviour
         trackedController.BeginScriptedLaunch(scriptedWindowTimer);
         lastLaunchTime = Time.time;
 
+        RoverImmersiveAudio immersiveAudio = controller.GetComponent<RoverImmersiveAudio>();
+        if (immersiveAudio != null)
+            immersiveAudio.ArmLandingForCurrentJump();
+
         RoverCheckpointRespawn respawn = controller.GetComponent<RoverCheckpointRespawn>();
         if (respawn != null)
             respawn.SuppressAirborneCheck(landingWindowDuration);

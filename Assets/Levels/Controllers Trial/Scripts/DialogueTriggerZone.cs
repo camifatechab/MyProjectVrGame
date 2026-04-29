@@ -9,6 +9,7 @@ public class DialogueTriggerZone : MonoBehaviour
 
     [Header("Settings")]
     public bool playOnlyOnce = true;
+    public float delayBeforeFirstLine = 0f;
     public float delayBetweenLines = 0.5f;
 
     private bool hasPlayed = false;
@@ -27,6 +28,9 @@ public class DialogueTriggerZone : MonoBehaviour
 
     IEnumerator PlayDialogue()
     {
+        if (delayBeforeFirstLine > 0f)
+            yield return new WaitForSeconds(delayBeforeFirstLine);
+
         foreach (AudioClip clip in dialogueClips)
         {
             if (clip == null) continue;

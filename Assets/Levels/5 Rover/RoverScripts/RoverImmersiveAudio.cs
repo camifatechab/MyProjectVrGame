@@ -46,15 +46,25 @@ public class RoverImmersiveAudio : MonoBehaviour
     [SerializeField] private float curveBrakeSpeedThreshold = 5f;
     [SerializeField] [Range(0f, 1f)] private float curveSteerThreshold = 0.38f;
     [SerializeField] private float curveBrakeRetriggerDelay = 0.7f;
+    [SerializeField] private bool landingOnlyOnArmedScriptedJump = true;
     [SerializeField] private float landingAirTimeThreshold = 0.18f;
     [SerializeField] private float landingImpactThreshold = 3f;
     [SerializeField] private bool playBoostOnScriptedLaunch;
+
+    [Header("Landing Feel")]
+    [SerializeField] [Range(0f, 1f)] private float landingSpatialBlend = 0.82f;
+    [SerializeField] private float landingMinDistance = 4.5f;
+    [SerializeField] private float landingMaxDistance = 34f;
+    [SerializeField] private float landingVolumeBoost = 1.35f;
+    [SerializeField] private float landingPitchMin = 0.97f;
+    [SerializeField] private float landingPitchMax = 1.03f;
 
     private AudioSource idleSource;
     private AudioSource engineSource;
     private AudioSource offroadSource;
     private AudioSource suspensionSource;
     private AudioSource oneShotSource;
+    private AudioSource landingSource;
 
     private bool wasGrounded;
     private bool wasBraking;
@@ -67,6 +77,8 @@ public class RoverImmersiveAudio : MonoBehaviour
     private float smoothSlip;
     private float smoothJolt;
     private Vector3 previousVelocity;
+    private bool scriptedLandingArmed;
+    private float landingRetriggerBlockTimer;
 
     private void Reset()
     {
@@ -148,6 +160,7 @@ public class RoverImmersiveAudio : MonoBehaviour
 
         brakeCooldownTimer = Mathf.Max(0f, brakeCooldownTimer - Time.deltaTime);
         curveBrakeTimer = Mathf.Max(0f, curveBrakeTimer - Time.deltaTime);
+        landingRetriggerBlockTimer = Mathf.Max(0f, landingRetriggerBlockTimer - Time.deltaTime);
         previousVelocity = rb.linearVelocity;
         wasGrounded = grounded;
         wasBraking = brake01 > 0.55f;
@@ -158,6 +171,27 @@ public class RoverImmersiveAudio : MonoBehaviour
     public void TriggerBoost(float volumeScale = 1f)
     {
         PlayOneShot(boostClip, Mathf.Clamp01(volumeScale));
+    }
+
+    public void ArmLandingForCurrentJump()
+    {
+        scriptedLandingArmed = true;
+    }
+
+    public void PlayScriptedLanding(float impactSpeed)
+    {
+        bool allowLandingSound = !landingOnlyOnArmedScriptedJump || scriptedLandingArmed;
+        if (!allowLandingSound)
+            return;
+
+        float clampedImpact = Mathf.Max(impactSpeed, landingImpactThreshold + 2f);
+        float volumeScale = Mathf.InverseLerp(landingImpactThreshold, landingImpactThreshold + 8f, clampedImpact);
+        PlayLandingShot(Mathf.Lerp(0.78f, 1f, volumeScale));
+
+        scriptedLandingArmed = false;
+        landingRetriggerBlockTimer = 0.2f;
+        airborneTimer = 0f;
+        hardestLandingVelocity = 0f;
     }
 
     private void HandleBrake(float brake01, float steer01, bool grounded)
@@ -202,13 +236,23 @@ public class RoverImmersiveAudio : MonoBehaviour
             return;
         }
 
-        float impactSpeed = Mathf.Abs(hardestLandingVelocity);
-        if (airborneTimer >= landingAirTimeThreshold && impactSpeed >= landingImpactThreshold)
+        if (landingRetriggerBlockTimer > 0f)
         {
-            float volumeScale = Mathf.InverseLerp(landingImpactThreshold, landingImpactThreshold + 8f, impactSpeed);
-            PlayOneShot(landingClip, Mathf.Lerp(0.55f, 1f, volumeScale));
+            airborneTimer = 0f;
+            hardestLandingVelocity = 0f;
+            scriptedLandingArmed = false;
+            return;
         }
 
+        float impactSpeed = Mathf.Abs(hardestLandingVelocity);
+        bool allowLandingSound = !landingOnlyOnArmedScriptedJump || scriptedLandingArmed;
+        if (allowLandingSound && airborneTimer >= landingAirTimeThreshold && impactSpeed >= landingImpactThreshold)
+        {
+            float volumeScale = Mathf.InverseLerp(landingImpactThreshold, landingImpactThreshold + 8f, impactSpeed);
+            PlayLandingShot(Mathf.Lerp(0.7f, 0.92f, volumeScale));
+        }
+
+        scriptedLandingArmed = false;
         airborneTimer = 0f;
         hardestLandingVelocity = 0f;
     }
@@ -293,6 +337,19 @@ public class RoverImmersiveAudio : MonoBehaviour
         oneShotSource.PlayOneShot(clip, volumeScale * masterVolume);
     }
 
+    private void PlayLandingShot(float volumeScale)
+    {
+        if (landingClip == null)
+            return;
+
+        AudioSource source = landingSource != null ? landingSource : oneShotSource;
+        if (source == null)
+            return;
+
+        source.pitch = Random.Range(landingPitchMin, landingPitchMax);
+        source.PlayOneShot(landingClip, volumeScale * landingVolumeBoost * masterVolume);
+    }
+
     private void ResolveAnchor()
     {
         if (controller != null && controller.seatAnchor != null)
@@ -317,6 +374,8 @@ public class RoverImmersiveAudio : MonoBehaviour
         offroadSource = EnsureSource(root, "Offroad", true);
         suspensionSource = EnsureSource(root, "Suspension", true);
         oneShotSource = EnsureSource(root, "OneShots", false);
+        landingSource = EnsureSource(root, "Landing", false);
+        ConfigureLandingSource(landingSource);
     }
 
     private void ApplyClips()
@@ -351,6 +410,8 @@ public class RoverImmersiveAudio : MonoBehaviour
         source.playOnAwake = false;
         source.loop = loop;
         source.spatialBlend = interiorSpatialBlend;
+        source.panStereo = 0f;
+        source.spread = 360f;
         source.minDistance = minDistance;
         source.maxDistance = maxDistance;
         source.rolloffMode = AudioRolloffMode.Logarithmic;
@@ -362,6 +423,21 @@ public class RoverImmersiveAudio : MonoBehaviour
             source.pitch = 1f;
         }
         return source;
+    }
+
+    private void ConfigureLandingSource(AudioSource source)
+    {
+        if (source == null)
+            return;
+
+        source.spatialBlend = landingSpatialBlend;
+        source.panStereo = 0f;
+        source.spread = 360f;
+        source.minDistance = landingMinDistance;
+        source.maxDistance = landingMaxDistance;
+        source.rolloffMode = AudioRolloffMode.Logarithmic;
+        source.dopplerLevel = 0.01f;
+        source.priority = 72;
     }
 
     private static Transform FindOrCreateChild(Transform parent, string childName)

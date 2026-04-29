@@ -486,6 +486,10 @@ public class RoverPhysicsController : MonoBehaviour
 
         if (landed)
         {
+            RoverImmersiveAudio immersiveAudio = GetComponent<RoverImmersiveAudio>();
+            if (immersiveAudio != null)
+                immersiveAudio.PlayScriptedLanding(Mathf.Abs(rb != null ? rb.linearVelocity.y : 0f));
+
             if (skipForceUprightOnLanding)
             {
                 // Just kill spin; let physics settle naturally on sloped surfaces.
