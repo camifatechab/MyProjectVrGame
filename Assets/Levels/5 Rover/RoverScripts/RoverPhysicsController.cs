@@ -68,6 +68,7 @@ public class RoverPhysicsController : MonoBehaviour
     public float mountInputArmDelay = 0.35f;
     public float mountStabilizeDuration = 0.5f;
     public float mountedIdleBrakeMultiplier = 2f;
+    public bool preserveXrOriginWorldPositionOnDismount = true;
 
     [Header("VR Steering")]
     public float steerDeadzone = 8f;
@@ -158,6 +159,7 @@ public class RoverPhysicsController : MonoBehaviour
     public bool CanDismount => canDismount;
     public float ForwardSpeed => rb == null ? 0f : Vector3.Dot(rb.linearVelocity, transform.forward);
     public float SpeedNormalized => Mathf.InverseLerp(0f, maxForwardSpeed, Mathf.Abs(ForwardSpeed));
+    public bool IsGrounded => HasGroundContact();
     private Vector3 SeatWorldPosition =>
         seatAnchor != null ? seatAnchor.position : transform.position;
 
@@ -999,14 +1001,17 @@ public class RoverPhysicsController : MonoBehaviour
         if (xrOrigin != null)
         {
             xrOrigin.transform.SetParent(null, worldPositionStays: true);
-            Vector3 targetPosition = transform.position
-                + transform.right * (2.5f * transform.lossyScale.x)
-                + Vector3.up * 1.2f;
+            if (!preserveXrOriginWorldPositionOnDismount)
+            {
+                Vector3 targetPosition = transform.position
+                    + transform.right * (2.5f * transform.lossyScale.x)
+                    + Vector3.up * 1.2f;
 
-            if (TryFindGroundedDismountPosition(targetPosition, out Vector3 groundedPosition))
-                targetPosition = groundedPosition;
+                if (TryFindGroundedDismountPosition(targetPosition, out Vector3 groundedPosition))
+                    targetPosition = groundedPosition;
 
-            xrOrigin.transform.position = targetPosition;
+                xrOrigin.transform.position = targetPosition;
+            }
         }
 
         if (locomotionProviders != null)
